@@ -359,9 +359,21 @@ function renderStatus(data) {
         // No / invalid license
         icon.className  = 'status-icon none';
         icon.innerHTML  = '<i class="fas fa-exclamation-circle"></i>';
-        title.textContent = data ? data.message : 'Cannot reach server';
-        badge.className = 'status-badge none'; badge.textContent = 'Not Licensed';
-        sub.textContent = 'Enter a valid license key below to activate TrintzPOS';
+
+        // Check if it's a hardware binding issue
+        if (data && data.message && data.message.includes('different machine')) {
+            title.textContent = 'License Bound to Different Machine';
+            sub.textContent = 'This license is hardware-bound to another machine. To use on this machine, you need to generate a new license key with this machine\'s hardware fingerprint.';
+        } else if (data && data.message && data.message.includes('not valid for this machine')) {
+            title.textContent = 'License Not Valid for This Machine';
+            sub.textContent = 'This license is hardware-bound to a different machine. Please use the same machine where the license was originally activated, or contact support for a floating license.';
+        } else {
+            title.textContent = data ? data.message : 'Cannot reach server';
+            sub.textContent = 'Enter a valid license key below to activate TrintzPOS';
+        }
+
+        badge.className = 'status-badge none';
+        badge.textContent = 'Not Licensed';
         card.style.display = 'none';
         warnStrip.style.display = 'none';
         toggleLbl.textContent  = 'Activate License Key';
