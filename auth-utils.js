@@ -647,32 +647,15 @@ function hideLoading() {
 window.addEventListener('pageshow', async function () {
     const page = window.location.pathname.split('/').pop() || '';
 
-    // Activation page is always accessible — skip all checks
-    if (page === 'license_activation.html') return;
+    // License check removed per user request
 
-    // Hide body during async check to prevent flash of wrong content
-    document.body.style.visibility = 'hidden';
-
-    // ── 1. License check ──────────────────────────────────────────────────────
-    try {
-        const r    = await fetch('/api/license/status');
-        const data = await r.json().catch(() => ({}));
-        if (!data.valid && !data.cloud) {
-            window.location.replace('license_activation.html');
-            return;
-        }
-    } catch (_) {
-        // Server unreachable — skip license check, proceed to auth
-    }
-
-    // ── 2. Auth check ─────────────────────────────────────────────────────────
+    // ── Auth check ────────────────────────────────────────────────────────
     const publicPages = ['login.html', 'register.html', ''];
     if (publicPages.includes(page)) {
         if (page === 'login.html' && isAuthenticated()) {
             window.location.replace('dashboard.html');
             return;
         }
-        document.body.style.visibility = '';
         return;
     }
 
@@ -680,8 +663,6 @@ window.addEventListener('pageshow', async function () {
         window.location.replace('login.html');
         return;
     }
-
-    document.body.style.visibility = '';
 });
 
 // Re-check auth and refresh permissions whenever the tab regains focus
