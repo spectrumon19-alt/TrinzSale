@@ -1,0 +1,27 @@
+# Test-only dependencies (install alongside project requirements.txt)
+# pip install -r tests/requirements-test.txt
+
+# Core testing
+pytest==7.4.3
+pytest-html==4.1.1
+pytest-cov==4.1.0
+pytest-xdist==3.5.0        # parallel test execution
+
+# HTTP client (API tests without starting server separately)
+requests==2.31.0
+
+# Playwright UI automation
+pytest-playwright==0.4.3
+playwright==1.40.0
+
+# JWT (must match app version — v2 API, encode() returns str)
+PyJWT>=2.8.0
+
+# PostgreSQL (direct DB assertions in fixtures/tests)
+psycopg2-binary>=2.9.9
+
+# Excel bug report generation
+openpyxl>=3.1.2
+
+# Optional: nicer test output
+pytest-sugar==1.0.0

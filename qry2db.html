@@ -1,0 +1,859 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - Query to DB</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        /* Custom styles for query panel - matching service.html styling */
+        .search-results {
+            position: absolute;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 0.375rem;
+            max-height: 15.625rem;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 100;
+            box-shadow: var(--surface-shadow);
+            box-sizing: border-box;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+        }
+
+        .search-result-item {
+            padding: 0.75rem 0.9375rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--surface-border);
+            transition: background-color 0.2s;
+            min-height: 2.75rem;
+        }
+
+        .search-result-item:hover {
+            background: var(--surface-alt);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            margin-bottom: 0.3125rem;
+            color: var(--text-base);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .search-result-sku {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            margin-right: 0.625rem;
+        }
+
+        .search-result-price {
+            font-weight: 700;
+            color: var(--success);
+            white-space: nowrap;
+        }
+        
+        /* Overlay for Mobile Menu */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40; 
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        /* Main layout footer positioning */
+        .flex-1 {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        main {
+            flex: 1;
+        }
+        
+        /* Custom button styles - matching service.html */
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #2573a7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #219653, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(149, 165, 166, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7a7b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(149, 165, 166, 0.4);
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+        }
+        
+        /* Custom form styles */
+        .form-control {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--input-border);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            min-height: 2.75rem; /* 44px minimum touch target */
+            background: var(--input-bg);
+            color: var(--text-base);
+        }
+
+        /* Custom table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 0.875rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--surface-border);
+            color: var(--text-base);
+        }
+
+        th {
+            background: linear-gradient(135deg, #3498db, #2c80b9);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--surface-alt);
+        }
+
+        tr:hover {
+            background-color: rgba(59,130,246,.06);
+        }
+
+        /* Query Panel Specific Styles */
+        .query-panel {
+            padding: 1.25rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-base);
+            margin-bottom: 0.5rem;
+            text-align: left;
+        }
+
+        .admin-form {
+            background-color: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--input-border);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            text-align: left;
+            background: var(--input-bg);
+            color: var(--text-base);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2b6cb0;
+            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
+        }
+
+        .form-group div {
+            padding: 0.75rem;
+            background-color: var(--surface-alt);
+            border-radius: 0.375rem;
+            border: 1px solid var(--surface-border);
+            font-size: 1rem;
+            min-height: 2.75rem;
+            display: flex;
+            align-items: center;
+            color: var(--text-base);
+        }
+
+        .form-actions {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--surface-border);
+            text-align: left;
+        }
+
+        .upload-status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            display: none;
+        }
+
+        .upload-status.success {
+            background-color: rgba(212,237,218,.25);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .upload-status.error {
+            background-color: rgba(248,215,218,.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .query-result {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            background-color: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+        }
+
+        .query-result-header {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-base);
+        }
+        
+        .query-result-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+        
+        .query-result-table table {
+            min-width: 100%;
+        }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-bar .form-group {
+                width: 100%;
+            }
+            
+            .filter-bar select, 
+            .filter-bar input {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .text-left {
+                text-align: left;
+            }
+            
+            .text-center {
+                text-align: center;
+            }
+            
+            .text-right {
+                text-align: right;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .query-panel {
+                padding: 0.9375rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+                text-align: center;
+            }
+            
+            .admin-form {
+                padding: 1rem;
+            }
+            
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .form-group div {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .btn-primary,
+            .btn-secondary,
+            .btn-danger {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .text-left {
+                text-align: left;
+            }
+            
+            .text-center {
+                text-align: center;
+            }
+            
+            .text-right {
+                text-align: right;
+            }
+        }
+        
+        /* Fix for text alignment issues */
+        .align-text {
+            text-align: left;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        
+        .align-center {
+            text-align: center;
+        }
+        
+        .align-right {
+            text-align: right;
+        }
+        
+        /* Improved table responsiveness */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Fix for long text in table cells */
+        .table-cell-text {
+            white-space: normal;
+            word-wrap: break-word;
+            max-width: 150px;
+        }
+        
+        /* SQL editor styles */
+        .sql-editor {
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 150px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+    <!-- Mobile Menu Overlay (Click closes menu) -->
+    <div id="overlay" onclick="closeMenu()"></div> 
+
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+
+            <!-- Nav links injected here by renderSidebarLinks() -->
+
+            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p class="text-gray-700 font-medium">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 md:ml-[220px]">
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg transition"
+                            style="color:var(--text-muted);background:transparent;"
+                            onmouseenter="this.style.background='var(--surface-alt)'"
+                            onmouseleave="this.style.background='transparent'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Query to DB</p>
+                        <p class="hd-sub" id="live-datetime">Loading…</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs font-medium" style="color:var(--text-subtle);">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle-header" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p id="headerUserInfo" data-testid="header-user-info"
+                       class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                        Hi, <span id="nav-username" data-testid="nav-username"
+                                  class="font-bold" style="color:var(--text-base);">Guest</span>
+                    </p>
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main class="p-4 md:p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 md:p-6">
+                    <section class="query-panel">
+                        <h1 class="section-title">Query to Database</h1>
+                        <p>Execute SQL queries directly against the database</p>
+                        
+                        <div class="admin-form">
+                            <h3>SQL Query Editor</h3>
+                            <div class="form-group">
+                                <label for="sql-query">Enter your SQL query:</label>
+                                <textarea id="sql-query" class="sql-editor form-control" placeholder="SELECT * FROM users;"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button id="execute-query-btn" class="btn-primary">Execute Query</button>
+                                <button id="clear-query-btn" class="btn-secondary ml-2">Clear</button>
+                            </div>
+                        </div>
+                        
+                        <div class="query-result" id="query-result-container" style="display: none;">
+                            <div class="query-result-header">Query Results</div>
+                            <div id="query-result-content"></div>
+                        </div>
+                        
+                        <div id="query-status" class="upload-status" style="margin-top: 15px;"></div>
+                    </section>
+                </div>
+            </main>
+			 <div id="footer-container"></div>
+        </div>		
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script>
+        // Check authentication immediately when page starts loading
+        if (!isAuthenticated()) {
+            window.location.href = 'login.html';
+        } else if (!checkPagePermission()) {
+            window.location.href = 'noAccess.html';
+        }
+
+        // Menu Toggle Functions
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.style.display = 'block';
+                setTimeout(() => overlay.style.opacity = 1, 10);
+            } else {
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.style.display = 'none', 300);
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        function closeMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.style.display = 'none', 300);
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        // Global variables
+        let currentUser = null;
+        
+        // DOM Elements
+        const logoutBtn = document.getElementById('nav-logout-btn');
+        const usernameSpan = document.getElementById('nav-username');
+        const sqlQueryTextarea = document.getElementById('sql-query');
+        const executeQueryBtn = document.getElementById('execute-query-btn');
+        const clearQueryBtn = document.getElementById('clear-query-btn');
+        const queryResultContainer = document.getElementById('query-result-container');
+        const queryResultContent = document.getElementById('query-result-content');
+        const queryStatus = document.getElementById('query-status');
+        
+        // Query Functions
+        function executeQuery() {
+            const query = sqlQueryTextarea.value.trim();
+            
+            if (!query) {
+                showStatus('Please enter a SQL query', 'error');
+                return;
+            }
+            
+            showStatus('Executing query...', 'info');
+            queryResultContainer.style.display = 'none';
+            
+            const token = localStorage.getItem('pos_token');
+            
+            fetch('/api/admin/service/execute-sql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => {
+                // Check if the response is JSON
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    // If not JSON, it's likely an HTML error page
+                    return response.text().then(text => {
+                        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 200)}...`);
+                    });
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    if (data.results) {
+                        // Display SELECT query results
+                        displayQueryResults(data.results, data.columns);
+                        showStatus(`Query executed successfully. ${data.rowCount} rows returned.`, 'success');
+                    } else {
+                        // Display non-SELECT query results
+                        showStatus(data.message, 'success');
+                    }
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error executing query:', error);
+                showStatus('Error executing query: ' + error.message, 'error');
+            });
+        }
+        
+        function displayQueryResults(results, columns) {
+            if (!results || results.length === 0) {
+                queryResultContent.innerHTML = '<p class="text-gray-500">No results found.</p>';
+                queryResultContainer.style.display = 'block';
+                return;
+            }
+            
+            let tableHtml = '<div class="table-responsive"><table><thead><tr>';
+            
+            // Add column headers
+            columns.forEach(column => {
+                tableHtml += `<th>${column}</th>`;
+            });
+            
+            tableHtml += '</tr></thead><tbody>';
+            
+            // Add data rows
+            results.forEach(row => {
+                tableHtml += '<tr>';
+                columns.forEach(column => {
+                    const value = row[column] !== null ? row[column] : 'NULL';
+                    tableHtml += `<td class="table-cell-text">${value}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += '</tbody></table></div>';
+            
+            queryResultContent.innerHTML = tableHtml;
+            queryResultContainer.style.display = 'block';
+        }
+        
+        function clearQuery() {
+            sqlQueryTextarea.value = '';
+            queryResultContainer.style.display = 'none';
+            queryStatus.style.display = 'none';
+        }
+        
+        function showStatus(message, type) {
+            queryStatus.textContent = message;
+            queryStatus.className = 'upload-status ' + type;
+            queryStatus.style.display = 'block';
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    queryStatus.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // Navigation component script
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile Menu Toggle Logic
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleMenu);
+            }
+            
+            // Set up logout button
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('pos_token');
+                    window.location.href = 'login.html';
+                });
+            }
+            
+            // Update username display
+            const user = getCurrentUser();
+            if (user) {
+                if (usernameSpan) {
+                    usernameSpan.textContent = user.username;
+                }
+                
+                // Store current user
+                currentUser = user;
+            }
+            
+            // Update DB status
+            updateDBStatus();
+            
+            // Set up event listeners for query controls
+            if (executeQueryBtn) {
+                executeQueryBtn.addEventListener('click', executeQuery);
+            }
+            
+            if (clearQueryBtn) {
+                clearQueryBtn.addEventListener('click', clearQuery);
+            }
+            
+            // Add keyboard shortcut (Ctrl+Enter) to execute query
+            if (sqlQueryTextarea) {
+                sqlQueryTextarea.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey && e.key === 'Enter') {
+                        executeQuery();
+                    }
+                });
+            }
+        });
+        
+        // Function to update DB status in sidebar
+        function updateDBStatus() {
+            const authStatus = document.getElementById('authStatus');
+            if (!authStatus) return;
+            
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                authStatus.textContent = 'Not Authenticated';
+                authStatus.className = 'text-xs text-red-500';
+                return;
+            }
+            
+            authStatus.textContent = 'Authenticated';
+            authStatus.className = 'text-xs text-green-500';
+            
+            // Fetch data counts for each entity separately as fallback
+            Promise.all([
+                fetch('/api/products', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Products fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0),
+                
+                fetch('/api/suppliers', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Suppliers fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0),
+                
+                fetch('/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Users fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0)
+            ])
+            .then(([productCount, supplierCount, userCount]) => {
+                document.getElementById('productCount').textContent = productCount;
+                document.getElementById('supplierCount').textContent = supplierCount;
+                document.getElementById('userCount').textContent = userCount;
+            })
+            .catch(error => {
+                console.error('Error fetching data counts:', error);
+                document.getElementById('productCount').textContent = 'Error';
+                document.getElementById('supplierCount').textContent = 'Error';
+                document.getElementById('userCount').textContent = 'Error';
+            });
+        }
+        
+        // Loading overlay functions
+        function showLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+        }
+
+        function hideLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+    </script>
+
+    <!-- Footer Container -->
+   
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!-- components/navigation.html -->
+<nav class="main-nav">
+    <div class="nav-container">
+        <div class="nav-logo">
+            <img src="assets/logo.png" alt="Trintz Data Labs" style="height:36px;width:auto;object-fit:contain;display:block;">
+        </div>
+        <ul class="nav-tabs">
+            <li class="nav-item">
+                <a href="dashboard.html" class="nav-link" data-page="dashboard">
+                    <i class="nav-icon">🏠</i>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="index.html" class="nav-link" data-page="sales">
+                    <i class="nav-icon">🛒</i>
+                    <span class="nav-text">Sales</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="returns.html" class="nav-link" data-page="returns">
+                    <i class="nav-icon">🔄</i>
+                    <span class="nav-text">Returns</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="inventory.html" class="nav-link" data-page="inventory">
+                    <i class="nav-icon">📦</i>
+                    <span class="nav-text">Inventory</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="reports.html" class="nav-link" data-page="reports">
+                    <i class="nav-icon">📊</i>
+                    <span class="nav-text">Reports</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="admin.html" class="nav-link" data-page="admin">
+                    <i class="nav-icon">⚙️</i>
+                    <span class="nav-text">Admin</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="service.html" class="nav-link" data-page="service">
+                    <i class="nav-icon">🔧</i>
+                    <span class="nav-text">Service</span>
+                </a>
+            </li>
+        </ul>
+        <div class="nav-user">
+            <span class="user-greeting">Welcome, <span id="nav-username">Guest</span></span>
+            <button id="nav-logout-btn" class="nav-logout-btn">Logout</button>
+        </div>
+    </div>
+</nav>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+        <p class="text-gray-700 font-medium">Loading...</p>
+    </div>
+</div>
+
+<style>
+.main-nav {
+    background: linear-gradient(135deg, #2c3e50, #1a2530);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.nav-logo h2 {
+    color: white;
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.nav-tabs {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    margin: 0;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    padding: 15px 20px;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-bottom: 3px solid #3498db;
+}
+
+.nav-icon {
+    margin-right: 8px;
+    font-size: 1.2rem;
+}
+
+.nav-text {
+    font-weight: 500;
+}
+
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-greeting {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.nav-logout-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.nav-logout-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Loading Overlay Styles */
+#loading-overlay {
+    transition: opacity 0.3s ease;
+}
+
+#loading-overlay.hidden {
+    display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-container {
+        flex-direction: column;
+        padding: 10px;
+    }
+    
+    .nav-tabs {
+        width: 100%;
+        overflow-x: auto;
+        justify-content: center;
+        margin: 10px 0;
+        padding: 5px 0;
+    }
+    
+    .nav-link {
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .nav-icon {
+        margin-right: 5px;
+        font-size: 1rem;
+    }
+    
+    .nav-text {
+        display: none;
+    }
+    
+    .nav-user {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+    
+    .user-greeting {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-logo h2 {
+        font-size: 1.2rem;
+    }
+    
+    .nav-link {
+        padding: 10px 12px;
+    }
+    
+    .nav-icon {
+        font-size: 1.1rem;
+        margin-right: 0;
+    }
+}
+</style>
+
+<script>
+// Navigation component script
+document.addEventListener('DOMContentLoaded', function() {
+    // Set active tab based on current page
+    const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+        if (link.getAttribute('data-page') === currentPage) {
+            link.classList.add('active');
+        }
+    });
+    
+    // Set up logout button
+    const logoutBtn = document.getElementById('nav-logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem('pos_token');
+            window.location.href = 'login.html';
+        });
+    }
+    
+    // Update username display
+    const user = getCurrentUser();
+    if (user) {
+        const usernameElement = document.getElementById('nav-username');
+        if (usernameElement) {
+            usernameElement.textContent = user.username;
+        }
+    }
+});
+
+// Loading overlay functions
+function showLoading() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('hidden');
+    }
+}
+
+function hideLoading() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
+}
+</script>

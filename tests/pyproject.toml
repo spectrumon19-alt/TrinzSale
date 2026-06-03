@@ -1,0 +1,31 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["routes", "auth", "db"]
+omit = [
+    "*/tests/*",
+    "*/site-packages/*",
+    "wsgi.py",
+    "serve.py",
+    "launcher.py",
+    "keygen.py",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 2
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass$",
+]
+
+[tool.coverage.html]
+directory = "reports/coverage"
+title = "POS System – Test Coverage Report"

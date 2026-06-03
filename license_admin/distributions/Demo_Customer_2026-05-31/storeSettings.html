@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - Store Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .ss-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 680px;
+        }
+        .ss-card + .ss-card { margin-top: 1.25rem; }
+        .ss-card-head {
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--surface-alt);
+        }
+        .ss-card-icon {
+            font-size: 1.1rem; width: 2rem; height: 2rem;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; background: var(--surface);
+        }
+        .ss-card-title { font-size: 0.875rem; font-weight: 700; color: var(--text-base); }
+        .ss-card-desc  { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+        .ss-card-body  { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.875rem; }
+
+        .field-row { display: flex; flex-direction: column; gap: 0.3rem; }
+        .field-row label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+        .field-row input {
+            background: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-base);
+            width: 100%;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .field-row input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .field-row .field-hint { font-size: 0.7rem; color: var(--text-subtle); margin-top: 1px; }
+
+        .save-btn {
+            background: #6366f1; color: #fff; font-weight: 700;
+            padding: 0.6rem 1.5rem; border-radius: 8px;
+            font-size: 0.875rem; border: none; cursor: pointer;
+            transition: background 0.15s;
+            align-self: flex-end;
+        }
+        .save-btn:hover { background: #4f46e5; }
+        .save-btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+        #upi-qr-preview-wrap {
+            margin-top: 0.5rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.875rem;
+            background: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+        }
+        #upi-qr-preview-wrap.visible { display: flex; }
+        #upi-qr-preview { /* sized by QRCode.js */ }
+        .upi-qr-info { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+        .upi-qr-info strong { color: var(--text-base); font-size: 0.82rem; }
+
+        #toast {
+            position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 9999;
+            padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+            display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        }
+        #toast.success { background: #10b981; color: #fff; }
+        #toast.error   { background: #ef4444; color: #fff; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+    <nav id="sidebar"
+         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+         style="width:220px;"></nav>
+
+    <div class="flex-1 flex flex-col md:ml-[220px]">
+        <header id="pos-header">
+            <div class="flex items-center gap-3">
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg" style="color:var(--text-muted)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <div>
+                    <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Store Settings</p>
+                    <p class="hd-sub" id="live-datetime">Loading…</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <p id="headerUserInfo" class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                    Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span>
+                </p>
+                <button id="nav-logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4 flex flex-col gap-0">
+            <!-- Store Identity -->
+            <div class="ss-card">
+                <div class="ss-card-head">
+                    <div class="ss-card-icon">🏪</div>
+                    <div>
+                        <div class="ss-card-title">Store Identity</div>
+                        <div class="ss-card-desc">Business name, address and tax details printed on invoices</div>
+                    </div>
+                </div>
+                <div class="ss-card-body">
+                    <div class="field-row">
+                        <label>Store Name</label>
+                        <input id="f-store-name" type="text" placeholder="e.g. Nandi Agro" maxlength="100">
+                    </div>
+                    <div class="field-row">
+                        <label>Address</label>
+                        <input id="f-store-address" type="text" placeholder="Full address" maxlength="250">
+                    </div>
+                    <div class="field-row">
+                        <label>Phone</label>
+                        <input id="f-store-phone" type="text" placeholder="e.g. 8660180378" maxlength="30">
+                    </div>
+                    <div class="field-row">
+                        <label>GSTIN</label>
+                        <input id="f-store-gst" type="text" placeholder="e.g. 29AASFN9214H1ZP" maxlength="20">
+                    </div>
+                    <button class="save-btn" id="save-identity-btn">Save Identity</button>
+                </div>
+            </div>
+
+            <!-- UPI / Payment -->
+            <div class="ss-card">
+                <div class="ss-card-head">
+                    <div class="ss-card-icon">📲</div>
+                    <div>
+                        <div class="ss-card-title">UPI Payment</div>
+                        <div class="ss-card-desc">UPI ID shown as scannable QR at checkout and on invoices</div>
+                    </div>
+                </div>
+                <div class="ss-card-body">
+                    <div class="field-row">
+                        <label>UPI ID</label>
+                        <input id="f-upi-id" type="text" placeholder="e.g. nandiagroshop@upi" maxlength="100">
+                        <span class="field-hint">Leave blank to hide QR at checkout</span>
+                    </div>
+                    <div class="field-row">
+                        <label>UPI Display Name</label>
+                        <input id="f-upi-name" type="text" placeholder="e.g. Nandi Agro" maxlength="100">
+                        <span class="field-hint">Name shown to the customer on their payment app</span>
+                    </div>
+
+                    <!-- Live QR preview -->
+                    <div id="upi-qr-preview-wrap">
+                        <div id="upi-qr-preview"></div>
+                        <div class="upi-qr-info">
+                            <strong id="upi-preview-name"></strong><br>
+                            <span id="upi-preview-id" style="font-size:0.72rem;word-break:break-all;"></span><br>
+                            <span style="color:#10b981;font-size:0.7rem;margin-top:4px;display:block;">QR looks good — customers can scan this</span>
+                        </div>
+                    </div>
+
+                    <button class="save-btn" id="save-upi-btn">Save UPI Settings</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast"></div>
+
+    <script src="qrcode.min.js"></script>
+    <script src="auth-utils.js"></script>
+    <script>
+        requireAuth();
+
+        const token = () => localStorage.getItem('pos_token') || sessionStorage.getItem('pos_token');
+
+        function toast(msg, type = 'success') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = type;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        // ── Load settings ──────────────────────────────────────────────────────
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/store-settings', { headers: { 'Authorization': `Bearer ${token()}` } });
+                if (!res.ok) throw new Error('Failed');
+                const d = await res.json();
+                document.getElementById('f-store-name').value    = d.store_name         || '';
+                document.getElementById('f-store-address').value = d.store_address      || '';
+                document.getElementById('f-store-phone').value   = d.store_phone        || '';
+                document.getElementById('f-store-gst').value     = d.store_gst          || '';
+                document.getElementById('f-upi-id').value        = d.upi_id             || '';
+                document.getElementById('f-upi-name').value      = d.upi_display_name   || '';
+                refreshQrPreview();
+            } catch (e) {
+                toast('Could not load settings', 'error');
+            }
+        }
+
+        // ── UPI QR live preview ────────────────────────────────────────────────
+        let _previewQR = null;
+        function refreshQrPreview() {
+            const upiId   = document.getElementById('f-upi-id').value.trim();
+            const upiName = document.getElementById('f-upi-name').value.trim() || 'Store';
+            const wrap    = document.getElementById('upi-qr-preview-wrap');
+            const qrEl    = document.getElementById('upi-qr-preview');
+            if (!upiId) { wrap.classList.remove('visible'); return; }
+
+            wrap.classList.add('visible');
+            document.getElementById('upi-preview-name').textContent = upiName;
+            document.getElementById('upi-preview-id').textContent   = upiId;
+            qrEl.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrEl, {
+                    text: `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&cu=INR`,
+                    width: 100, height: 100,
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }
+
+        document.getElementById('f-upi-id').addEventListener('input',   refreshQrPreview);
+        document.getElementById('f-upi-name').addEventListener('input', refreshQrPreview);
+
+        // ── Save identity ──────────────────────────────────────────────────────
+        document.getElementById('save-identity-btn').addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true; btn.textContent = 'Saving…';
+            try {
+                const res = await fetch('/api/store-settings', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name:    document.getElementById('f-store-name').value.trim(),
+                        store_address: document.getElementById('f-store-address').value.trim(),
+                        store_phone:   document.getElementById('f-store-phone').value.trim(),
+                        store_gst:     document.getElementById('f-store-gst').value.trim()
+                    })
+                });
+                if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+                toast('Store identity saved');
+            } catch (e) { toast(e.message, 'error'); }
+            btn.disabled = false; btn.textContent = 'Save Identity';
+        });
+
+        // ── Save UPI ───────────────────────────────────────────────────────────
+        document.getElementById('save-upi-btn').addEventListener('click', async function() {
+            const btn = this;
+            btn.disabled = true; btn.textContent = 'Saving…';
+            try {
+                const res = await fetch('/api/store-settings', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token()}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        upi_id:           document.getElementById('f-upi-id').value.trim(),
+                        upi_display_name: document.getElementById('f-upi-name').value.trim()
+                    })
+                });
+                if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+                // Bust the cache in sales.js so next checkout reload picks up new UPI ID
+                localStorage.removeItem('_upi_settings_cache');
+                toast('UPI settings saved');
+            } catch (e) { toast(e.message, 'error'); }
+            btn.disabled = false; btn.textContent = 'Save UPI Settings';
+        });
+
+        // ── Init ───────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            // Live clock
+            function tick() {
+                const now = new Date();
+                const dtEl = document.getElementById('live-datetime');
+                if (dtEl) dtEl.textContent = now.toLocaleString('en-IN', { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+            }
+            tick(); setInterval(tick, 30000);
+            // Sidebar logout
+            const logoutBtn = document.getElementById('nav-logout-btn');
+            if (logoutBtn) logoutBtn.addEventListener('click', () => { window.location.href = 'logout.html'; });
+        });
+    </script>
+</body>
+</html>

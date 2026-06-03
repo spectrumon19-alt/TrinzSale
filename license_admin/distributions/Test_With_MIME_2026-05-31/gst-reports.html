@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - GST Reports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Overlay ─────────────────────────────────────────────────────────── */
+        #overlay {
+            position: fixed; top:0; left:0; right:0; bottom:0;
+            background: rgba(0,0,0,.5); z-index:40;
+            display:none; opacity:0; transition:opacity .3s ease-in-out;
+        }
+
+        /* ── Buttons ─────────────────────────────────────────────────────────── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: .35rem; padding: .45rem 1rem; border-radius: .3rem;
+            font-size: .85rem; font-weight: 600; cursor: pointer; border: none;
+            transition: filter .15s, transform .1s; min-height: 2.25rem;
+        }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-primary   { background: #3b82f6; color: #fff; }
+        .btn-success   { background: #22c55e; color: #fff; }
+        .btn-secondary { background: var(--surface-alt,#e5e7eb); color: var(--text-base); }
+
+        /* ── Period control bar ──────────────────────────────────────────────── */
+        .gst-controls {
+            display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+            padding: 1rem 1.25rem;
+            background: var(--surface); border: 1px solid var(--surface-border);
+            border-radius: .5rem; margin-bottom: 1.25rem;
+        }
+        .gst-controls label { font-size: .85rem; font-weight: 600; color: var(--text-muted); }
+        .period-input {
+            padding: .4rem .65rem; border-radius: .3rem; border: 1px solid var(--input-border);
+            background: var(--input-bg); color: var(--text-base); font-size: .875rem;
+            min-height: 2.25rem;
+        }
+
+        /* ── Tabs ────────────────────────────────────────────────────────────── */
+        .gst-tabs {
+            display: flex; gap: 0; border-bottom: 2px solid var(--surface-border);
+            margin-bottom: 1.25rem;
+        }
+        .gst-tab {
+            padding: .55rem 1.25rem; font-size: .875rem; font-weight: 600;
+            cursor: pointer; border: none; background: transparent;
+            color: var(--text-muted); border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: color .15s, border-color .15s;
+        }
+        .gst-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+        .gst-tab-panel { display: none; }
+        .gst-tab-panel.active { display: block; }
+
+        /* ── KPI tiles ───────────────────────────────────────────────────────── */
+        .gst-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: .75rem; margin-bottom: 1.25rem;
+        }
+        .gst-kpi {
+            background: var(--surface); border: 1px solid var(--surface-border);
+            border-radius: .5rem; padding: .85rem 1rem;
+            border-left: 3px solid var(--kpi-color, #3b82f6);
+        }
+        .gst-kpi .kpi-label { font-size: .72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; }
+        .gst-kpi .kpi-value { font-size: 1.2rem; font-weight: 700; color: var(--text-base); }
+        .gst-kpi .kpi-sub   { font-size: .72rem; color: var(--text-subtle); margin-top: .15rem; }
+
+        /* ── Tables ──────────────────────────────────────────────────────────── */
+        .gst-table-wrap {
+            background: var(--surface); border: 1px solid var(--surface-border);
+            border-radius: .5rem; overflow: hidden; margin-bottom: 1.25rem;
+        }
+        .gst-table-wrap h3 {
+            padding: .65rem 1rem; font-size: .875rem; font-weight: 700;
+            border-bottom: 1px solid var(--surface-border); color: var(--text-base);
+            background: var(--table-th-bg, var(--surface-alt));
+        }
+        table.gst-tbl { width: 100%; border-collapse: collapse; font-size: .83rem; }
+        table.gst-tbl th {
+            background: var(--table-th-bg, #f1f5f9); color: var(--text-muted);
+            font-weight: 700; font-size: .75rem; text-transform: uppercase;
+            letter-spacing: .04em; padding: .5rem .75rem; text-align: right;
+        }
+        table.gst-tbl th:first-child { text-align: left; }
+        table.gst-tbl td { padding: .45rem .75rem; text-align: right; border-bottom: 1px solid var(--surface-border); color: var(--text-base); }
+        table.gst-tbl td:first-child { text-align: left; }
+        table.gst-tbl tr:last-child td { border-bottom: none; }
+        table.gst-tbl tr.total-row td { font-weight: 700; background: var(--surface-alt); }
+
+        /* ── GSTR-3B form sections ───────────────────────────────────────────── */
+        .gstr3b-section {
+            background: var(--surface); border: 1px solid var(--surface-border);
+            border-radius: .5rem; margin-bottom: 1rem; overflow: hidden;
+        }
+        .gstr3b-section-title {
+            padding: .65rem 1rem; font-weight: 700; font-size: .875rem;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--table-th-bg, var(--surface-alt));
+            color: var(--text-base);
+        }
+        .gstr3b-row {
+            display: grid; grid-template-columns: 1fr auto auto auto;
+            gap: .5rem 1.5rem; align-items: center;
+            padding: .55rem 1rem; border-bottom: 1px solid var(--surface-border);
+            font-size: .85rem;
+        }
+        .gstr3b-row:last-child { border-bottom: none; }
+        .gstr3b-row.header { font-weight: 700; font-size: .75rem; text-transform: uppercase;
+            letter-spacing: .04em; color: var(--text-muted); }
+        .gstr3b-row.total { font-weight: 700; background: var(--surface-alt); }
+        .gstr3b-row.net-payable { font-weight: 700; background: #eff6ff; color: #1d4ed8; }
+        .gstr3b-row .lbl { color: var(--text-base); }
+        .gstr3b-row .amt { text-align: right; white-space: nowrap; color: var(--text-base); min-width: 100px; }
+
+        /* ── Invoice list pagination ─────────────────────────────────────────── */
+        .gst-pagination {
+            display: flex; align-items: center; gap: .5rem; justify-content: center;
+            padding: .75rem; font-size: .8rem; color: var(--text-muted);
+        }
+        .gst-pagination button {
+            padding: .25rem .65rem; border-radius: .25rem; border: 1px solid var(--input-border);
+            background: var(--input-bg); color: var(--text-base); cursor: pointer; font-size: .8rem;
+        }
+        .gst-pagination button:disabled { opacity: .4; cursor: default; }
+        .gst-pagination .page-info { min-width: 80px; text-align: center; }
+
+        /* ── Error / empty states ────────────────────────────────────────────── */
+        .gst-error { padding: 1rem; color: #dc2626; background: #fef2f2;
+            border: 1px solid #fecaca; border-radius: .4rem; font-size: .875rem; }
+        .gst-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: .875rem; }
+
+        /* ── Spinner ─────────────────────────────────────────────────────────── */
+        .gst-spinner {
+            display: flex; align-items: center; justify-content: center; gap: .6rem;
+            padding: 2.5rem; color: var(--text-muted); font-size: .875rem;
+        }
+        .spin { width:1.25rem; height:1.25rem; border:2px solid var(--surface-border);
+            border-top-color:#3b82f6; border-radius:50%; animation: spin .7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+    <div id="overlay"></div>
+
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p class="text-gray-700 font-medium">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 md:ml-[220px]">
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg transition"
+                            style="color:var(--text-muted);background:transparent;"
+                            onmouseenter="this.style.background='var(--surface-alt)'"
+                            onmouseleave="this.style.background='transparent'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> GST Reports</p>
+                        <p class="hd-sub" id="live-datetime">Loading…</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs font-medium" style="color:var(--text-subtle);">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle-header" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p id="headerUserInfo" class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                        Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span>
+                    </p>
+                    <button id="nav-logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main class="p-4 md:p-6">
+
+                <!-- Period / controls bar -->
+                <div class="gst-controls">
+                    <label for="period-input">Period</label>
+                    <input type="month" id="period-input" class="period-input" />
+                    <button class="btn btn-primary" onclick="loadReport()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Generate Report
+                    </button>
+                    <button class="btn btn-success" id="btn-excel" onclick="downloadExcel()" style="display:none;">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Download Excel
+                    </button>
+                    <span id="period-badge" class="text-xs font-semibold" style="color:var(--text-subtle);"></span>
+                </div>
+
+                <!-- Error banner -->
+                <div id="gst-error-banner" class="gst-error" style="display:none; margin-bottom:1rem;"></div>
+
+                <!-- Tabs -->
+                <div class="gst-tabs">
+                    <button class="gst-tab active" data-tab="gstr1" onclick="switchTab('gstr1')">GSTR-1</button>
+                    <button class="gst-tab" data-tab="gstr3b" onclick="switchTab('gstr3b')">GSTR-3B</button>
+                </div>
+
+                <!-- ── GSTR-1 Tab ──────────────────────────────────────────────────── -->
+                <div id="tab-gstr1" class="gst-tab-panel active">
+                    <div id="gstr1-content">
+                        <div class="gst-empty" style="color:var(--text-subtle);">Select a period and click <strong>Generate Report</strong> to view GSTR-1 data.</div>
+                    </div>
+                </div>
+
+                <!-- ── GSTR-3B Tab ─────────────────────────────────────────────────── -->
+                <div id="tab-gstr3b" class="gst-tab-panel">
+                    <div id="gstr3b-content">
+                        <div class="gst-empty" style="color:var(--text-subtle);">Select a period and click <strong>Generate Report</strong> to view GSTR-3B data.</div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+        /* ── State ───────────────────────────────────────────────────────────── */
+        let _gstr1Data   = null;
+        let _gstr3bData  = null;
+        let _currentPeriod = null;
+        let _invoicePage = 1;
+        const PAGE_SIZE  = 20;
+
+        /* ── Helpers ─────────────────────────────────────────────────────────── */
+        function fmtINR(n) {
+            n = Number(n) || 0;
+            return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function escHtml(s) {
+            return String(s ?? '')
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function token() { return localStorage.getItem('pos_token'); }
+
+        function showError(msg) {
+            const el = document.getElementById('gst-error-banner');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+        function clearError() { document.getElementById('gst-error-banner').style.display = 'none'; }
+
+        function spinner() { return '<div class="gst-spinner"><div class="spin"></div> Loading…</div>'; }
+
+        /* ── Tab switching ───────────────────────────────────────────────────── */
+        function switchTab(name) {
+            document.querySelectorAll('.gst-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            document.querySelectorAll('.gst-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+        }
+
+        /* ── Period default (current month) ─────────────────────────────────── */
+        (function setDefaultPeriod() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm   = String(d.getMonth() + 1).padStart(2, '0');
+            document.getElementById('period-input').value = `${yyyy}-${mm}`;
+        })();
+
+        /* ── Main load ───────────────────────────────────────────────────────── */
+        async function loadReport() {
+            const period = document.getElementById('period-input').value;
+            if (!period) { showError('Please select a period.'); return; }
+            clearError();
+            _currentPeriod = period;
+            _invoicePage   = 1;
+
+            // Show spinners in both tabs
+            document.getElementById('gstr1-content').innerHTML  = spinner();
+            document.getElementById('gstr3b-content').innerHTML = spinner();
+            document.getElementById('btn-excel').style.display  = 'none';
+            document.getElementById('period-badge').textContent = '';
+
+            const hdrs = { 'Authorization': 'Bearer ' + token() };
+
+            try {
+                const [r1, r3b] = await Promise.all([
+                    fetch(`/api/gst/gstr1?period=${encodeURIComponent(period)}`,  { headers: hdrs }),
+                    fetch(`/api/gst/gstr3b?period=${encodeURIComponent(period)}`, { headers: hdrs }),
+                ]);
+
+                async function safeJson(res, label) {
+                    const ct = res.headers.get('content-type') || '';
+                    if (!ct.includes('application/json')) {
+                        const text = await res.text();
+                        if (res.status === 404) throw new Error(`${label}: endpoint not found (404) — restart the Flask server`);
+                        throw new Error(`${label}: server returned HTTP ${res.status} (not JSON). Check Flask console for errors.`);
+                    }
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(`${label}: ` + (data.error || res.status));
+                    return data;
+                }
+
+                _gstr1Data  = await safeJson(r1,  'GSTR-1');
+                _gstr3bData = await safeJson(r3b, 'GSTR-3B');
+
+                renderGSTR1(_gstr1Data);
+                renderGSTR3B(_gstr3bData);
+
+                // Period display label
+                const dt = new Date(period + '-01');
+                document.getElementById('period-badge').textContent =
+                    dt.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+                document.getElementById('btn-excel').style.display = '';
+
+            } catch (err) {
+                showError('Failed to load report: ' + err.message);
+                document.getElementById('gstr1-content').innerHTML  = '';
+                document.getElementById('gstr3b-content').innerHTML = '';
+            }
+        }
+
+        /* ── GSTR-1 Render ───────────────────────────────────────────────────── */
+        function renderGSTR1(d) {
+            const summary  = d.rate_summary  || [];
+            const invoices = d.invoices      || [];
+
+            // Top-level totals from backend
+            const totalTaxable  = d.total_taxable  || 0;
+            const totalSGST     = d.total_sgst     || 0;
+            const totalCGST     = d.total_cgst     || 0;
+            const totalGST      = d.total_gst      || 0;
+            const invoiceCount  = d.invoice_count  || 0;
+
+            // KPI tiles
+            const kpiHtml = `
+            <div class="gst-kpi-grid">
+                <div class="gst-kpi" style="--kpi-color:#3b82f6;">
+                    <div class="kpi-label">Total Taxable Value</div>
+                    <div class="kpi-value">${fmtINR(totalTaxable)}</div>
+                    <div class="kpi-sub">Excl. GST</div>
+                </div>
+                <div class="gst-kpi" style="--kpi-color:#8b5cf6;">
+                    <div class="kpi-label">Total SGST</div>
+                    <div class="kpi-value">${fmtINR(totalSGST)}</div>
+                </div>
+                <div class="gst-kpi" style="--kpi-color:#8b5cf6;">
+                    <div class="kpi-label">Total CGST</div>
+                    <div class="kpi-value">${fmtINR(totalCGST)}</div>
+                </div>
+                <div class="gst-kpi" style="--kpi-color:#22c55e;">
+                    <div class="kpi-label">Total GST Collected</div>
+                    <div class="kpi-value">${fmtINR(totalGST)}</div>
+                    <div class="kpi-sub">SGST + CGST</div>
+                </div>
+                <div class="gst-kpi" style="--kpi-color:#f59e0b;">
+                    <div class="kpi-label">Invoices</div>
+                    <div class="kpi-value">${invoiceCount.toLocaleString('en-IN')}</div>
+                    <div class="kpi-sub">Completed sales</div>
+                </div>
+            </div>`;
+
+            // Rate-wise summary table
+            const rateRows = summary.map(r => `
+                <tr>
+                    <td>${r.gst_rate}%</td>
+                    <td>${(r.invoice_count || 0).toLocaleString('en-IN')}</td>
+                    <td>${fmtINR(r.taxable_value)}</td>
+                    <td>${fmtINR(r.sgst)}</td>
+                    <td>${fmtINR(r.cgst)}</td>
+                    <td>${fmtINR(r.total_gst)}</td>
+                </tr>`).join('');
+
+            const rateTable = `
+            <div class="gst-table-wrap">
+                <h3>4A — Rate-wise Outward Supply Summary (B2C)</h3>
+                <table class="gst-tbl">
+                    <thead><tr>
+                        <th style="text-align:left;">GST Rate</th>
+                        <th>Invoices</th>
+                        <th>Taxable Value</th>
+                        <th>SGST</th>
+                        <th>CGST</th>
+                        <th>Total GST</th>
+                    </tr></thead>
+                    <tbody>${rateRows || '<tr><td colspan="6" style="text-align:center;padding:1rem;color:var(--text-muted);">No data for selected period</td></tr>'}</tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td>Total</td>
+                            <td>${invoiceCount.toLocaleString('en-IN')}</td>
+                            <td>${fmtINR(totalTaxable)}</td>
+                            <td>${fmtINR(totalSGST)}</td>
+                            <td>${fmtINR(totalCGST)}</td>
+                            <td>${fmtINR(totalGST)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>`;
+
+            // Invoice list
+            const invoiceTableHtml = buildInvoiceTable(invoices, 1);
+
+            document.getElementById('gstr1-content').innerHTML = kpiHtml + rateTable + invoiceTableHtml;
+        }
+
+        function buildInvoiceTable(invoices, page) {
+            const start  = (page - 1) * PAGE_SIZE;
+            const slice  = invoices.slice(start, start + PAGE_SIZE);
+            const total  = invoices.length;
+            const pages  = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+            const rows = slice.map(r => `
+                <tr>
+                    <td>${escHtml(r.invoice_number)}</td>
+                    <td>${escHtml(r.invoice_date)}</td>
+                    <td>${escHtml(r.customer_name || '—')}</td>
+                    <td>${fmtINR(r.taxable_value)}</td>
+                    <td>${fmtINR(r.total_gst)}</td>
+                    <td>${fmtINR(r.total_amount)}</td>
+                    <td>${escHtml(r.mode_of_payment || '—')}</td>
+                </tr>`).join('');
+
+            const pagination = `
+            <div class="gst-pagination">
+                <button onclick="changePage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>&laquo; Prev</button>
+                <span class="page-info">Page ${page} of ${pages}</span>
+                <button onclick="changePage(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next &raquo;</button>
+                <span style="margin-left:.5rem;">(${total} invoices)</span>
+            </div>`;
+
+            return `
+            <div class="gst-table-wrap">
+                <h3>B2C Invoice List</h3>
+                <div style="overflow-x:auto;">
+                <table class="gst-tbl">
+                    <thead><tr>
+                        <th style="text-align:left;">Invoice #</th>
+                        <th style="text-align:left;">Date</th>
+                        <th style="text-align:left;">Customer</th>
+                        <th>Taxable Value</th>
+                        <th>Total GST</th>
+                        <th>Invoice Total</th>
+                        <th style="text-align:left;">Payment Mode</th>
+                    </tr></thead>
+                    <tbody>${rows || '<tr><td colspan="7" style="text-align:center;padding:1rem;color:var(--text-muted);">No invoices</td></tr>'}</tbody>
+                </table>
+                </div>
+                ${pagination}
+            </div>`;
+        }
+
+        function changePage(page) {
+            if (!_gstr1Data) return;
+            const invoices = _gstr1Data.invoices || [];
+            const total    = invoices.length;
+            const pages    = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            if (page < 1 || page > pages) return;
+            _invoicePage = page;
+
+            // Re-render only the invoice table portion
+            const content = document.getElementById('gstr1-content');
+            const old = content.querySelector('.gst-table-wrap:last-child');
+            if (old) {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = buildInvoiceTable(invoices, page);
+                old.replaceWith(tmp.firstElementChild);
+            }
+        }
+
+        /* ── GSTR-3B Render ──────────────────────────────────────────────────── */
+        function renderGSTR3B(d) {
+            const out = d.outward    || {};
+            const itc = d.itc        || {};
+            const net = d.net_payable|| {};
+
+            const outTotal = (out.total_gst || 0);
+            const itcTotal = (itc.total_gst || 0);
+
+            // Rate-wise rows for section 3.1
+            const rateRows = (out.by_rate || []).map(r => `
+                <div class="gstr3b-row">
+                    <span class="lbl" style="padding-left:1rem;">${r.gst_rate}% GST</span>
+                    <span class="amt">${fmtINR(r.taxable_value)}</span>
+                    <span class="amt">${fmtINR(r.sgst)}</span>
+                    <span class="amt">${fmtINR(r.cgst)}</span>
+                </div>`).join('') || `<div class="gstr3b-row"><span class="lbl" style="color:var(--text-muted);padding-left:1rem;">No taxable supplies this period</span><span></span><span></span><span></span></div>`;
+
+            const html = `
+            <!-- Section 3.1 -->
+            <div class="gstr3b-section">
+                <div class="gstr3b-section-title">3.1 — Details of Outward Supplies and Inward Supplies Liable to Reverse Charge</div>
+                <div class="gstr3b-row header">
+                    <span>Nature of Supplies</span>
+                    <span class="amt">Taxable Value</span>
+                    <span class="amt">SGST</span>
+                    <span class="amt">CGST</span>
+                </div>
+                ${rateRows}
+                <div class="gstr3b-row total">
+                    <span class="lbl">3.1(a) Total Outward Supplies [${(out.invoice_count || 0).toLocaleString('en-IN')} invoices]</span>
+                    <span class="amt">${fmtINR(out.taxable_value)}</span>
+                    <span class="amt">${fmtINR(out.sgst)}</span>
+                    <span class="amt">${fmtINR(out.cgst)}</span>
+                </div>
+            </div>
+
+            <!-- Section 4 ITC -->
+            <div class="gstr3b-section">
+                <div class="gstr3b-section-title">4(A) — Eligible ITC (Input Tax Credit from Purchases)</div>
+                <div class="gstr3b-row header">
+                    <span>Details</span>
+                    <span class="amt">Value</span>
+                    <span class="amt">SGST</span>
+                    <span class="amt">CGST</span>
+                </div>
+                <div class="gstr3b-row">
+                    <span class="lbl" style="padding-left:1rem;">4(A)(5) All other ITC [${(itc.po_count || 0).toLocaleString('en-IN')} purchase orders]</span>
+                    <span class="amt" style="color:var(--text-subtle);">—</span>
+                    <span class="amt">${fmtINR(itc.sgst)}</span>
+                    <span class="amt">${fmtINR(itc.cgst)}</span>
+                </div>
+                <div class="gstr3b-row total">
+                    <span class="lbl">Total ITC Available</span>
+                    <span class="amt" style="color:var(--text-subtle);">—</span>
+                    <span class="amt">${fmtINR(itc.sgst)}</span>
+                    <span class="amt">${fmtINR(itc.cgst)}</span>
+                </div>
+            </div>
+
+            <!-- Section 6.1 Net Tax Payable -->
+            <div class="gstr3b-section">
+                <div class="gstr3b-section-title">6.1 — Payment of Tax</div>
+                <div class="gstr3b-row header">
+                    <span>Description</span>
+                    <span class="amt">SGST</span>
+                    <span class="amt">CGST</span>
+                    <span class="amt">Total</span>
+                </div>
+                <div class="gstr3b-row">
+                    <span class="lbl" style="padding-left:1rem;">Tax Payable (from 3.1)</span>
+                    <span class="amt">${fmtINR(out.sgst)}</span>
+                    <span class="amt">${fmtINR(out.cgst)}</span>
+                    <span class="amt">${fmtINR(outTotal)}</span>
+                </div>
+                <div class="gstr3b-row">
+                    <span class="lbl" style="padding-left:1rem;">Less: ITC (from 4A)</span>
+                    <span class="amt" style="color:#22c55e;">−${fmtINR(itc.sgst)}</span>
+                    <span class="amt" style="color:#22c55e;">−${fmtINR(itc.cgst)}</span>
+                    <span class="amt" style="color:#22c55e;">−${fmtINR(itcTotal)}</span>
+                </div>
+                <div class="gstr3b-row net-payable">
+                    <span class="lbl">Net GST Payable in Cash</span>
+                    <span class="amt">${fmtINR(net.sgst)}</span>
+                    <span class="amt">${fmtINR(net.cgst)}</span>
+                    <span class="amt">${fmtINR(net.total)}</span>
+                </div>
+            </div>
+
+            <p style="font-size:.75rem; color:var(--text-subtle); margin-top:.5rem;">
+                * ITC utilised first against SGST liability, then CGST. Values are auto-computed from completed sales and purchase orders.
+                This is a summary report — always verify with your GST portal before filing.
+            </p>`;
+
+            document.getElementById('gstr3b-content').innerHTML = html;
+        }
+
+        /* ── Excel download ──────────────────────────────────────────────────── */
+        function downloadExcel() {
+            if (!_currentPeriod) return;
+            const url = `/api/gst/export/excel?period=${encodeURIComponent(_currentPeriod)}`;
+            const a   = document.createElement('a');
+            a.href    = url;
+            a.setAttribute('download', '');
+            // Pass token via header isn't possible for anchor download;
+            // use a hidden form POST or open with fetch+blob
+            fetch(url, { headers: { 'Authorization': 'Bearer ' + token() } })
+                .then(res => {
+                    if (!res.ok) throw new Error('Export failed: ' + res.status);
+                    return res.blob();
+                })
+                .then(blob => {
+                    const objUrl = URL.createObjectURL(blob);
+                    a.href = objUrl;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(objUrl);
+                })
+                .catch(err => showError(err.message));
+        }
+
+        /* ── Auth / sidebar init ─────────────────────────────────────────────── */
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof requireAuth === 'function') requireAuth('gst-reports');
+            if (typeof startLiveClock === 'function') startLiveClock('live-datetime');
+        });
+    </script>
+    <script src="chat-widget.js?v=2"></script>
+</body>
+</html>

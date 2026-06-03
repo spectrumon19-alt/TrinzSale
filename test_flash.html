@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash Test</title>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            visibility: hidden;
+            opacity: 0;
+            background: #1a1a2e;
+        }
+        html.loaded,
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+            transition: opacity 0.25s ease;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .content {
+            text-align: center;
+        }
+        h1 { font-size: 2rem; margin-bottom: 1rem; }
+        p { font-size: 1.1rem; color: #aaa; }
+    </style>
+    <script>
+        // Hide immediately
+        document.documentElement.style.visibility = 'hidden';
+        document.documentElement.style.opacity = '0';
+        document.documentElement.style.backgroundColor = '#1a1a2e';
+
+        // Show when DOM is ready
+        window.addEventListener('DOMContentLoaded', function() {
+            document.documentElement.classList.add('loaded');
+            document.body.classList.add('loaded');
+        }, { once: true });
+
+        // Fallback timer
+        setTimeout(function() {
+            if (!document.documentElement.classList.contains('loaded')) {
+                document.documentElement.classList.add('loaded');
+                document.body.classList.add('loaded');
+            }
+        }, 100);
+    </script>
+</head>
+<body>
+    <div class="content">
+        <h1>✓ Page Loaded</h1>
+        <p>No flash! Content is visible.</p>
+    </div>
+</body>
+</html>

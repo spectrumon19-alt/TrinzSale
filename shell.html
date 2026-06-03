@@ -1,0 +1,13 @@
+﻿<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script></head>
+<body>
+<script>
+    var page;
+    try { page = sessionStorage.getItem('pos_page'); } catch(e) {}
+    location.replace(page || 'login.html');
+</script>
+</body>
+</html>

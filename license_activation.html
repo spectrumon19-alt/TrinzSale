@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- No auth guard — this page must be accessible before login and before license activation -->
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Management — TrintzPOS</title>
+    <!-- CRITICAL: Prevent flash - MUST be first in head -->
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e !important;
+            color: #e0e0e0;
+        }
+        #app-splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+            opacity: 1;
+            z-index: 9999;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #app-splash.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+    <div id="app-splash">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #8eacc8;">
+            <p>Loading...</p>
+        </div>
+    </div>
+    <script>
+        function hideSplash() {
+            try {
+                const splash = document.getElementById('app-splash');
+                if (splash) {
+                    splash.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error hiding splash:', e);
+            }
+        }
+
+        // Hide splash when page is ready
+        try {
+            if (document.readyState === 'loading') {
+                window.addEventListener('DOMContentLoaded', hideSplash, { once: true });
+            } else {
+                hideSplash();
+            }
+
+            // Fallback: hide after 500ms (give more time for content to load on Render)
+            setTimeout(hideSplash, 500);
+        } catch (e) {
+            console.error('Error setting up splash hide:', e);
+            setTimeout(hideSplash, 500);
+        }
+    </script>
+    <script src="theme.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        #overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;opacity:0;transition:opacity 0.3s; }
+        @media(min-width:768px){ .main-col{ margin-left:220px; } }
+
+        /* ── Page shell ─────────────────── */
+        .lic-shell { padding:1rem;display:flex;flex-direction:column;gap:1rem;max-width:860px; }
+
+        /* ── Status banner ──────────────── */
+        .status-banner {
+            display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;
+            border-radius:12px;border:1px solid var(--surface-border);
+            background:var(--surface-alt);
+        }
+        .status-icon { width:48px;height:48px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3rem; }
+        .status-icon.active  { background:rgba(16,185,129,.12);color:#10b981; }
+        .status-icon.expired { background:rgba(239,68,68,.12); color:#ef4444; }
+        .status-icon.none    { background:rgba(245,158,11,.12);color:#f59e0b; }
+        .status-badge { display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.65rem;border-radius:999px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em; }
+        .status-badge.active  { background:rgba(16,185,129,.15);color:#059669; }
+        .status-badge.expired { background:rgba(239,68,68,.15); color:#dc2626; }
+        .status-badge.none    { background:rgba(245,158,11,.15);color:#d97706; }
+        .status-title { font-size:1rem;font-weight:700;color:var(--text-base);margin-bottom:2px; }
+        .status-sub   { font-size:0.75rem;color:var(--text-muted); }
+
+        /* ── Info card ──────────────────── */
+        .lic-card { border-radius:12px;border:1px solid var(--surface-border);background:var(--surface);overflow:hidden; }
+        .lic-card-hd { padding:0.75rem 1rem;background:linear-gradient(135deg,#4f46e5,#2563eb);display:flex;align-items:center;gap:0.625rem; }
+        .lic-card-hd-icon { width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem; }
+        .lic-card-hd-title { font-size:0.85rem;font-weight:700;color:#fff; }
+        .lic-card-hd-sub   { font-size:0.68rem;color:#c7d2fe;margin-top:1px; }
+        .lic-card-body { padding:1rem 1.25rem; }
+
+        /* ── Detail rows ────────────────── */
+        .detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:0.75rem 1.5rem; }
+        @media(max-width:540px){ .detail-grid{ grid-template-columns:1fr; } }
+        .detail-item label { display:block;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-subtle);margin-bottom:2px; }
+        .detail-item .val  { font-size:0.875rem;font-weight:600;color:var(--text-base); }
+        .detail-item .val.mono { font-family:monospace;font-size:0.8rem; }
+
+        /* ── Days remaining bar ─────────── */
+        .days-bar-wrap { margin-top:0.875rem;padding-top:0.875rem;border-top:1px solid var(--surface-border); }
+        .days-bar-hd   { display:flex;justify-content:space-between;margin-bottom:0.35rem;font-size:0.72rem;color:var(--text-muted);font-weight:600; }
+        .days-bar-bg   { height:6px;border-radius:999px;background:var(--surface-border);overflow:hidden; }
+        .days-bar-fill { height:100%;border-radius:999px;transition:width 0.6s ease; }
+        .days-bar-fill.ok      { background:linear-gradient(90deg,#10b981,#34d399); }
+        .days-bar-fill.warning { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+        .days-bar-fill.danger  { background:linear-gradient(90deg,#ef4444,#f87171); }
+
+        /* ── Features pills ─────────────── */
+        .feat-pill { display:inline-flex;align-items:center;gap:0.25rem;padding:0.18rem 0.55rem;border-radius:999px;font-size:0.67rem;font-weight:600;background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.2); }
+
+        /* ── Warning strip ──────────────── */
+        .warn-strip { display:flex;align-items:center;gap:0.625rem;padding:0.65rem 1rem;border-radius:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);font-size:0.78rem;color:#d97706;font-weight:600; }
+
+        /* ── Activate section ───────────── */
+        .activate-toggle { width:100%;display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:700;color:var(--text-base);transition:border-color 0.15s; }
+        .activate-toggle:hover { border-color:#6366f1; }
+        .activate-toggle i.chevron { transition:transform 0.2s; }
+        .activate-toggle.open i.chevron { transform:rotate(180deg); }
+        .activate-body { display:none;padding:1rem;border:1px solid var(--surface-border);border-top:none;border-radius:0 0 10px 10px;background:var(--surface); }
+        .activate-body.open { display:block; }
+        .key-textarea { width:100%;padding:0.65rem 0.875rem;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:8px;font-size:0.8rem;font-family:monospace;color:var(--text-base);resize:vertical;min-height:90px;outline:none;transition:border-color 0.15s; }
+        .key-textarea:focus { border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+        .activate-btn { margin-top:0.75rem;padding:0.55rem 1.5rem;background:#6366f1;color:#fff;font-weight:700;font-size:0.82rem;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;gap:0.5rem; }
+        .activate-btn:hover:not(:disabled) { background:#4f46e5; }
+        .activate-btn:disabled { background:#a5b4fc;cursor:not-allowed; }
+
+        /* ── Fingerprint card ───────────── */
+        .fp-card { padding:0.875rem 1rem;border-radius:10px;background:var(--surface-alt);border:1px solid var(--surface-border);display:flex;align-items:center;gap:0.875rem; }
+        .fp-icon { width:36px;height:36px;border-radius:9px;background:rgba(6,182,212,.1);color:#06b6d4;display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0; }
+        .fp-label { font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-subtle);margin-bottom:2px; }
+        .fp-val { font-size:0.8rem;font-family:monospace;color:var(--text-base);font-weight:600;word-break:break-all; }
+        .fp-copy { margin-left:auto;padding:0.3rem 0.65rem;background:var(--surface);border:1px solid var(--surface-border);border-radius:6px;font-size:0.72rem;cursor:pointer;color:var(--text-muted);transition:all 0.15s;flex-shrink:0; }
+        .fp-copy:hover { border-color:#6366f1;color:#6366f1; }
+
+        /* ── Toast ──────────────────────── */
+        #lic-toast { position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999;padding:0.6rem 1rem;border-radius:8px;font-size:0.82rem;font-weight:600;display:none;box-shadow:0 4px 16px rgba(0,0,0,.18);max-width:320px; }
+        #lic-toast.success { background:#059669;color:#fff; }
+        #lic-toast.error   { background:#dc2626;color:#fff; }
+        #lic-toast.info    { background:#2563eb;color:#fff; }
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+<div id="overlay"></div>
+
+<div class="main-layout flex min-h-screen">
+    <!-- Sidebar -->
+    <nav id="sidebar" data-testid="sidebar"
+         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+         style="width:220px;"></nav>
+
+    <!-- Main column -->
+    <div class="main-col flex flex-col min-h-screen" style="flex:1;min-width:0;">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center px-4 py-3 shadow-sm" style="background:var(--surface);border-bottom:1px solid var(--surface-border);">
+            <div class="flex items-center gap-3">
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg" style="color:var(--text-muted);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div>
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--text-base);">License Management</div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);">View, validate and activate your TrintzPOS license</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span style="font-size:0.82rem;color:var(--text-muted);">
+                    Welcome, <strong id="nav-username" style="color:var(--text-base);">—</strong>
+                </span>
+                <a href="admin.html" style="font-size:0.78rem;color:#6366f1;font-weight:600;text-decoration:none;">
+                    <i class="fas fa-arrow-left" style="font-size:0.7rem;"></i> Admin Panel
+                </a>
+            </div>
+        </header>
+
+        <main class="lic-shell">
+
+            <!-- ── Status banner ─────────────────────────────────── -->
+            <div class="status-banner" id="status-banner">
+                <div class="status-icon none" id="status-icon"><i class="fas fa-key"></i></div>
+                <div style="flex:1;min-width:0;">
+                    <div class="status-title" id="status-title">Checking license…</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-top:4px;">
+                        <span class="status-badge none" id="status-badge">Loading</span>
+                        <span class="status-sub" id="status-sub"></span>
+                    </div>
+                </div>
+                <button onclick="loadLicenseStatus()" style="padding:0.4rem 0.875rem;border-radius:8px;background:var(--surface);border:1px solid var(--surface-border);font-size:0.75rem;font-weight:600;cursor:pointer;color:var(--text-muted);transition:all 0.15s;" onmouseover="this.style.borderColor='#6366f1';this.style.color='#6366f1'" onmouseout="this.style.borderColor='';this.style.color=''">
+                    <i class="fas fa-sync-alt" style="font-size:0.7rem;"></i> Refresh
+                </button>
+            </div>
+
+            <!-- ── Expiry warning (shown only when < 30 days) ─────── -->
+            <div class="warn-strip" id="warn-strip" style="display:none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="warn-msg"></span>
+                <span style="margin-left:auto;font-weight:400;color:var(--text-muted);">Contact <a href="mailto:support@trintzlabs.com" style="color:#d97706;">support@trintzlabs.com</a> to renew</span>
+            </div>
+
+            <!-- ── License details card ──────────────────────────── -->
+            <div class="lic-card" id="lic-details-card" style="display:none;">
+                <div class="lic-card-hd">
+                    <div class="lic-card-hd-icon"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="lic-card-hd-title">License Details</div>
+                        <div class="lic-card-hd-sub">Registered license information for this installation</div>
+                    </div>
+                </div>
+                <div class="lic-card-body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Licensed To</label>
+                            <div class="val" id="d-customer">—</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Serial Number</label>
+                            <div class="val mono" id="d-serial">—</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>License Type</label>
+                            <div class="val" id="d-type">—</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Max Users</label>
+                            <div class="val" id="d-users">—</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Expiry Date</label>
+                            <div class="val" id="d-expiry">—</div>
+                        </div>
+                        <div class="detail-item">
+                            <label>Hardware Binding</label>
+                            <div class="val" id="d-hw">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Days remaining progress bar -->
+                    <div class="days-bar-wrap" id="days-bar-wrap" style="display:none;">
+                        <div class="days-bar-hd">
+                            <span>License validity</span>
+                            <span id="days-label"></span>
+                        </div>
+                        <div class="days-bar-bg"><div class="days-bar-fill ok" id="days-bar" style="width:0%"></div></div>
+                    </div>
+
+                    <!-- Features -->
+                    <div id="feat-wrap" style="display:none;margin-top:0.875rem;padding-top:0.875rem;border-top:1px solid var(--surface-border);">
+                        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-subtle);margin-bottom:0.5rem;">Included Features</div>
+                        <div id="feat-pills" style="display:flex;flex-wrap:wrap;gap:0.375rem;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Activate / Update license ─────────────────────── -->
+            <div>
+                <button class="activate-toggle" id="activate-toggle" onclick="toggleActivate()">
+                    <span style="display:flex;align-items:center;gap:0.5rem;">
+                        <i class="fas fa-key" style="color:#6366f1;font-size:0.85rem;"></i>
+                        <span id="activate-toggle-label">Activate / Update License Key</span>
+                    </span>
+                    <i class="fas fa-chevron-down chevron" style="color:var(--text-muted);font-size:0.75rem;"></i>
+                </button>
+                <div class="activate-body" id="activate-body">
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">
+                        Paste the license key provided by Trintz Data Labs. Activating a new key will replace the current license on this machine.
+                    </p>
+                    <textarea id="license-key" class="key-textarea" placeholder="Paste your license key here…"></textarea>
+                    <button class="activate-btn" id="activate-btn" onclick="activateLicense()">
+                        <i class="fas fa-check-circle"></i> Activate License
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Machine fingerprint ───────────────────────────── -->
+            <div class="fp-card">
+                <div class="fp-icon"><i class="fas fa-microchip"></i></div>
+                <div style="flex:1;min-width:0;">
+                    <div class="fp-label">Machine Fingerprint</div>
+                    <div class="fp-val" id="fp-val">Loading…</div>
+                </div>
+                <button class="fp-copy" id="fp-copy-btn" onclick="copyFingerprint()" title="Copy to clipboard">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+
+            <!-- Footer -->
+            <div style="font-size:0.68rem;color:var(--text-subtle);text-align:center;padding-bottom:0.5rem;">
+                © 2025 Trintz Data Labs. All rights reserved. &nbsp;|&nbsp;
+                <a href="mailto:support@trintzlabs.com" style="color:var(--text-subtle);">support@trintzlabs.com</a>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="lic-toast"></div>
+
+<script src="auth-utils.js"></script>
+<script src="component-utils.js"></script>
+<script>
+// Global error handler for debugging
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+});
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function toast(msg, type='success', dur=4000) {
+    const t = document.getElementById('lic-toast');
+    t.textContent = msg;
+    t.className = type;
+    t.style.display = 'block';
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => { t.style.display = 'none'; }, dur);
+}
+
+// ── Load license status (DISABLED - license checking removed) ─────────────────
+async function loadLicenseStatus() {
+    // License checking removed per user request
+    renderStatus(null);
+}
+
+function renderStatus(data) {
+    const banner    = document.getElementById('status-banner');
+    const icon      = document.getElementById('status-icon');
+    const title     = document.getElementById('status-title');
+    const badge     = document.getElementById('status-badge');
+    const sub       = document.getElementById('status-sub');
+    const card      = document.getElementById('lic-details-card');
+    const warnStrip = document.getElementById('warn-strip');
+    const toggleLbl = document.getElementById('activate-toggle-label');
+
+    if (!data || (!data.valid && !data.cloud)) {
+        // No / invalid license
+        icon.className  = 'status-icon none';
+        icon.innerHTML  = '<i class="fas fa-exclamation-circle"></i>';
+        title.textContent = data ? data.message : 'Cannot reach server';
+        badge.className = 'status-badge none'; badge.textContent = 'Not Licensed';
+        sub.textContent = 'Enter a valid license key below to activate TrintzPOS';
+        card.style.display = 'none';
+        warnStrip.style.display = 'none';
+        toggleLbl.textContent  = 'Activate License Key';
+        // Auto-open the activation form after page is visible
+        setTimeout(() => openActivate(), 200);
+        return;
+    }
+
+    if (data.cloud) {
+        icon.className  = 'status-icon active';
+        icon.innerHTML  = '<i class="fas fa-cloud"></i>';
+        title.textContent = 'Cloud Deployment — License managed server-side';
+        badge.className = 'status-badge active'; badge.textContent = 'Cloud Active';
+        sub.textContent = 'License enforcement is disabled on this deployment';
+        card.style.display = 'none';
+        warnStrip.style.display = 'none';
+        return;
+    }
+
+    // Valid license
+    const days = data.days_remaining || 0;
+    icon.className  = 'status-icon active';
+    icon.innerHTML  = '<i class="fas fa-check-circle"></i>';
+    title.textContent = 'License Active — ' + (data.customer || 'Registered');
+    badge.className = 'status-badge active'; badge.textContent = 'Active';
+    sub.textContent = data.license_type + '  ·  Expires ' + (data.expiry_date||'').split('T')[0] + '  ·  ' + days + ' days remaining';
+    toggleLbl.textContent = 'Update / Replace License Key';
+
+    // Expiry warning
+    if (days <= 30) {
+        warnStrip.style.display = 'flex';
+        document.getElementById('warn-msg').textContent =
+            days <= 7 ? 'URGENT: License expires in ' + days + ' day(s)!'
+                      : 'License expires in ' + days + ' days. Please renew soon.';
+    } else {
+        warnStrip.style.display = 'none';
+    }
+
+    // Detail card
+    card.style.display = 'block';
+    document.getElementById('d-customer').textContent = data.customer   || '—';
+    document.getElementById('d-serial').textContent   = data.serial     || '—';
+    document.getElementById('d-type').textContent     = data.license_type || '—';
+    document.getElementById('d-users').textContent    = data.max_users ? data.max_users + ' users' : '—';
+    document.getElementById('d-expiry').textContent   = (data.expiry_date||'—').split('T')[0];
+    document.getElementById('d-hw').textContent       = data.hardware_bound ? 'Bound to this machine' : 'Not bound (floating)';
+
+    // Progress bar
+    const TOTAL_DAYS = 365;
+    const pct = Math.min(100, Math.round((days / TOTAL_DAYS) * 100));
+    const bar  = document.getElementById('days-bar');
+    const wrap = document.getElementById('days-bar-wrap');
+    wrap.style.display = 'block';
+    document.getElementById('days-label').textContent = days + ' days left';
+    bar.style.width = pct + '%';
+    bar.className = 'days-bar-fill ' + (days > 90 ? 'ok' : days > 30 ? 'warning' : 'danger');
+
+    // Features
+    const feats = data.features || [];
+    if (feats.length) {
+        const featNames = { pos:'POS Sales', crm:'CRM', reports:'Reports', knowledge:'Knowledge Base', gst:'GST Reports', tally:'Tally Export' };
+        document.getElementById('feat-pills').innerHTML = feats.map(f =>
+            '<span class="feat-pill"><i class="fas fa-check" style="font-size:0.6rem;"></i> ' + (featNames[f]||f) + '</span>'
+        ).join('');
+        document.getElementById('feat-wrap').style.display = 'block';
+    }
+}
+
+// ── Activate / update license ─────────────────────────────────────────────────
+async function activateLicense() {
+    const key = document.getElementById('license-key').value.trim();
+    if (!key) { toast('Please paste a license key first.', 'error'); return; }
+
+    const btn = document.getElementById('activate-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Activating…';
+
+    try {
+        const r    = await fetch('/api/license/activate', {
+            method:  'POST',
+            headers: { 'Content-Type':'application/json' },
+            body:    JSON.stringify({ license_key: key })
+        });
+        const data = await r.json();
+        if (data.success) {
+            toast('License activated! Licensed to: ' + data.customer, 'success', 5000);
+            document.getElementById('license-key').value = '';
+            closeActivate();
+            loadLicenseStatus();
+
+            // Check if we need to redirect after activation
+            const params = new URLSearchParams(window.location.search);
+            const redirectUrl = params.get('redirect');
+            if (redirectUrl) {
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 2000);
+            }
+        } else {
+            toast(data.message || 'Activation failed.', 'error', 6000);
+        }
+    } catch (e) {
+        toast('Could not reach server. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Activate License';
+    }
+}
+
+// ── Fingerprint ───────────────────────────────────────────────────────────────
+async function loadFingerprint() {
+    try {
+        const r    = await fetch('/api/license/fingerprint');
+        const data = await r.json();
+        document.getElementById('fp-val').textContent = data.fingerprint || 'N/A';
+    } catch (_) {
+        document.getElementById('fp-val').textContent = 'Unable to load';
+    }
+}
+
+function copyFingerprint() {
+    const val = document.getElementById('fp-val').textContent;
+    navigator.clipboard.writeText(val).then(() => {
+        const btn = document.getElementById('fp-copy-btn');
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
+    }).catch(() => toast('Copy failed — please select and copy manually.', 'error'));
+}
+
+// ── Toggle activate section ───────────────────────────────────────────────────
+function toggleActivate() {
+    const body   = document.getElementById('activate-body');
+    const toggle = document.getElementById('activate-toggle');
+    const isOpen = body.classList.contains('open');
+    isOpen ? closeActivate() : openActivate();
+}
+function openActivate() {
+    document.getElementById('activate-body').classList.add('open');
+    document.getElementById('activate-toggle').classList.add('open');
+}
+function closeActivate() {
+    document.getElementById('activate-body').classList.remove('open');
+    document.getElementById('activate-toggle').classList.remove('open');
+}
+
+// ── Mobile menu ───────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const toggle = document.getElementById('menu-toggle');
+    const overlay = document.getElementById('overlay');
+    if (toggle) toggle.addEventListener('click', function () {
+        const sb = document.getElementById('sidebar');
+        const open = !sb.classList.contains('-translate-x-full');
+        if (open) {
+            sb.classList.add('-translate-x-full');
+            overlay.style.opacity = 0;
+            setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        } else {
+            sb.classList.remove('-translate-x-full');
+            overlay.style.display = 'block';
+            setTimeout(() => { overlay.style.opacity = 1; }, 10);
+        }
+    });
+    if (overlay) overlay.addEventListener('click', function () {
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        overlay.style.opacity = 0;
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    });
+
+    // Check if redirected from login (license required to proceed)
+    const params = new URLSearchParams(window.location.search);
+    const redirectAfterActivation = params.get('redirect');
+
+    // Load content in background
+    Promise.all([
+        loadLicenseStatus(),
+        loadFingerprint()
+    ]).then(() => {
+        // If redirected from login, auto-open activation form
+        if (redirectAfterActivation) {
+            const licenseStatus = document.getElementById('status-badge');
+            if (licenseStatus && !licenseStatus.textContent.includes('Active')) {
+                // License is not active, open the activation form
+                setTimeout(() => {
+                    openActivate();
+                    toast('Please enter your license key to continue.', 'info', 5000);
+                }, 300);
+            }
+        }
+    }).catch((e) => {
+        console.error('Failed to load license data:', e);
+        // Even if loading fails, show the activation form if redirected
+        if (redirectAfterActivation) {
+            setTimeout(() => {
+                openActivate();
+                toast('Please enter your license key to continue.', 'info', 5000);
+            }, 500);
+        }
+    });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - Logout</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .logout-container {
+            max-width: 500px;
+            margin: 50px auto;
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border: 1px solid var(--surface-border);
+        }
+
+        .logout-container h2 {
+            color: var(--text-base);
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .logout-container p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            color: var(--text-muted);
+        }
+        
+        .btn-logout {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-logout:hover {
+            background: linear-gradient(135deg, #c0392b, #a5281b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+        }
+        
+        .btn-cancel {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(149, 165, 166, 0.3);
+        }
+        
+        .btn-cancel:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7a7b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(149, 165, 166, 0.4);
+        }
+        
+        .section-title {
+            color: var(--text-base);
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--surface-border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <img src="assets/logo.png" alt="Trintz Data Labs" style="height:36px;width:auto;object-fit:contain;display:block;">
+                </div>
+                <ul class="nav-tabs" id="nav-tabs">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link" data-page="sales">
+                            <i class="nav-icon">🛒</i>
+                            <span class="nav-text">Sales</span>
+                        </a>
+                    </li>
+                    <!-- Other tabs will be added dynamically based on user role -->
+                </ul>
+                <div class="nav-user">
+                    <span class="user-greeting">Welcome, <span id="nav-username">Guest</span></span>
+                    <button id="nav-logout-btn" class="nav-logout-btn">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            <div class="logout-container">
+                <h2 class="section-title">Logout</h2>
+                <p>Are you sure you want to logout from the POS System?</p>
+                <button id="confirm-logout-btn" class="btn-logout">Yes, Logout</button>
+                <button id="cancel-btn" class="btn-cancel">Cancel</button>
+            </div>
+        </main>
+
+        <!-- Footer Container -->
+            <div id="footer-container"></div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Get current user
+            const user = getCurrentUser();
+            if (user) {
+                // Update username display
+                const usernameElement = document.getElementById('nav-username');
+                if (usernameElement) {
+                    usernameElement.textContent = user.username;
+                }
+                
+                // Add navigation tabs based on user role
+                const navTabs = document.getElementById('nav-tabs');
+                if (navTabs) {
+                    // For admin users, add all tabs
+                    if (user.role === 'Admin') {
+                        navTabs.innerHTML += `
+                            <li class="nav-item">
+                                <a href="inventory.html" class="nav-link" data-page="inventory">
+                                    <i class="nav-icon">📦</i>
+                                    <span class="nav-text">Inventory</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="reports.html" class="nav-link" data-page="reports">
+                                    <i class="nav-icon">📊</i>
+                                    <span class="nav-text">Reports</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="admin.html" class="nav-link" data-page="admin">
+                                    <i class="nav-icon">⚙️</i>
+                                    <span class="nav-text">Admin</span>
+                                </a>
+                            </li>
+                        `;
+                    }
+                    
+                    // Set active tab
+                    const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'logout';
+                    const navLinks = navTabs.querySelectorAll('.nav-link');
+                    navLinks.forEach(link => {
+                        if (link.getAttribute('data-page') === currentPage) {
+                            link.classList.add('active');
+                        } else {
+                            link.classList.remove('active');
+                        }
+                    });
+                }
+            }
+            
+            // Set up logout button in navigation
+            const navLogoutBtn = document.getElementById('nav-logout-btn');
+            if (navLogoutBtn) {
+                navLogoutBtn.addEventListener('click', function() {
+                    var _t = localStorage.getItem('pos_theme');
+                    var _s = localStorage.getItem('pos_device_salt');
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    if (_t) localStorage.setItem('pos_theme', _t);
+                    if (_s) localStorage.setItem('pos_device_salt', _s);
+                    window.location.replace('login.html');
+                });
+            }
+
+            // Confirm logout button
+            const confirmLogoutBtn = document.getElementById('confirm-logout-btn');
+            if (confirmLogoutBtn) {
+                confirmLogoutBtn.addEventListener('click', function() {
+                    var _t = localStorage.getItem('pos_theme');
+                    var _s = localStorage.getItem('pos_device_salt');
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    if (_t) localStorage.setItem('pos_theme', _t);
+                    if (_s) localStorage.setItem('pos_device_salt', _s);
+                    // replace() removes history entry — back button cannot return to app
+                    window.location.replace('login.html');
+                });
+            }
+
+            // Cancel button — go back to previous page
+            const cancelBtn = document.getElementById('cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    window.history.back();
+                });
+            }
+        });
+        
+        // Template download functionality
+        // Download sales template
+        const downloadSalesTemplateBtn = document.getElementById('download-sales-template');
+        if (downloadSalesTemplateBtn) {
+            downloadSalesTemplateBtn.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.href = 'templates/sales_template.xlsx';
+                link.download = 'sales_template.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        // Download purchase template
+        const downloadPurchaseTemplateBtn = document.getElementById('download-purchase-template');
+        if (downloadPurchaseTemplateBtn) {
+            downloadPurchaseTemplateBtn.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.href = 'templates/purchase_order_template.xlsx';
+                link.download = 'purchase_order_template.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+        
+        // Download product template
+        const downloadProductTemplateBtn = document.getElementById('download-product-template');
+        if (downloadProductTemplateBtn) {
+            downloadProductTemplateBtn.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.href = 'templates/product_template.xlsx';
+                link.download = 'product_template.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+    </script>
+</body>
+</html>

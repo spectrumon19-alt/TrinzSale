@@ -1,0 +1,1032 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Credit Management - TrintzPOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        /* Overlay for Mobile Menu */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40; 
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .credit-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .credit-debt {
+            background-color: rgba(254,226,226,.3);
+            color: #ef4444;
+        }
+
+        .credit-positive {
+            background-color: rgba(209,250,229,.3);
+            color: #10b981;
+        }
+
+        .credit-zero {
+            background-color: var(--surface-alt);
+            color: var(--text-muted);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--surface-border);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--surface-border);
+            padding-bottom: 1rem;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-base);
+        }
+
+        .close-modal {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--text-base);
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2c80b9);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #2563a8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #4b5563, #374151);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal">
+    <!-- Mobile Menu Overlay -->
+    <div id="overlay"></div>
+    
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav id="sidebar" class="bg-gray-800 text-white w-56 space-y-5 py-5 px-2 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50">
+            <a href="javascript:void(0)" class="text-white flex items-center space-x-2 px-3">
+                <span class="flex items-center justify-center p-1 bg-white rounded-lg" style="max-width:148px;min-width:100px;"><img src="assets/logo.png" alt="Trintz Data Labs" style="height:40px;width:auto;object-fit:contain;display:block;"></span>
+            </a>
+
+            <!-- Menu links -->
+            <a href="dashboard.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                🏠 Dashboard
+            </a>
+            <a href="index.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                🛒 Sales
+            </a>
+            <a href="returns.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                🔄 Returns
+            </a>
+            <a href="purchase.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                📥 Purchase
+            </a>
+            <a href="inventory.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                📦 Inventory
+            </a>
+            <a href="reports.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                📊 Reports
+            </a>
+            <a href="admin.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                ⚙️ Admin
+            </a>
+            <a href="Supplier Management.html" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                🏭 Supplier Management
+            </a>
+            
+            <!-- Pin/Unpin Toggle Button -->
+            <div class="px-4 mt-auto pt-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-gray-300">Pin Sidebar</label>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <style>
+                .sidebar-toggle {
+                    display: inline-block;
+                    cursor: pointer;
+                    position: relative;
+                    width: 50px;
+                    height: 26px;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                .toggle-checkbox {
+                    display: none;
+                    opacity: 0;
+                    width: 0;
+                    height: 0;
+                }
+                
+                .toggle-slider {
+                    position: absolute;
+                    cursor: pointer;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: #6b7280;
+                    transition: 0.4s;
+                    border-radius: 26px;
+                    display: block;
+                    z-index: 1;
+                }
+                
+                .toggle-slider:before {
+                    position: absolute;
+                    content: "";
+                    height: 20px;
+                    width: 20px;
+                    left: 3px;
+                    bottom: 3px;
+                    background-color: white;
+                    transition: 0.4s;
+                    border-radius: 50%;
+                    z-index: 2;
+                }
+                
+                .toggle-checkbox:checked + .toggle-slider {
+                    background-color: #3b82f6;
+                }
+                
+                .toggle-checkbox:checked + .toggle-slider:before {
+                    transform: translateX(24px);
+                }
+                
+                .toggle-checkbox:hover + .toggle-slider {
+                    opacity: 0.9;
+                }
+            </style>
+        </nav>
+        
+        <!-- Main Content Area -->
+        <div class="flex-1">
+            <!-- Header -->
+            <header class="flex justify-between items-center p-4 bg-white shadow-md">
+                <!-- Hamburger Button -->
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+                <h1 class="text-2xl font-semibold text-gray-800 hidden md:block">Supplier Credit Management</h1>
+                <h1 class="text-xl font-semibold text-gray-800 md:hidden">Credit Management</h1>
+                
+                <!-- Navigation Tabs -->
+                <div class="hidden md:flex items-center space-x-2">
+                    <a href="Supplier Management.html" class="px-3 py-1 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Supplier List</a>
+                    <a href="SupplierCreditManagement.html" class="px-3 py-1 rounded bg-green-600 text-white text-sm hover:bg-green-700">Credit Management</a>
+                </div>
+                
+                <!-- User Info and Logout -->
+                <div class="flex items-center space-x-4">
+                    <p class="text-gray-600 text-sm md:text-base">
+                        Welcome, <span id="nav-username" class="font-semibold text-gray-800">Guest</span>!
+                    </p>
+                    <button id="nav-logout-btn" class="flex items-center space-x-2 bg-red-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg shadow-md hover:bg-red-600 transition duration-150">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+            
+            <main class="p-4 md:p-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Supplier Credit Overview</h2>
+                        
+                        <!-- Filters and Actions -->
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Search Supplier</label>
+                                <input type="text" id="supplier-search" placeholder="Search by name or GST" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                                <select id="status-filter" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                                    <option value="">All Suppliers</option>
+                                    <option value="debt">Debt (Owe Supplier)</option>
+                                    <option value="credit">Credit (Supplier Owes)</option>
+                                    <option value="zero">Zero Balance</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+                                <input type="date" id="from-date" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+                                <input type="date" id="to-date" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="flex items-end">
+                                <button id="search-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium">Search</button>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="export-all-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium flex items-center justify-center">
+                                    <i class="fas fa-download mr-2"></i> Export All
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Suppliers Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead class="bg-gray-100 border-b-2 border-gray-300">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold text-gray-700">Supplier Name</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-gray-700">GST Number</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-gray-700">Mobile</th>
+                                        <th class="px-4 py-3 text-right font-semibold text-gray-700">Current Balance</th>
+                                        <th class="px-4 py-3 text-center font-semibold text-gray-700">Status</th>
+                                        <th class="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="suppliers-tbody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-8 text-gray-500">
+                                            <div class="loading-spinner"></div>
+                                            Loading suppliers...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Supplier Detail Modal -->
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detail-title">Supplier Details</h3>
+                <span class="close-modal" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div id="detail-body">
+                <!-- Details will be populated here -->
+            </div>
+            <div style="margin-top: 2rem; text-align: right;">
+                <button class="btn-success mr-2" id="export-supplier-btn" onclick="exportCurrentSupplier()">
+                    <i class="fas fa-download mr-1"></i> Export Credit
+                </button>
+                <button class="btn-secondary" onclick="closeDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Credit/Debit Modal -->
+    <div id="edit-credit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="edit-credit-title">Add Credit/Debit Transaction</h3>
+                <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div id="edit-credit-body">
+                <input type="hidden" id="edit-supplier-id">
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Supplier Name</label>
+                    <p id="edit-supplier-name" style="font-size: 1.1rem; color: var(--text-base);"></p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Current Balance</label>
+                    <p id="edit-current-balance" style="font-size: 1.1rem; color: var(--text-base); font-weight: bold;"></p>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Transaction Type</label>
+                    <select id="edit-transaction-type" onchange="updateTransactionTip()" style="width: 100%; padding: 0.5rem; border: 1px solid var(--input-border); border-radius: 0.375rem; font-size: 1rem; background: var(--input-bg); color: var(--text-base);">
+                        <option value="credit">Credit (Money We Owe)</option>
+                        <option value="debit">Debit (Payment Made)</option>
+                    </select>
+                    <div id="transaction-tip" style="margin-top: 0.5rem; padding: 0.75rem; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0.375rem; color: #92400e; font-size: 0.9rem;">
+                        💡 <strong>Credit:</strong> Your business has to pay money to the supplier
+                    </div>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Amount</label>
+                    <input type="number" id="edit-transaction-amount" placeholder="Enter amount" step="0.01" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid var(--input-border); border-radius: 0.375rem; font-size: 1rem; background: var(--input-bg); color: var(--text-base);">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Note</label>
+                    <textarea id="edit-transaction-note" placeholder="Enter note (optional)" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid var(--input-border); border-radius: 0.375rem; font-size: 1rem; background: var(--input-bg); color: var(--text-base);"></textarea>
+                </div>
+            </div>
+            <div style="margin-top: 2rem; text-align: right;">
+                <button class="btn-secondary mr-2" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-success" onclick="saveTransaction()">
+                    <i class="fas fa-save mr-1"></i> Save Transaction
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+        // Menu Toggle Functions - Now in sidebar-utils.js
+        // toggleMenu() and closeMenu() are defined in sidebar-utils.js
+        
+        let allSuppliers = [];
+        let selectedSupplier = null;
+
+        // Menu Toggle Functions
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.style.display = 'block';
+                setTimeout(() => overlay.style.opacity = 1, 10);
+            } else {
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.style.display = 'none', 300);
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        function closeMenu() {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                toggleMenu();
+            }
+        }
+        
+        // Go back to previous page
+        function goBack() {
+            window.history.back();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize sidebar pin functionality
+            initializeSidebarPin();
+            window.sidebarInitialized = true;
+            
+            // Check authentication
+            if (!isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Set username
+            const user = getCurrentUser();
+            if (user && user.username) {
+                document.getElementById('nav-username').textContent = user.username;
+            }
+
+            // Setup menu toggle
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleMenu);
+            }
+
+            // Setup logout
+            document.getElementById('nav-logout-btn').addEventListener('click', function() {
+                localStorage.removeItem('pos_token');
+                window.location.href = 'login.html';
+            });
+
+            // Load suppliers
+            loadSuppliers();
+
+            // Setup event listeners
+            document.getElementById('search-btn').addEventListener('click', searchSuppliers);
+            document.getElementById('export-all-btn').addEventListener('click', exportAllCredits);
+            document.getElementById('supplier-search').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') searchSuppliers();
+                else searchSuppliers(); // Real-time search as user types
+            });
+            // Add real-time filter when status changes
+            document.getElementById('status-filter').addEventListener('change', searchSuppliers);
+        });
+
+        // Load all suppliers
+        function loadSuppliers() {
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:5001/api/suppliers'
+                : '/api/suppliers';
+
+            fetch(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                allSuppliers = Array.isArray(data) ? data : [];
+                displaySuppliers(allSuppliers);
+            })
+            .catch(error => {
+                console.error('Error loading suppliers:', error);
+                document.getElementById('suppliers-tbody').innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading suppliers</td></tr>';
+            });
+        }
+
+        // Display suppliers in table
+        function displaySuppliers(suppliers) {
+            const tbody = document.getElementById('suppliers-tbody');
+            
+            if (!suppliers || suppliers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">No suppliers found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = suppliers.map(supplier => {
+                const balance = parseFloat(supplier.current_balance || 0);
+                let statusBadge = '';
+                let statusClass = '';
+
+                if (balance > 0) {
+                    statusBadge = `₹${balance.toFixed(2)} (Debt)`;
+                    statusClass = 'credit-debt';
+                } else if (balance < 0) {
+                    statusBadge = `₹${Math.abs(balance).toFixed(2)} (Credit)`;
+                    statusClass = 'credit-positive';
+                } else {
+                    statusBadge = 'Zero';
+                    statusClass = 'credit-zero';
+                }
+
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-4 py-3">${supplier.supplier_name || 'N/A'}</td>
+                        <td class="px-4 py-3">${supplier.supplier_gst_number || 'N/A'}</td>
+                        <td class="px-4 py-3">${supplier.mobile || 'N/A'}</td>
+                        <td class="px-4 py-3 text-right font-semibold">₹${balance.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="credit-badge ${statusClass}">${statusBadge}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center space-x-2">
+                            <button onclick="viewSupplierDetails(${supplier.supplier_id})" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 text-sm" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="editSupplierCredit(${supplier.supplier_id})" class="bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600 text-sm" title="Edit Credit/Debit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="exportSupplierCredit(${supplier.supplier_id})" class="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 text-sm" title="Export">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Search suppliers
+        function searchSuppliers() {
+            const searchTerm = (document.getElementById('supplier-search').value || '').toLowerCase().trim();
+            const statusFilter = document.getElementById('status-filter').value;
+
+            console.log('Searching with term:', searchTerm, 'and filter:', statusFilter);
+            console.log('Total suppliers:', allSuppliers.length);
+
+            let filtered = allSuppliers.filter(supplier => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    (supplier.supplier_name || '').toLowerCase().includes(searchTerm) ||
+                    (supplier.supplier_gst_number || '').toLowerCase().includes(searchTerm) ||
+                    (supplier.mobile || '').toLowerCase().includes(searchTerm);
+
+                // Status filter
+                let matchesStatus = true;
+                if (statusFilter) {
+                    const balance = parseFloat(supplier.current_balance || 0);
+                    if (statusFilter === 'debt') matchesStatus = balance > 0;
+                    else if (statusFilter === 'credit') matchesStatus = balance < 0;
+                    else if (statusFilter === 'zero') matchesStatus = balance === 0;
+                }
+
+                return matchesSearch && matchesStatus;
+            });
+
+            console.log('Filtered results:', filtered.length);
+            displaySuppliers(filtered);
+        }
+
+        // View supplier details
+        function viewSupplierDetails(supplierId) {
+            const supplier = allSuppliers.find(s => s.supplier_id === supplierId);
+            if (!supplier) return;
+
+            selectedSupplier = supplier;
+            const balance = parseFloat(supplier.current_balance || 0);
+            
+            const detailBody = document.getElementById('detail-body');
+            detailBody.innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Supplier Name</label>
+                            <p class="text-lg font-semibold text-gray-800">${supplier.supplier_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">GST Number</label>
+                            <p class="text-lg font-semibold text-gray-800">${supplier.supplier_gst_number || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Mobile</label>
+                            <p class="text-lg font-semibold text-gray-800">${supplier.mobile || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Email</label>
+                            <p class="text-lg font-semibold text-gray-800">${supplier.email || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Bank Name</label>
+                            <p class="text-lg font-semibold text-gray-800">${supplier.bank_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Current Balance</label>
+                            <p class="text-lg font-semibold ${balance > 0 ? 'text-red-600' : balance < 0 ? 'text-green-600' : 'text-gray-800'}">
+                                ₹${Math.abs(balance).toFixed(2)} ${balance > 0 ? '(Debt)' : balance < 0 ? '(Credit)' : ''}
+                            </p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 2rem;">
+                        <h4 style="font-weight: 700; margin-bottom: 1rem; color: var(--text-base);">Recent Transactions</h4>
+                        <div id="transaction-list-detail" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--surface-border); border-radius: 0.375rem;">
+                            <div style="padding: 1rem; text-align: center; color: #6b7280;">Loading transactions...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detail-title').textContent = supplier.supplier_name || 'Supplier Details';
+            document.getElementById('detail-modal').classList.add('show');
+            
+            // Load transactions
+            loadTransactionsForDetail(supplierId);
+        }
+        
+        // Load transactions for detail modal
+        function loadTransactionsForDetail(supplierId) {
+            const token = localStorage.getItem('pos_token');
+            if (!token) return;
+            
+            const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `http://localhost:5001/api/suppliers/${supplierId}/transactions`
+                : `/api/suppliers/${supplierId}/transactions`;
+            
+            fetch(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch transactions');
+                return response.json();
+            })
+            .then(transactions => {
+                displayTransactionsInDetail(transactions || []);
+            })
+            .catch(error => {
+                console.error('Error loading transactions:', error);
+                document.getElementById('transaction-list-detail').innerHTML = '<div style="padding: 1rem; text-align: center; color: #ef4444;">Error loading transactions</div>';
+            });
+        }
+        
+        // Display transactions in detail modal
+        function displayTransactionsInDetail(transactions) {
+            const listDiv = document.getElementById('transaction-list-detail');
+            
+            if (!transactions || transactions.length === 0) {
+                listDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: #6b7280;">No transactions found</div>';
+                return;
+            }
+            
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead style="background-color: var(--surface-alt); border-bottom: 1px solid var(--surface-border);">';
+            html += '<tr>';
+            html += '<th style="padding: 0.75rem; text-align: left; font-weight: 600; font-size: 0.875rem; color: var(--text-muted);">Date</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; font-weight: 600; font-size: 0.875rem; color: var(--text-muted);">Type</th>';
+            html += '<th style="padding: 0.75rem; text-align: right; font-weight: 600; font-size: 0.875rem; color: var(--text-muted);">Amount</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; font-weight: 600; font-size: 0.875rem; color: var(--text-muted);">Note</th>';
+            html += '</tr>';
+            html += '</thead>';
+            html += '<tbody>';
+            
+            transactions.forEach(transaction => {
+                const date = new Date(transaction.created_at).toLocaleString();
+                const type = transaction.transaction_type || 'N/A';
+                const amount = parseFloat(transaction.amount || 0).toFixed(2);
+                const note = transaction.note || '-';
+                const typeColor = type === 'credit' ? '#dc2626' : '#16a34a';
+                
+                html += '<tr style="border-bottom: 1px solid var(--surface-border);">';
+                html += `<td style="padding: 0.75rem; font-size: 0.875rem; color: var(--text-base);">${date}</td>`;
+                html += `<td style="padding: 0.75rem; font-size: 0.875rem; color: ${typeColor}; font-weight: 600;">${type}</td>`;
+                html += `<td style="padding: 0.75rem; text-align: right; font-size: 0.875rem; font-weight: 600; color: var(--text-base);">₹${amount}</td>`;
+                html += `<td style="padding: 0.75rem; font-size: 0.875rem; color: var(--text-base);">${note}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            html += '</table>';
+            
+            listDiv.innerHTML = html;
+        }
+
+        // Close detail modal
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.remove('show');
+            selectedSupplier = null;
+        }
+        
+        // Export current supplier from detail modal
+        function exportCurrentSupplier() {
+            if (selectedSupplier) {
+                exportSupplierCredit(selectedSupplier.supplier_id);
+            }
+        }
+
+        // Export single supplier credit as CSV
+        function exportSupplierCredit(supplierId) {
+            const supplier = allSuppliers.find(s => s.supplier_id === supplierId);
+            if (!supplier) return;
+            
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Fetch transactions for this supplier
+            const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `http://localhost:5001/api/suppliers/${supplierId}/transactions`
+                : `/api/suppliers/${supplierId}/transactions`;
+            
+            fetch(apiUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch transactions');
+                return response.json();
+            })
+            .then(transactions => {
+                const csv = generateSupplierCSV(supplier, transactions || []);
+                downloadCSV(csv, `${supplier.supplier_name}_credit_${new Date().toISOString().split('T')[0]}.csv`);
+            })
+            .catch(error => {
+                console.error('Error exporting:', error);
+                alert('Error exporting transactions: ' + error.message);
+            });
+        }
+
+        // Export all credits as CSV
+        function exportAllCredits() {
+            let csv = 'Supplier Name,GST Number,Mobile,Current Balance,Status\n';
+            
+            let totalDebt = 0;
+            let totalCredit = 0;
+            let zeroBalanceCount = 0;
+            
+            allSuppliers.forEach(supplier => {
+                const balance = parseFloat(supplier.current_balance || 0);
+                const status = balance > 0 ? 'Debt' : balance < 0 ? 'Credit' : 'Zero';
+                const name = (supplier.supplier_name || 'N/A').replace(/,/g, ' ');
+                const gst = (supplier.supplier_gst_number || 'N/A').replace(/,/g, ' ');
+                const mobile = (supplier.mobile || 'N/A').replace(/,/g, ' ');
+                
+                // Add to totals
+                if (balance > 0) {
+                    totalDebt += balance;
+                } else if (balance < 0) {
+                    totalCredit += Math.abs(balance);
+                } else {
+                    zeroBalanceCount++;
+                }
+
+                csv += `"${name}","${gst}","${mobile}","${balance.toFixed(2)}","${status}"\n`;
+            });
+            
+            // Add summary
+            csv += '\nSummary\n';
+            csv += `Total Suppliers,${allSuppliers.length}\n`;
+            csv += `Suppliers with Debt,₹${totalDebt.toFixed(2)}\n`;
+            csv += `Suppliers with Credit,₹${totalCredit.toFixed(2)}\n`;
+            csv += `Zero Balance Suppliers,${zeroBalanceCount}\n`;
+            csv += `Net Position,₹${(totalDebt - totalCredit).toFixed(2)} (We ${totalDebt > totalCredit ? 'Owe' : 'Are Owed'})\n`;
+
+            downloadCSV(csv, `all_supplier_credits_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        // Generate CSV for single supplier
+        function generateSupplierCSV(supplier, transactions = []) {
+            const balance = parseFloat(supplier.current_balance || 0);
+            const status = balance > 0 ? 'Debt' : balance < 0 ? 'Credit' : 'Zero';
+
+            let csv = 'Supplier Credit Details\n';
+            csv += `Exported on,${new Date().toLocaleString()}\n\n`;
+            csv += 'Supplier Information\n';
+            csv += `Supplier Name,${supplier.supplier_name || 'N/A'}\n`;
+            csv += `GST Number,${supplier.supplier_gst_number || 'N/A'}\n`;
+            csv += `Mobile,${supplier.mobile || 'N/A'}\n`;
+            csv += `Email,${supplier.email || 'N/A'}\n`;
+            csv += `Bank Name,${supplier.bank_name || 'N/A'}\n`;
+            csv += `Address,${supplier.address || 'N/A'}\n\n`;
+            csv += 'Credit Summary\n';
+            csv += `Current Balance,₹${balance.toFixed(2)}\n`;
+            csv += `Status,${status}\n\n`;
+            
+            // Add transaction details
+            csv += 'Transaction History\n';
+            csv += 'Date,Type,Amount,Previous Balance,New Balance,Reference,Note\n';
+            
+            let totalCredit = 0;
+            let totalDebit = 0;
+            
+            if (transactions && transactions.length > 0) {
+                transactions.forEach(transaction => {
+                    const date = new Date(transaction.created_at).toLocaleString();
+                    const type = transaction.transaction_type || 'N/A';
+                    const amount = parseFloat(transaction.amount || 0).toFixed(2);
+                    const prevBalance = parseFloat(transaction.previous_balance || 0).toFixed(2);
+                    const newBalance = parseFloat(transaction.new_balance || 0).toFixed(2);
+                    const reference = transaction.purchase_order_number || 'N/A';
+                    const note = (transaction.note || 'N/A').replace(/"/g, '\"');
+                    
+                    // Add to totals
+                    if (type === 'credit') {
+                        totalCredit += parseFloat(amount);
+                    } else if (type === 'debit') {
+                        totalDebit += parseFloat(amount);
+                    }
+                    
+                    csv += `"${date}","${type}","${amount}","${prevBalance}","${newBalance}","${reference}","${note}"\n`;
+                });
+            } else {
+                csv += 'No transactions found\n';
+            }
+            
+            // Add totals
+            csv += '\nTransaction Totals\n';
+            csv += `Total Credit (We Owe),₹${totalCredit.toFixed(2)}\n`;
+            csv += `Total Debit (We Paid),₹${totalDebit.toFixed(2)}\n`;
+            csv += `Net Balance,₹${(totalCredit - totalDebit).toFixed(2)}\n`;
+
+            return csv;
+        }
+
+        // Download CSV file
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('detail-modal');
+            if (event.target === modal) {
+                closeDetailModal();
+            }
+            
+            const editModal = document.getElementById('edit-credit-modal');
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        });
+        
+        // Edit supplier credit/debit
+        function editSupplierCredit(supplierId) {
+            const supplier = allSuppliers.find(s => s.supplier_id === supplierId);
+            if (!supplier) {
+                alert('Supplier not found');
+                return;
+            }
+            
+            // Populate modal
+            document.getElementById('edit-supplier-id').value = supplierId;
+            document.getElementById('edit-supplier-name').textContent = supplier.supplier_name || 'N/A';
+            
+            const balance = parseFloat(supplier.current_balance || 0);
+            let balanceText = `₹${balance.toFixed(2)}`;
+            if (balance > 0) {
+                balanceText += ' (Debt - We owe supplier)';
+            } else if (balance < 0) {
+                balanceText += ' (Credit - Supplier owes us)';
+            }
+            document.getElementById('edit-current-balance').textContent = balanceText;
+            
+            // Reset form
+            document.getElementById('edit-transaction-type').value = 'credit';
+            document.getElementById('edit-transaction-amount').value = '';
+            document.getElementById('edit-transaction-note').value = '';
+            
+            // Show modal
+            document.getElementById('edit-credit-modal').classList.add('show');
+        }
+        
+        // Close edit modal
+        function closeEditModal() {
+            document.getElementById('edit-credit-modal').classList.remove('show');
+        }
+        
+        // Save transaction
+        function saveTransaction() {
+            const supplierId = document.getElementById('edit-supplier-id').value;
+            const transactionType = document.getElementById('edit-transaction-type').value;
+            const amount = document.getElementById('edit-transaction-amount').value;
+            const note = document.getElementById('edit-transaction-note').value;
+            
+            // Validate
+            if (!amount || parseFloat(amount) <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? `http://localhost:5001/api/suppliers/${supplierId}/transactions`
+                : `/api/suppliers/${supplierId}/transactions`;
+            
+            const transactionData = {
+                transaction_type: transactionType,
+                amount: parseFloat(amount),
+                note: note
+            };
+            
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(transactionData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(error => {
+                        throw new Error(error.message || 'Failed to save transaction');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Transaction saved successfully!');
+                closeEditModal();
+                loadSuppliers();
+            })
+            .catch(error => {
+                console.error('Error saving transaction:', error);
+                alert('Error: ' + error.message);
+            });
+        }
+        
+        // Update transaction tip based on selected type
+        function updateTransactionTip() {
+            const transactionType = document.getElementById('edit-transaction-type').value;
+            const tipDiv = document.getElementById('transaction-tip');
+            
+            if (transactionType === 'credit') {
+                tipDiv.innerHTML = '💡 <strong>Credit:</strong> Your business has to pay money to the supplier';
+            } else if (transactionType === 'debit') {
+                tipDiv.innerHTML = '💡 <strong>Debit:</strong> You have paid money to the supplier (reduces what you owe)';
+            }
+        }
+    </script>
+</body>
+</html>

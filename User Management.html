@@ -1,0 +1,1674 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - TrintzPOS POS</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        /* Custom styles for admin panel */
+        .search-results {
+            position: absolute;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 0.375rem;
+            max-height: 15.625rem;
+            overflow-y: auto;
+            width: 100%;
+            z-index: 100;
+            box-shadow: var(--surface-shadow);
+            box-sizing: border-box;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+        }
+
+        .search-result-item {
+            padding: 0.75rem 0.9375rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--surface-border);
+            transition: background-color 0.2s;
+            min-height: 2.75rem;
+        }
+
+        .search-result-item:hover {
+            background: var(--surface-alt);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            margin-bottom: 0.3125rem;
+            color: var(--text-base);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .search-result-sku {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            margin-right: 0.625rem;
+        }
+
+        .search-result-price {
+            font-weight: 700;
+            color: var(--success);
+            white-space: nowrap;
+        }
+        
+        /* Overlay for Mobile Menu */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40; 
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        /* Custom button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #2573a7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #219653, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(149, 165, 166, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7a7b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(149, 165, 166, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c0392b, #a5281b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+        }
+        
+        /* Icon button styles */
+        .btn-icon {
+            padding: 0.5rem;
+            min-width: auto;
+            min-height: auto;
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+        
+        .remove-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            min-height: 2.75rem; /* 44px minimum touch target */
+            min-width: 2.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .remove-btn:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+        }
+        
+        /* Custom form styles */
+        .form-control {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--input-border);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            min-height: 2.75rem; /* 44px minimum touch target */
+            background: var(--input-bg);
+            color: var(--text-base);
+        }
+
+        /* Custom table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 0.875rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--surface-border);
+            color: var(--text-base);
+        }
+
+        th {
+            background: linear-gradient(135deg, #3498db, #2c80b9);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--surface-alt);
+        }
+
+        tr:hover {
+            background-color: rgba(59,130,246,.06);
+        }
+
+        /* Admin Panel Specific Styles */
+        .admin-panel {
+            padding: 1.25rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-base);
+            margin-bottom: 0.5rem;
+            text-align: left;
+        }
+
+        .admin-form {
+            background-color: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--input-border);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            text-align: left;
+            background: var(--input-bg);
+            color: var(--text-base);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2b6cb0;
+            box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
+        }
+
+        .admin-table {
+            /* overflow-x: auto; */
+        }
+
+        .admin-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .admin-table th,
+        .admin-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--surface-border);
+            white-space: nowrap;
+            color: var(--text-base);
+        }
+
+        .admin-table th {
+            background-color: var(--surface-alt);
+            font-weight: 600;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .admin-table tr:hover {
+            background-color: rgba(59,130,246,.06);
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        /* Mobile responsive tab styles */
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .text-left {
+                text-align: left;
+            }
+            
+            .text-center {
+                text-align: center;
+            }
+            
+            .text-right {
+                text-align: right;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .admin-panel {
+                padding: 0.625rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+                text-align: center;
+            }
+            
+            .admin-form,
+            .tab-content {
+                padding: 1rem;
+            }
+            
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .btn-primary,
+            .btn-secondary,
+            .btn-danger,
+            .btn-icon {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .text-left {
+                text-align: left;
+            }
+            
+            .text-center {
+                text-align: center;
+            }
+            
+            .text-right {
+                text-align: right;
+            }
+        }
+        
+        /* Fix for text alignment issues */
+        .align-text {
+            text-align: left;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        
+        .align-center {
+            text-align: center;
+        }
+        
+        .align-right {
+            text-align: right;
+        }
+        
+        /* Improved table responsiveness */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Fix for long text in table cells */
+        .table-cell-text {
+            white-space: normal;
+            word-wrap: break-word;
+            max-width: 150px;
+        }
+
+        /* ── Delete confirmation modal ────────────────────────────── */
+        #delete-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 9000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #delete-modal {
+            background: var(--surface);
+            border-radius: .75rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+            width: 100%;
+            max-width: 440px;
+            padding: 1.75rem;
+            animation: modal-in .18s ease;
+        }
+        @keyframes modal-in {
+            from { opacity:0; transform: scale(.95) translateY(-8px); }
+            to   { opacity:1; transform: scale(1)  translateY(0);     }
+        }
+        #delete-modal .modal-icon {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: #fee2e2;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1rem;
+        }
+        #delete-modal .modal-icon i { color: #ef4444; font-size: 1.25rem; }
+        #delete-modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-base); margin-bottom: .35rem; }
+        #delete-modal .modal-sub { font-size: .85rem; color: var(--text-muted); margin-bottom: 1rem; }
+        #delete-modal .impact-box {
+            background: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            border-radius: .5rem;
+            padding: .85rem 1rem;
+            margin-bottom: 1.25rem;
+        }
+        #delete-modal .impact-box p {
+            font-size: .8rem; color: var(--text-muted);
+            margin-bottom: .5rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+        }
+        #delete-modal .impact-row {
+            display: flex; align-items: center; gap: .5rem;
+            font-size: .875rem; color: var(--text-base);
+            padding: .25rem 0;
+        }
+        #delete-modal .impact-row i { width: 16px; text-align: center; color: #f59e0b; }
+        #delete-modal .impact-row .badge {
+            margin-left: auto;
+            background: #fef3c7; color: #92400e;
+            font-size: .75rem; font-weight: 700;
+            padding: .1rem .45rem; border-radius: 9999px;
+        }
+        #delete-modal .impact-row .badge.zero {
+            background: #d1fae5; color: #065f46;
+        }
+        #delete-modal .modal-note {
+            font-size: .78rem; color: var(--text-muted);
+            background: var(--surface-alt);
+            border-left: 3px solid #6366f1;
+            padding: .5rem .75rem;
+            border-radius: 0 .35rem .35rem 0;
+            margin-bottom: 1.25rem;
+        }
+        #delete-modal .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
+        #delete-modal .btn-cancel {
+            padding: .55rem 1.1rem; border-radius: .4rem; font-size: .875rem;
+            font-weight: 600; cursor: pointer;
+            background: var(--surface-alt); color: var(--text-base);
+            border: 1px solid var(--surface-border);
+            transition: background .15s;
+        }
+        #delete-modal .btn-cancel:hover { background: var(--surface-border); }
+        #delete-modal .btn-delete-confirm {
+            padding: .55rem 1.25rem; border-radius: .4rem; font-size: .875rem;
+            font-weight: 600; cursor: pointer;
+            background: #ef4444; color: #fff; border: none;
+            transition: background .15s;
+            display: flex; align-items: center; gap: .4rem;
+        }
+        #delete-modal .btn-delete-confirm:hover  { background: #dc2626; }
+        #delete-modal .btn-delete-confirm:disabled { background: #fca5a5; cursor: not-allowed; }
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+    <!-- Delete User Confirmation Modal -->
+    <div id="delete-modal-backdrop" style="display:none;" onclick="closeDeleteModal(event)">
+        <div id="delete-modal" onclick="event.stopPropagation()">
+            <div class="modal-icon"><i class="fas fa-user-minus"></i></div>
+            <h3 id="dm-title">Delete User</h3>
+            <p class="modal-sub" id="dm-sub">This action cannot be undone.</p>
+
+            <div class="impact-box">
+                <p>Records that will be affected</p>
+                <div class="impact-row">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>Sales Invoices</span>
+                    <span class="badge" id="dm-invoices">0</span>
+                </div>
+                <div class="impact-row">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Purchase Orders</span>
+                    <span class="badge" id="dm-purchases">0</span>
+                </div>
+                <div class="impact-row">
+                    <i class="fas fa-undo"></i>
+                    <span>Sales Returns</span>
+                    <span class="badge" id="dm-returns">0</span>
+                </div>
+            </div>
+
+            <div class="modal-note" id="dm-note">
+                Linked records will be <strong>preserved</strong> but their "created by" reference will be cleared.
+                All other user data (permissions, sessions) will be permanently deleted.
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-delete-confirm" id="dm-confirm-btn" onclick="confirmDeleteUser()">
+                    <i class="fas fa-trash"></i> Delete User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Overlay (Click closes menu) -->
+    <div id="overlay" onclick="closeMenu()"></div> 
+
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+
+            <!-- Nav links injected here by renderSidebarLinks() -->
+
+            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p class="text-gray-700 font-medium">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 md:ml-[220px]">
+            <!-- Header uses white background on mobile to stand out against content -->
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg transition"
+                            style="color:var(--text-muted);background:transparent;"
+                            onmouseenter="this.style.background='var(--surface-alt)'"
+                            onmouseleave="this.style.background='transparent'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> User Management</p>
+                        <p class="hd-sub" id="live-datetime">Loading…</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs font-medium" style="color:var(--text-subtle);">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle-header" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p id="headerUserInfo" data-testid="header-user-info"
+                       class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                        Hi, <span id="nav-username" data-testid="nav-username"
+                                  class="font-bold" style="color:var(--text-base);">Guest</span>
+                    </p>
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main class="p-4 md:p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 md:p-6">
+                    <section class="admin-panel">
+                        <h1 class="section-title">User Management</h1>
+                        <p>Manage users in the system</p>
+                        
+                        <!-- Message Box -->
+                        <div id="messageBox" style="display: none; margin-bottom: 1rem;"></div>
+                        
+                        <div class="admin-form">
+                            <h3>Add New User</h3>
+                            <form id="user-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="user-username">Username *</label>
+                                        <input type="text" id="user-username" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="user-password">Password *</label>
+                                        <input type="password" id="user-password" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="user-role">Role *</label>
+                                        <select id="user-role" required>
+                                            <option value="Cashier">Cashier</option>
+                                            <option value="Manager">Manager</option>
+                                            <option value="Admin">Admin</option>
+                                            <option value="Super Admin">Super Admin</option>
+                                        </select>
+                                        <small id="user-role-hint" style="color:#6b7280;font-size:0.7rem;margin-top:3px;display:block;"></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="user-fullname">Full Name</label>
+                                        <input type="text" id="user-fullname">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="user-email">Email *</label>
+                                        <input type="email" id="user-email" required placeholder="user@example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="user-mobile">Mobile</label>
+                                        <input type="text" id="user-mobile">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-primary" id="add-user-btn">Add User</button>
+                                <button type="button" class="btn-primary" id="save-user-btn" style="display: none;">Save User</button>
+                                <button type="button" class="btn-secondary" id="cancel-user-edit-btn" style="display: none; margin-left: 10px;">Cancel</button>
+                            </form>
+                        </div>
+                        <div class="admin-table">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3>Existing Users</h3>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th>Full Name</th>
+                                        <th>Email</th>
+                                        <th>Mobile</th>
+                                        <th>Authenticator</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-body">
+                                    <!-- Users will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- My Authenticator App -->
+                        <div class="mt-6 bg-white rounded-lg shadow-md p-4 border border-gray-200">
+                            <h2 class="text-sm font-semibold text-gray-800 mb-1">🔐 My Authenticator App</h2>
+                            <p class="text-xs text-gray-500 mb-3">Protect your account with Google Authenticator. After setup, you'll enter a 6-digit code every time you log in.</p>
+                            <div id="totp-status-area">
+                                <div id="totp-enabled-view" style="display:none">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span style="background:#d1fae5;color:#065f46;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;">✓ Enabled</span>
+                                        <span class="text-xs text-gray-500">Google Authenticator is active on your account</span>
+                                    </div>
+                                    <button onclick="showTotpDisable()" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded hover:bg-red-100 transition">
+                                        Disable Authenticator App
+                                    </button>
+                                </div>
+                                <div id="totp-disabled-view" style="display:block">
+                                    <button onclick="startTotpSetup()" id="totp-setup-btn" class="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition font-medium">
+                                        Set Up Authenticator App
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- QR code setup panel -->
+                            <div id="totp-setup-panel" style="display:none;margin-top:16px;">
+                                <div style="border-top:1px solid #e5e7eb;padding-top:16px;">
+                                    <p class="text-xs text-gray-600 mb-2"><strong>Step 1:</strong> Scan this QR code with your Google Authenticator app</p>
+                                    <div style="text-align:center;margin-bottom:12px;">
+                                        <img id="totp-qr-img" src="" alt="QR Code" style="width:160px;height:160px;border:1px solid #e5e7eb;border-radius:8px;"/>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mb-1">Or enter this key manually:</p>
+                                    <code id="totp-secret-display" style="font-size:11px;background:#f3f4f6;padding:4px 8px;border-radius:4px;display:block;word-break:break-all;margin-bottom:12px;"></code>
+                                    <p class="text-xs text-gray-600 mb-2"><strong>Step 2:</strong> Enter the 6-digit code from your app to confirm</p>
+                                    <div class="flex gap-2">
+                                        <input id="totp-confirm-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                                            style="width:120px;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:18px;text-align:center;letter-spacing:8px;font-family:monospace;"
+                                            oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+                                        <button onclick="confirmTotpSetup()" id="totp-confirm-btn"
+                                            style="background:#10b981;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+                                            Activate
+                                        </button>
+                                    </div>
+                                    <p id="totp-setup-msg" style="margin-top:8px;font-size:12px;"></p>
+                                </div>
+                            </div>
+
+                            <!-- Disable panel -->
+                            <div id="totp-disable-panel" style="display:none;margin-top:16px;">
+                                <div style="border-top:1px solid #e5e7eb;padding-top:16px;">
+                                    <p class="text-xs text-gray-600 mb-2">Enter your current password to disable the authenticator app:</p>
+                                    <div class="flex gap-2">
+                                        <input id="totp-disable-pw" type="password" placeholder="Your password"
+                                            style="flex:1;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;"/>
+                                        <button onclick="confirmTotpDisable()" id="totp-disable-btn"
+                                            style="background:#ef4444;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+                                            Disable
+                                        </button>
+                                    </div>
+                                    <p id="totp-disable-msg" style="margin-top:8px;font-size:12px;"></p>
+                                    <button onclick="cancelTotpDisable()" style="margin-top:6px;background:none;border:none;color:#6b7280;font-size:12px;cursor:pointer;text-decoration:underline;">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script>
+        // Check authentication immediately when page starts loading
+        if (!isAuthenticated()) {
+            window.location.href = 'login.html';
+        } else if (!checkPagePermission()) {
+            window.location.href = 'noAccess.html';
+        }
+
+        // Menu Toggle Functions
+        function toggleMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.style.display = 'block';
+                setTimeout(() => overlay.style.opacity = 1, 10);
+            } else {
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.style.display = 'none', 300);
+                sidebar.classList.add('-translate-x-full');
+            }
+        }
+
+        function closeMenu() {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                toggleMenu();
+            }
+        }
+
+        // Global variables
+        let currentUser = null;
+        let users = [];
+        
+        // DOM Elements
+        const logoutBtn = document.getElementById('nav-logout-btn');
+        const usernameSpan = document.getElementById('nav-username');
+        
+        // Custom Message Box Functionality
+        function showMessage(message, type = 'success') {
+            const messageBox = document.getElementById('messageBox');
+            if (!messageBox) return console.error('Message box element not found.');
+            
+            messageBox.textContent = message;
+            messageBox.className = 'text-white p-4 rounded-lg transition duration-300 ' + (type === 'success' ? 'bg-green-600' : type.includes('bg-') ? type : 'bg-red-600');
+            messageBox.style.display = 'block';
+            messageBox.style.opacity = 1;
+
+            setTimeout(() => {
+                messageBox.style.opacity = 0;
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300);
+            }, 4000);
+        }
+        
+        // User Management Functions
+        function loadUsers() {
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Show loading indicator
+            showLoading();
+            
+            console.log('Token from localStorage:', token);
+            
+            if (!token) {
+                console.error('No token found, redirecting to login');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            console.log('Attempting to load users with token:', token.substring(0, 10) + '...');
+            
+            // First check if the endpoint is accessible
+            fetch('/api/admin/users', {
+                method: 'HEAD',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(headResponse => {
+                console.log('Users API HEAD request status:', headResponse.status);
+                if (!headResponse.ok) {
+                    throw new Error(`API endpoint not accessible. Status: ${headResponse.status}`);
+                }
+                
+                // Now fetch the actual data
+                return fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            })
+            .then(response => {
+                console.log('Users API response status:', response.status);
+                console.log('Users API response headers:', [...response.headers.entries()]);
+                
+                // If response is not OK, try to read the error message
+                if (!response.ok) {
+                    return response.clone().text().then(errorText => {
+                        console.error('API Error response text:', errorText);
+                        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                    });
+                }
+                
+                const contentType = response.headers.get('content-type');
+                console.log('Response content type:', contentType);
+                
+                // Log the raw response text for debugging
+                return response.clone().text().then(text => {
+                    console.log('Raw response text:', text);
+                    
+                    // Check if response is empty
+                    if (!text || text.trim() === '') {
+                        console.warn('Empty response received from API');
+                        return [];
+                    }
+                    
+                    // Check if response is valid JSON
+                    try {
+                        const jsonData = JSON.parse(text);
+                        console.log('Parsed JSON data:', jsonData);
+                        return jsonData;
+                    } catch (parseError) {
+                        console.error('Failed to parse JSON:', parseError);
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
+            })
+            .then(data => {
+                // Hide loading indicator
+                hideLoading();
+                
+                console.log('Users data loaded:', data); // Debug log
+                
+                // Handle case where data might be null or undefined
+                if (data === null || data === undefined) {
+                    console.warn('Received null/undefined data from API');
+                    data = [];
+                }
+                
+                // Check if data is in the expected format
+                if (!Array.isArray(data)) {
+                    console.error('Users data is not an array:', data);
+                    throw new Error('Invalid data format received from server');
+                }
+                
+                users = data;
+                displayUsers(users);
+            })
+            .catch(error => {
+                // Hide loading indicator
+                hideLoading();
+                
+                console.error('Error loading users:', error);
+                showMessage('Failed to load users: ' + error.message, 'error');
+                // Display error in table as well
+                const tbody = document.getElementById('users-body');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center text-red-500 p-4">
+                                <div class="font-bold">Error loading users</div>
+                                <div class="text-sm mt-2">${error.message}</div>
+                                <div class="text-xs mt-2">Please check your network connection and API server</div>
+                                <button class="btn-primary mt-4" onclick="loadUsers()">Retry</button>
+                            </td>
+                        </tr>`;
+                }
+            });
+        }
+        
+        function displayUsers(usersData) {
+            const tbody = document.getElementById('users-body');
+            if (!tbody) return;
+            
+            console.log('Displaying users data:', usersData);
+            
+            if (!usersData || usersData.length === 0) {
+                // For debugging purposes, let's add some sample data to verify the table rendering
+                console.log('No users data found, showing empty state');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center p-4">
+                            <div class="text-gray-500 mb-2">No users found</div>
+                            <div class="text-sm text-gray-400">Add a new user to get started</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Check if we have valid data
+            if (!Array.isArray(usersData)) {
+                console.error('Users data is not an array:', usersData);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center p-4 text-red-500">
+                            <div class="font-bold">Data Format Error</div>
+                            <div class="text-sm mt-2">Expected array but received: ${typeof usersData}</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            usersData.forEach((user, index) => {
+                const row = document.createElement('tr');
+                
+                // Log each user object to see its structure
+                console.log(`User ${index}:`, user);
+                
+                // Check if user object exists and has the required properties
+                if (!user || typeof user !== 'object') {
+                    console.error(`Invalid user data at index ${index}:`, user);
+                    row.innerHTML = `
+                        <td colspan="7" class="text-center p-2 text-red-500">
+                            Invalid user data at index ${index}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                    return;
+                }
+                
+                // Try different possible field names
+                const usernameCell = user.username || user.Username || user.userName || 'N/A';
+                const roleCell = user.role || user.Role || user.userRole || 'N/A';
+                const fullNameCell = user.full_name || user.fullName || user.fullname || user.name || '-';
+                const emailCell = user.email || user.Email || '-';
+                const mobileCell = user.mobile || user.Mobile || user.phone || '-';
+                
+                // Ensure we're accessing the correct field names
+                const userId = user.user_id || user.id || user.userId || index;
+                
+                console.log(`User ${index} - Username: ${usernameCell}, Role: ${roleCell}`);
+                
+                const totpEnabled  = user.totp_enabled  === true || user.totp_enabled  === 'true';
+                const totpRequired = user.totp_required === true || user.totp_required === 'true';
+
+                // Badge: green=self-setup, orange=enforced-pending, gray=off
+                let totpBadge;
+                if (totpEnabled) {
+                    totpBadge = '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">&#x2713; Enabled</span>';
+                } else if (totpRequired) {
+                    totpBadge = '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">&#x23F3; Required</span>';
+                } else {
+                    totpBadge = '<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:11px;">Off</span>';
+                }
+
+                // Action buttons
+                const totpResetBtn = totpEnabled
+                    ? `<button class="btn-warning btn-icon" onclick="resetUserTOTP(${userId}, '${usernameCell}')" title="Reset Authenticator (account recovery)"><i class="fas fa-shield-alt"></i></button>`
+                    : '';
+                const totpEnforceBtn = !totpEnabled
+                    ? (totpRequired
+                        ? `<button class="btn-secondary btn-icon" onclick="setTotpRequired(${userId}, '${usernameCell}', false)" title="Remove Authenticator requirement" style="color:#92400e;"><i class="fas fa-lock-open"></i></button>`
+                        : `<button class="btn-secondary btn-icon" onclick="setTotpRequired(${userId}, '${usernameCell}', true)"  title="Require Authenticator for this user"><i class="fas fa-lock"></i></button>`)
+                    : '';
+
+                row.innerHTML = `
+                    <td class="text-gray-700">${index + 1}</td>
+                    <td class="font-semibold text-blue-700">${usernameCell}</td>
+                    <td class="font-semibold text-purple-700">${roleCell}</td>
+                    <td class="text-gray-700">${fullNameCell}</td>
+                    <td class="text-gray-700">${emailCell}</td>
+                    <td class="text-gray-700">${mobileCell}</td>
+                    <td>${totpBadge}</td>
+                    <td>
+                        <button class="btn-secondary btn-icon" onclick="editUser(${userId})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${totpEnforceBtn}
+                        ${totpResetBtn}
+                        <button class="btn-danger btn-icon" onclick="deleteUser(${userId})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function addUser() {
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const userUsername = document.getElementById('user-username').value;
+            const userPassword = document.getElementById('user-password').value;
+            const userRole = document.getElementById('user-role').value;
+            const userFullname = document.getElementById('user-fullname').value;
+            const userEmail = document.getElementById('user-email').value;
+            const userMobile = document.getElementById('user-mobile').value;
+            
+            if (!userUsername || !userPassword || !userRole) {
+                showMessage('Please fill in all required fields', 'error');
+                return;
+            }
+            if (!userEmail || !userEmail.includes('@')) {
+                showMessage('A valid email address is required', 'error');
+                return;
+            }
+            
+            const userData = {
+                username: userUsername,
+                password: userPassword,
+                role: userRole,
+                full_name: userFullname,
+                email: userEmail,
+                mobile: userMobile
+            };
+            
+            // Show loading indicator
+            showLoading();
+            
+            fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to add user');
+                }
+            })
+            .then(data => {
+                // Hide loading indicator
+                hideLoading();
+                
+                showMessage('User added successfully!', 'success');
+                document.getElementById('user-form').reset();
+                loadUsers();
+            })
+            .catch(error => {
+                // Hide loading indicator
+                hideLoading();
+                
+                console.error('Error adding user:', error);
+                showMessage('Failed to add user', 'error');
+            });
+        }
+        
+        function editUser(userId) {
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            showLoading();
+            
+            fetch(`/api/admin/users/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || err.error || 'Failed to fetch user');
+                    }).catch(() => {
+                        throw new Error('Failed to fetch user (HTTP ' + response.status + ')');
+                    });
+                }
+                return response.json();
+            })
+            .then(user => {
+                hideLoading();
+                
+                // Populate form with user data
+                document.getElementById('user-username').value = user.username || '';
+                document.getElementById('user-password').value = '';
+                document.getElementById('user-password').placeholder = 'Leave blank to keep current password';
+                _applyRoleDropdownRestrictions(currentUser ? currentUser.role : 'Admin');
+                // Only set the existing role if it's an allowed option for this editor
+                const editRoleSel = document.getElementById('user-role');
+                const targetRole  = user.role || 'Cashier';
+                const myLevel     = ROLE_LEVEL[currentUser ? currentUser.role : 'Admin'] || 0;
+                const targetLevel = ROLE_LEVEL[targetRole] || 0;
+                editRoleSel.value = (targetLevel <= myLevel) ? targetRole : 'Cashier';
+                document.getElementById('user-fullname').value = user.full_name || '';
+                document.getElementById('user-email').value = user.email || '';
+                document.getElementById('user-mobile').value = user.mobile || '';
+                
+                // Switch to edit mode
+                document.getElementById('add-user-btn').style.display = 'none';
+                document.getElementById('save-user-btn').style.display = 'inline-block';
+                document.getElementById('save-user-btn').onclick = function() { saveUser(userId); };
+                document.getElementById('cancel-user-edit-btn').style.display = 'inline-block';
+                document.getElementById('user-form').scrollIntoView({ behavior: 'smooth' });
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error fetching user:', error);
+                showMessage('Failed to load user details', 'error');
+            });
+        }
+        
+        async function setTotpRequired(userId, username, required) {
+            const action = required ? 'Require' : 'Remove requirement for';
+            if (!confirm(`${action} Google Authenticator for "${username}"?`)) return;
+            const token   = localStorage.getItem('pos_token');
+            if (!token) { window.location.href = 'login.html'; return; }
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            try {
+                const res  = await fetch(`${apiBase}/api/admin/users/${userId}/totp-required`, {
+                    method:  'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ required })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage(data.message || 'Updated.', 'success');
+                    loadUsers();
+                } else {
+                    showMessage(data.message || 'Update failed.', 'error');
+                }
+            } catch(e) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        }
+
+        async function resetUserTOTP(userId, username) {
+            if (!confirm(`Disable Google Authenticator for "${username}"?\n\nOnly do this if the user has lost access to their phone.`)) return;
+            const token = localStorage.getItem('pos_token');
+            if (!token) { window.location.href = 'login.html'; return; }
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            try {
+                const res  = await fetch(`${apiBase}/api/totp/admin-reset/${userId}`, {
+                    method:  'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage(data.message || 'TOTP reset successfully.', 'success');
+                    loadUsers();
+                } else {
+                    showMessage(data.message || 'Reset failed.', 'error');
+                }
+            } catch(e) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        }
+
+        let _deleteTargetId = null;
+
+        function deleteUser(userId) {
+            const token = localStorage.getItem('pos_token');
+            if (!token) { window.location.href = 'login.html'; return; }
+
+            showLoading();
+
+            fetch(`/api/admin/users/${userId}/delete-preview`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoading();
+
+                if (data.is_last_admin) {
+                    showMessage('Cannot delete the last Admin account.', 'error');
+                    return;
+                }
+
+                // Populate modal
+                _deleteTargetId = userId;
+                document.getElementById('dm-title').textContent = `Delete "${data.full_name || data.username}"`;
+                document.getElementById('dm-sub').textContent =
+                    `Role: ${data.role} · Username: ${data.username}`;
+
+                const setCount = (id, n) => {
+                    const el = document.getElementById(id);
+                    el.textContent = n;
+                    el.className = 'badge' + (n === 0 ? ' zero' : '');
+                };
+                setCount('dm-invoices',  data.linked.invoices);
+                setCount('dm-purchases', data.linked.purchases);
+                setCount('dm-returns',   data.linked.returns);
+
+                const hasLinked = data.linked.invoices + data.linked.purchases + data.linked.returns > 0;
+                document.getElementById('dm-note').innerHTML = hasLinked
+                    ? 'Linked records will be <strong>preserved</strong> but their "created by" reference will be cleared. All sessions and permissions are permanently deleted.'
+                    : 'This user has no linked records. The account and all associated data will be permanently deleted.';
+
+                document.getElementById('dm-confirm-btn').disabled = false;
+                document.getElementById('delete-modal-backdrop').style.display = 'flex';
+            })
+            .catch(() => {
+                hideLoading();
+                showMessage('Could not load user details. Please try again.', 'error');
+            });
+        }
+
+        function closeDeleteModal(e) {
+            if (e && e.target !== document.getElementById('delete-modal-backdrop')) return;
+            document.getElementById('delete-modal-backdrop').style.display = 'none';
+            _deleteTargetId = null;
+        }
+
+        function confirmDeleteUser() {
+            if (!_deleteTargetId) return;
+            const token = localStorage.getItem('pos_token');
+            if (!token) { window.location.href = 'login.html'; return; }
+
+            const btn = document.getElementById('dm-confirm-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
+
+            fetch(`/api/admin/users/${_deleteTargetId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                document.getElementById('delete-modal-backdrop').style.display = 'none';
+                _deleteTargetId = null;
+                if (ok) {
+                    showMessage('User deleted successfully.', 'success');
+                    loadUsers();
+                } else {
+                    showMessage(data.message || 'Failed to delete user.', 'error');
+                }
+            })
+            .catch(() => {
+                document.getElementById('delete-modal-backdrop').style.display = 'none';
+                showMessage('Network error. Please try again.', 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash"></i> Delete User';
+            });
+        }
+        
+        function saveUser(userId) {
+            const token = localStorage.getItem('pos_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const userUsername = document.getElementById('user-username').value;
+            const userPassword = document.getElementById('user-password').value;
+            const userRole = document.getElementById('user-role').value;
+            const userFullname = document.getElementById('user-fullname').value;
+            const userEmail = document.getElementById('user-email').value;
+            const userMobile = document.getElementById('user-mobile').value;
+            
+            if (!userUsername || !userRole) {
+                showMessage('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            const userData = {
+                username: userUsername,
+                role: userRole,
+                full_name: userFullname,
+                email: userEmail,
+                mobile: userMobile
+            };
+            
+            // Only include password if it's not empty
+            if (userPassword) {
+                userData.password = userPassword;
+            }
+            
+            // Show loading indicator
+            showLoading();
+            
+            fetch(`/api/admin/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to update user');
+                }
+            })
+            .then(data => {
+                // Hide loading indicator
+                hideLoading();
+                
+                showMessage('User updated successfully!', 'success');
+                cancelEditUser();
+                loadUsers();
+            })
+            .catch(error => {
+                // Hide loading indicator
+                hideLoading();
+                
+                console.error('Error updating user:', error);
+                showMessage('Failed to update user', 'error');
+            });
+        }
+        
+        function cancelEditUser() {
+            document.getElementById('user-form').reset();
+            document.getElementById('user-password').placeholder = 'Password';
+            document.getElementById('add-user-btn').style.display = 'inline-block';
+            document.getElementById('save-user-btn').style.display = 'none';
+            document.getElementById('save-user-btn').onclick = null;
+            document.getElementById('cancel-user-edit-btn').style.display = 'none';
+        }
+        
+        // Navigation component script
+        // Role hierarchy level
+        const ROLE_LEVEL = { 'Cashier': 1, 'Manager': 2, 'Admin': 3, 'Super Admin': 4 };
+
+        // Restrict role <select> options so a user cannot assign a role >= their own
+        // (Super Admin is the only one who can create another Super Admin)
+        function _applyRoleDropdownRestrictions(myRole) {
+            const myLevel = ROLE_LEVEL[myRole] || 0;
+            const sel  = document.getElementById('user-role');
+            const hint = document.getElementById('user-role-hint');
+            if (!sel) return;
+
+            Array.from(sel.options).forEach(opt => {
+                const optLevel = ROLE_LEVEL[opt.value] || 0;
+                // Each role can assign up to their own level (Super Admin can assign Super Admin)
+                const allowed = optLevel <= myLevel;
+                opt.disabled = !allowed;
+                opt.style.display = allowed ? '' : 'none';
+            });
+
+            // Default to Cashier (always safe)
+            sel.value = 'Cashier';
+
+            // Show hint
+            if (hint) {
+                const hints = {
+                    'Super Admin': 'You can assign any role including Super Admin.',
+                    'Admin':       'You can assign Cashier, Manager or Admin roles.',
+                    'Manager':     'You can only assign the Cashier role.',
+                };
+                hint.textContent = hints[myRole] || '';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.getElementById('delete-modal-backdrop').style.display = 'none';
+                _deleteTargetId = null;
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile Menu Toggle Logic
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleMenu);
+            }
+            
+            // Set up logout button
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('pos_token');
+                    window.location.href = 'login.html';
+                });
+            }
+            
+            // Update username display
+            const user = getCurrentUser();
+            if (user) {
+                if (usernameSpan) {
+                    usernameSpan.textContent = user.username;
+                }
+
+                // Store current user
+                currentUser = user;
+
+                // Restrict role dropdown options based on current user's role
+                _applyRoleDropdownRestrictions(user.role);
+            }
+
+            // Set up event listeners for forms and buttons
+            const addUserBtn = document.getElementById('add-user-btn');
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', addUser);
+            }
+            
+            const cancelEditUserBtn = document.getElementById('cancel-user-edit-btn');
+            if (cancelEditUserBtn) {
+                cancelEditUserBtn.addEventListener('click', cancelEditUser);
+            }
+            
+            // Load initial data
+            loadUsers();
+
+            // Initialize TOTP section
+            initTotpSection();
+        });
+        
+        // ============================================================
+        // TOTP / AUTHENTICATOR APP
+        // ============================================================
+        let _totpPendingSecret = null;
+
+        function initTotpSection() {
+            const token = localStorage.getItem('pos_token');
+            if (!token) return;
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            fetch(apiBase + '/api/totp/status', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(r => r.json())
+            .then(data => { _setTotpView(data.totp_enabled); })
+            .catch(() => { _setTotpView(false); });
+        }
+
+        function _setTotpView(enabled) {
+            document.getElementById('totp-enabled-view').style.display  = enabled ? 'block' : 'none';
+            document.getElementById('totp-disabled-view').style.display = enabled ? 'none'  : 'block';
+            document.getElementById('totp-setup-panel').style.display   = 'none';
+            document.getElementById('totp-disable-panel').style.display = 'none';
+        }
+
+        function startTotpSetup() {
+            const token = localStorage.getItem('pos_token');
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            const btn = document.getElementById('totp-setup-btn');
+            btn.textContent = 'Loading…';
+            btn.disabled = true;
+            fetch(apiBase + '/api/totp/setup', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Setup failed');
+                return r.json();
+            })
+            .then(data => {
+                _totpPendingSecret = data.secret;
+                document.getElementById('totp-qr-img').src = data.qr_code;
+                document.getElementById('totp-secret-display').textContent = data.secret;
+                document.getElementById('totp-confirm-code').value = '';
+                document.getElementById('totp-setup-msg').textContent = '';
+                document.getElementById('totp-setup-panel').style.display = 'block';
+                btn.textContent = 'Set Up Authenticator App';
+                btn.disabled = false;
+            })
+            .catch(() => {
+                btn.textContent = 'Set Up Authenticator App';
+                btn.disabled = false;
+                alert('Could not load QR code. Please try again.');
+            });
+        }
+
+        function confirmTotpSetup() {
+            const code = document.getElementById('totp-confirm-code').value.trim();
+            if (!/^\d{6}$/.test(code)) {
+                document.getElementById('totp-setup-msg').textContent = 'Enter a 6-digit code.';
+                document.getElementById('totp-setup-msg').style.color = '#ef4444';
+                return;
+            }
+            const token = localStorage.getItem('pos_token');
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            const btn = document.getElementById('totp-confirm-btn');
+            btn.textContent = 'Verifying…';
+            btn.disabled = true;
+            fetch(apiBase + '/api/totp/enable', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                btn.textContent = 'Activate';
+                btn.disabled = false;
+                if (ok) {
+                    document.getElementById('totp-setup-msg').textContent = '✓ Authenticator app enabled!';
+                    document.getElementById('totp-setup-msg').style.color = '#10b981';
+                    setTimeout(() => _setTotpView(true), 1200);
+                } else {
+                    document.getElementById('totp-setup-msg').textContent = data.message || 'Invalid code. Try again.';
+                    document.getElementById('totp-setup-msg').style.color = '#ef4444';
+                }
+            })
+            .catch(() => {
+                btn.textContent = 'Activate';
+                btn.disabled = false;
+                document.getElementById('totp-setup-msg').textContent = 'Request failed. Try again.';
+                document.getElementById('totp-setup-msg').style.color = '#ef4444';
+            });
+        }
+
+        function showTotpDisable() {
+            document.getElementById('totp-disable-pw').value = '';
+            document.getElementById('totp-disable-msg').textContent = '';
+            document.getElementById('totp-disable-panel').style.display = 'block';
+        }
+
+        function cancelTotpDisable() {
+            document.getElementById('totp-disable-panel').style.display = 'none';
+        }
+
+        function confirmTotpDisable() {
+            const pw = document.getElementById('totp-disable-pw').value;
+            if (!pw) {
+                document.getElementById('totp-disable-msg').textContent = 'Enter your password.';
+                document.getElementById('totp-disable-msg').style.color = '#ef4444';
+                return;
+            }
+            const token = localStorage.getItem('pos_token');
+            const apiBase = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            const btn = document.getElementById('totp-disable-btn');
+            btn.textContent = 'Disabling…';
+            btn.disabled = true;
+            fetch(apiBase + '/api/totp/disable', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pw })
+            })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                btn.textContent = 'Disable';
+                btn.disabled = false;
+                if (ok) {
+                    document.getElementById('totp-disable-msg').textContent = '✓ Authenticator app disabled.';
+                    document.getElementById('totp-disable-msg').style.color = '#10b981';
+                    setTimeout(() => _setTotpView(false), 1200);
+                } else {
+                    document.getElementById('totp-disable-msg').textContent = data.message || 'Incorrect password.';
+                    document.getElementById('totp-disable-msg').style.color = '#ef4444';
+                }
+            })
+            .catch(() => {
+                btn.textContent = 'Disable';
+                btn.disabled = false;
+                document.getElementById('totp-disable-msg').textContent = 'Request failed. Try again.';
+                document.getElementById('totp-disable-msg').style.color = '#ef4444';
+            });
+        }
+
+        // Add loading overlay functions if they don't exist
+        if (typeof showLoading !== 'function') {
+            function showLoading() {
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.remove('hidden');
+                }
+            }
+        }
+        
+        if (typeof hideLoading !== 'function') {
+            function hideLoading() {
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.add('hidden');
+                }
+            }
+        }
+    </script>
+
+        <!-- Footer Container -->
+            <div id="footer-container"></div>
+    </div>
+</div>
+</body>
+</html>

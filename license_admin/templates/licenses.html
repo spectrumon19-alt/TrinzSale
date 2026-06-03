@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+
+{% block title %}All Licenses{% endblock %}
+{% block page_title %}All Licenses{% endblock %}
+{% block page_sub %}{{ licenses|length }} license{{ 's' if licenses|length != 1 }} shown{% endblock %}
+
+{% block header_actions %}
+<button onclick="openShipModal()" class="btn-secondary mr-1">
+    <i class="fas fa-paper-plane mr-2 text-indigo-500"></i> Generate &amp; Ship
+</button>
+<button onclick="openIssueModal()" class="btn-primary">
+    <i class="fas fa-plus mr-2"></i> Issue License
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Filter bar ─────────────────────────────────────────────────────────────── -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-5">
+
+    <!-- Status tabs -->
+    <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 flex-wrap">
+        {% for slug, label, count in [
+            ('all',      'All',      stats.total),
+            ('active',   'Active',   stats.active),
+            ('expiring', 'Expiring', stats.expiring),
+            ('expired',  'Expired',  stats.expired),
+            ('revoked',  'Revoked',  0),
+        ] %}
+        <a href="{{ url_for('pages.licenses', status=slug, q=search) }}"
+           class="tab-btn {% if status_filter == slug %}tab-btn-active{% endif %}">
+            {{ label }}
+            <span class="tab-count">{{ count }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Search -->
+    <form method="GET" action="{{ url_for('pages.licenses') }}" class="flex items-center gap-2 ml-auto">
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        <div class="relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            <input type="text" name="q" value="{{ search }}"
+                   placeholder="Search customer, email, serial…"
+                   class="pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64 transition">
+        </div>
+        <button type="submit" class="btn-secondary px-4 py-2 text-sm">Search</button>
+        {% if search %}
+        <a href="{{ url_for('pages.licenses', status=status_filter) }}" class="text-xs text-slate-400 hover:text-slate-600 transition-colors">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- ── Table ──────────────────────────────────────────────────────────────────── -->
+<div class="card">
+    {% if licenses %}
+    <div class="overflow-x-auto">
+        <table class="data-table" id="lic-table">
+            <thead>
+                <tr>
+                    <th>Serial</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Issued</th>
+                    <th>Expiry</th>
+                    <th>Status</th>
+                    <th>HW</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lic in licenses %}
+                <tr id="row-{{ lic.serial }}">
+                    <td><span class="font-mono text-xs text-indigo-600 font-semibold">{{ lic.serial }}</span></td>
+                    <td>
+                        <div class="font-semibold text-sm text-slate-800">{{ lic.customer }}</div>
+                        <div class="text-xs text-slate-400">{{ lic.email }}</div>
+                    </td>
+                    <td><span class="type-badge">{{ lic.license_type }}</span></td>
+                    <td class="text-xs text-slate-500">{{ lic.issued_at[:10] }}</td>
+                    <td>
+                        <div class="text-sm {% if lic.days_remaining <= 30 and lic.status != 'expired' and lic.status != 'revoked' %}text-amber-600 font-semibold{% endif %}">
+                            {{ lic.expiry_date[:10] }}
+                        </div>
+                        {% if lic.status in ('active','expiring') %}
+                        <div class="text-xs text-slate-400">{{ lic.days_remaining }}d left</div>
+                        {% endif %}
+                    </td>
+                    <td>{% include "_status_badge.html" %}</td>
+                    <td>
+                        {% if lic.hardware_binding %}
+                        <span class="text-xs text-indigo-500 font-medium"><i class="fas fa-microchip mr-0.5"></i>Yes</span>
+                        {% else %}
+                        <span class="text-xs text-slate-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <button onclick="openShipModal('{{ lic.serial }}','{{ lic.customer|replace("'","\\'") }}','{{ lic.email }}')"
+                                    class="action-btn text-emerald-500 hover:bg-emerald-50" title="Generate & ship to customer">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                            <button onclick="viewKey('{{ lic.serial }}')"
+                                    class="action-btn text-indigo-500 hover:bg-indigo-50" title="View license key">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            {% if lic.status not in ('revoked','expired') %}
+                            <button onclick="confirmRevoke('{{ lic.serial }}', '{{ lic.customer|replace("'", "\\'") }}')"
+                                    class="action-btn text-red-400 hover:bg-red-50" title="Revoke license">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                            {% else %}
+                            <span class="action-btn opacity-30 cursor-default"><i class="fas fa-ban"></i></span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-search text-3xl text-slate-300 mb-3"></i>
+        {% if search %}
+        <p class="font-semibold text-slate-500">No results for "{{ search }}"</p>
+        <a href="{{ url_for('pages.licenses', status=status_filter) }}" class="text-sm text-indigo-600 hover:underline mt-2 block">Clear search</a>
+        {% else %}
+        <p class="font-semibold text-slate-500">No {{ status_filter if status_filter != 'all' else '' }} licenses found</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── Revoke confirmation modal ─────────────────────────────────────────────── -->
+<div id="revoke-modal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-ban text-red-600"></i>
+            </div>
+            <div>
+                <div class="font-bold text-slate-800">Revoke License?</div>
+                <div class="text-xs text-slate-500 mt-0.5" id="revoke-sub">This action cannot be undone.</div>
+            </div>
+        </div>
+        <div>
+            <label class="field-label">Reason <span class="text-slate-400 font-normal">(optional)</span></label>
+            <input id="revoke-reason" type="text" class="field-input" placeholder="e.g. Non-payment, duplicate key…">
+        </div>
+        <div class="flex gap-3 pt-1">
+            <button onclick="doRevoke()" id="revoke-confirm-btn"
+                    class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl transition-colors">
+                <i class="fas fa-ban mr-2"></i> Revoke
+            </button>
+            <button onclick="closeRevokeModal()" class="btn-secondary px-5">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Generate & Ship Modal ──────────────────────────────────────────────────── -->
+<div id="ship-modal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
+          <i class="fas fa-paper-plane text-emerald-600 text-sm"></i>
+        </div>
+        <div>
+          <div class="font-bold text-slate-800 text-sm">Generate &amp; Ship Customer Package</div>
+          <div class="text-xs text-slate-400">Compiles source code to protected bytecode and optionally emails it</div>
+        </div>
+      </div>
+      <button onclick="closeShipModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">
+        <i class="fas fa-times text-xs"></i>
+      </button>
+    </div>
+
+    <!-- Form (shown while not building) -->
+    <div id="ship-form-wrap" class="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+
+      <!-- Customer info -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="field-label">Customer Name</label>
+          <input id="sf-customer" type="text" class="field-input" placeholder="Sharma Medical Store">
+        </div>
+        <div>
+          <label class="field-label">License Serial <span class="text-slate-400 font-normal">(optional)</span></label>
+          <input id="sf-serial" type="text" class="field-input font-mono text-xs" placeholder="TDL-2026-0001">
+        </div>
+      </div>
+
+      <!-- Source dir -->
+      <div>
+        <label class="field-label">TrintzPOS Source Directory <span class="text-slate-400 font-normal">(leave blank to use .env default)</span></label>
+        <div class="flex gap-2">
+          <input id="sf-source" type="text" class="field-input font-mono text-xs flex-1"
+                 placeholder="e.g. C:\Users\abhis\OneDrive\Desktop\t\pos\qa\git-main">
+          <button type="button" onclick="browseFolder('sf-source','Select TrintzPOS Source Folder')"
+                  class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-700 transition-all whitespace-nowrap">
+            <i class="fas fa-folder-open text-amber-500"></i> Browse
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Must contain app.py and public.pem. Must NOT contain private.pem.</p>
+      </div>
+
+      <!-- Output dir -->
+      <div>
+        <label class="field-label">Output Directory <span class="text-slate-400 font-normal">(leave blank for auto)</span></label>
+        <div class="flex gap-2">
+          <input id="sf-output" type="text" class="field-input font-mono text-xs flex-1"
+                 placeholder="Auto: DIST_OUTPUT_BASE\CustomerName_YYYY-MM-DD">
+          <button type="button" onclick="browseFolder('sf-output','Select Output Folder')"
+                  class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-700 transition-all whitespace-nowrap">
+            <i class="fas fa-folder-open text-amber-500"></i> Browse
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">The compiled package will be placed in this folder.</p>
+      </div>
+
+      <!-- Delivery options -->
+      <div class="border border-slate-200 rounded-xl overflow-hidden">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+          <div class="text-xs font-bold text-slate-600 uppercase tracking-wide">Delivery Method</div>
+        </div>
+        <div class="p-4 space-y-3">
+
+          <!-- Save to folder -->
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="sf-save" checked
+                   class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+            <div>
+              <div class="text-sm font-semibold text-slate-700">Save to folder</div>
+              <div class="text-xs text-slate-400">Creates the distribution package in the output directory</div>
+            </div>
+          </label>
+
+          <!-- Send by email -->
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="sf-email-chk" onchange="toggleEmailFields()"
+                   class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+            <div>
+              <div class="text-sm font-semibold text-slate-700">Send by email</div>
+              <div class="text-xs text-slate-400">ZIPs the package and sends as email attachment (max 24 MB)</div>
+            </div>
+          </label>
+
+          <!-- Email fields -->
+          <div id="sf-email-fields" class="hidden pl-7 space-y-3 pt-1">
+            <div>
+              <label class="field-label">Customer Email *</label>
+              <input id="sf-email" type="email" class="field-input" placeholder="customer@example.com">
+            </div>
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-xs text-amber-700">
+              <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
+              <span>SMTP must be configured in <code class="bg-amber-100 px-1 rounded">.env</code>
+              (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).
+              <a href="{{ url_for('pages.settings') }}" target="_blank" class="underline font-semibold">Check Settings</a></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Build progress (hidden until build starts) -->
+    <div id="ship-progress" class="hidden flex-1 px-6 py-5 space-y-3 overflow-y-auto">
+      <div class="flex items-center gap-3 mb-4">
+        <div id="ship-progress-icon" class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-spinner fa-spin text-indigo-600"></i>
+        </div>
+        <div>
+          <div class="font-bold text-slate-800 text-sm" id="ship-progress-title">Building distribution...</div>
+          <div class="text-xs text-slate-400" id="ship-progress-sub">Compiling Python source to bytecode</div>
+        </div>
+      </div>
+
+      <!-- Log output -->
+      <div class="bg-slate-900 rounded-xl p-4 font-mono text-xs overflow-y-auto max-h-64" id="ship-log">
+        <div class="text-slate-400">Waiting for build to start...</div>
+      </div>
+
+      <!-- Result summary (shown after build) -->
+      <div id="ship-result" class="hidden space-y-3">
+
+        <!-- Stats row -->
+        <div class="grid grid-cols-3 gap-3" id="ship-stats-row"></div>
+
+        <!-- Email result -->
+        <div id="ship-email-result" class="hidden"></div>
+
+        <!-- Output path -->
+        <div id="ship-output-path" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 break-all"></div>
+
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 border-t border-slate-200 flex items-center gap-3 flex-shrink-0" id="ship-footer">
+      <button onclick="submitShip()" id="ship-submit-btn" class="btn-primary flex-1">
+        <i class="fas fa-rocket mr-2"></i> Build &amp; Ship
+      </button>
+      <button onclick="closeShipModal()" class="btn-secondary px-5">Cancel</button>
+    </div>
+    <div id="ship-done-footer" class="hidden px-6 py-4 border-t border-slate-200 flex gap-3 flex-shrink-0">
+      <button onclick="resetShipModal()" class="btn-secondary flex-1">
+        <i class="fas fa-redo mr-2"></i> Build Another
+      </button>
+      <button onclick="closeShipModal()" class="btn-primary flex-1">Done</button>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _revokeSerial = null;
+
+function confirmRevoke(serial, customer) {
+    _revokeSerial = serial;
+    document.getElementById('revoke-sub').textContent = `Revoke license for ${customer} (${serial})?`;
+    document.getElementById('revoke-reason').value = '';
+    document.getElementById('revoke-modal').classList.replace('hidden','flex');
+    setTimeout(() => document.getElementById('revoke-reason').focus(), 50);
+}
+function closeRevokeModal() {
+    document.getElementById('revoke-modal').classList.replace('flex','hidden');
+    _revokeSerial = null;
+}
+
+async function doRevoke() {
+    if (!_revokeSerial) return;
+    const btn    = document.getElementById('revoke-confirm-btn');
+    const reason = document.getElementById('revoke-reason').value.trim();
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Revoking…';
+    try {
+        const r = await fetch(`/api/revoke/${_revokeSerial}`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({reason})
+        });
+        const d = await r.json();
+        if (d.success) {
+            toast(`License ${_revokeSerial} revoked`, 'success');
+            closeRevokeModal();
+            // Update the row status badge without full reload
+            const row = document.getElementById(`row-${_revokeSerial}`);
+            if (row) {
+                const badgeCell = row.querySelector('td:nth-child(6)');
+                if (badgeCell) badgeCell.innerHTML = '<span class="badge badge-revoked"><i class="fas fa-ban mr-1"></i>Revoked</span>';
+                const actionBtns = row.querySelector('td:last-child div');
+                if (actionBtns) {
+                    const revBtn = actionBtns.querySelector('button:last-child');
+                    if (revBtn) { revBtn.disabled = true; revBtn.classList.add('opacity-30','cursor-default'); }
+                }
+            }
+        } else {
+            toast(d.error || 'Revoke failed', 'error');
+        }
+    } catch(e) {
+        toast('Network error', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-ban mr-2"></i> Revoke';
+    }
+}
+
+function refreshTable() { location.reload(); }
+
+document.getElementById('revoke-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRevokeModal();
+});
+
+// ── Native folder browser ────────────────────────────────────────────────────
+
+async function browseFolder(inputId, title) {
+    const btn = event.currentTarget;
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin text-indigo-500"></i> Opening...';
+
+    try {
+        const current = document.getElementById(inputId).value.trim();
+        const r = await fetch('/api/browse-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, initial: current })
+        });
+        const d = await r.json();
+        if (d.path) {
+            document.getElementById(inputId).value = d.path;
+            document.getElementById(inputId).dispatchEvent(new Event('input'));
+        }
+    } catch (e) {
+        toast('Could not open folder browser: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+// ── Generate & Ship Modal ────────────────────────────────────────────────────
+
+function openShipModal(serial='', customer='', email='') {
+    if (serial)   document.getElementById('sf-serial').value   = serial;
+    if (customer) document.getElementById('sf-customer').value = customer;
+    if (email)    { document.getElementById('sf-email').value = email; document.getElementById('sf-email-chk').checked = true; toggleEmailFields(); }
+    document.getElementById('ship-modal').classList.replace('hidden','flex');
+    setTimeout(() => document.getElementById('sf-customer').focus(), 60);
+}
+
+function closeShipModal() {
+    document.getElementById('ship-modal').classList.replace('flex','hidden');
+    resetShipModal();
+}
+
+function resetShipModal() {
+    document.getElementById('ship-form-wrap').classList.remove('hidden');
+    document.getElementById('ship-progress').classList.add('hidden');
+    document.getElementById('ship-footer').classList.remove('hidden');
+    document.getElementById('ship-done-footer').classList.add('hidden');
+    document.getElementById('ship-result').classList.add('hidden');
+    document.getElementById('sf-customer').value = '';
+    document.getElementById('sf-serial').value   = '';
+    document.getElementById('sf-source').value   = '';
+    document.getElementById('sf-output').value   = '';
+    document.getElementById('sf-email').value    = '';
+    document.getElementById('sf-email-chk').checked = false;
+    document.getElementById('sf-save').checked   = true;
+    toggleEmailFields();
+    const btn = document.getElementById('ship-submit-btn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-rocket mr-2"></i> Build &amp; Ship';
+}
+
+function toggleEmailFields() {
+    const chk    = document.getElementById('sf-email-chk').checked;
+    document.getElementById('sf-email-fields').classList.toggle('hidden', !chk);
+}
+
+function _appendLog(level, msg) {
+    const box  = document.getElementById('ship-log');
+    const line = document.createElement('div');
+    const cls  = level === 'ok'   ? 'text-emerald-400'
+               : level === 'warn' ? 'text-amber-400'
+               : level === 'info' ? 'text-indigo-300'
+               : 'text-red-400';
+    line.className = cls;
+    line.textContent = (level === 'ok' ? '[OK]  ' : level === 'warn' ? '[!]   ' : level === 'info' ? '  >>  ' : '[ERR] ') + msg;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+}
+
+async function submitShip() {
+    const customer   = document.getElementById('sf-customer').value.trim();
+    const serial     = document.getElementById('sf-serial').value.trim();
+    const sourceDir  = document.getElementById('sf-source').value.trim();
+    const outputDir  = document.getElementById('sf-output').value.trim();
+    const sendEmail  = document.getElementById('sf-email-chk').checked;
+    const toEmail    = document.getElementById('sf-email').value.trim();
+    const saveFolder = document.getElementById('sf-save').checked;
+
+    if (!saveFolder && !sendEmail) {
+        toast('Select at least one delivery method.', 'warn'); return;
+    }
+    if (sendEmail && !toEmail) {
+        toast('Enter customer email to send by email.', 'error'); return;
+    }
+
+    // Switch to progress view
+    document.getElementById('ship-form-wrap').classList.add('hidden');
+    document.getElementById('ship-footer').classList.add('hidden');
+    document.getElementById('ship-progress').classList.remove('hidden');
+    document.getElementById('ship-log').innerHTML = '';
+    document.getElementById('ship-progress-title').textContent = 'Building distribution...';
+    document.getElementById('ship-progress-sub').textContent   = 'Compiling Python source to bytecode';
+
+    _appendLog('info', `Customer: ${customer || '(not set)'}`);
+    _appendLog('info', `Source  : ${sourceDir || '(default from .env)'}`);
+    _appendLog('info', `Output  : ${outputDir || '(auto)'}`);
+    if (sendEmail) _appendLog('info', `Email   : ${toEmail}`);
+
+    try {
+        const r = await fetch('/api/build-dist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer_name: customer,
+                serial,
+                source_dir:  sourceDir,
+                output_dir:  outputDir,
+                email:       sendEmail ? toEmail : '',
+            })
+        });
+        const d = await r.json();
+
+        // Replay server log
+        (d.log || []).forEach(e => _appendLog(e.level, e.msg));
+
+        if (!d.success) {
+            document.getElementById('ship-progress-icon').innerHTML = '<i class="fas fa-times-circle text-red-500 text-lg"></i>';
+            document.getElementById('ship-progress-title').textContent = 'Build failed';
+            document.getElementById('ship-progress-sub').textContent   = d.error || 'See log above';
+            _appendLog('err', d.error || 'Unknown error');
+            document.getElementById('ship-done-footer').classList.remove('hidden');
+            return;
+        }
+
+        // Success
+        document.getElementById('ship-progress-icon').innerHTML = '<i class="fas fa-check-circle text-emerald-500 text-lg"></i>';
+        document.getElementById('ship-progress-title').textContent = 'Build complete!';
+        document.getElementById('ship-progress-sub').textContent   = `${d.stats?.files} files · ${d.stats?.size_mb} MB`;
+
+        // Show result panel
+        document.getElementById('ship-result').classList.remove('hidden');
+
+        const statsRow = document.getElementById('ship-stats-row');
+        statsRow.innerHTML = [
+            ['fa-folder', d.stats?.files + ' files', 'text-indigo-600', 'bg-indigo-50'],
+            ['fa-weight-hanging', d.stats?.size_mb + ' MB', 'text-emerald-600', 'bg-emerald-50'],
+            ['fa-shield-alt', 'Source protected', 'text-slate-600', 'bg-slate-50'],
+        ].map(([icon, val, color, bg]) => `
+            <div class="flex items-center gap-2 p-3 ${bg} rounded-xl border border-slate-200">
+                <i class="fas ${icon} ${color} text-sm"></i>
+                <span class="text-sm font-semibold ${color}">${val}</span>
+            </div>`).join('');
+
+        if (d.email) {
+            const emailEl = document.getElementById('ship-email-result');
+            emailEl.classList.remove('hidden');
+            if (d.email.success) {
+                emailEl.innerHTML = `<div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-semibold"><i class="fas fa-envelope-open-text"></i> Email sent to ${toEmail} (${d.zip?.size_mb} MB ZIP)</div>`;
+            } else {
+                emailEl.innerHTML = `<div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700"><i class="fas fa-exclamation-circle"></i> Email failed: ${d.email.error}</div>`;
+            }
+        }
+
+        document.getElementById('ship-output-path').textContent = 'Output: ' + d.output_dir;
+        document.getElementById('ship-done-footer').classList.remove('hidden');
+        toast('Distribution built successfully!', 'success');
+
+    } catch (e) {
+        _appendLog('err', 'Network error: ' + e.message);
+        document.getElementById('ship-progress-icon').innerHTML = '<i class="fas fa-times-circle text-red-500 text-lg"></i>';
+        document.getElementById('ship-progress-title').textContent = 'Connection error';
+        document.getElementById('ship-progress-sub').textContent   = e.message;
+        document.getElementById('ship-done-footer').classList.remove('hidden');
+    }
+}
+
+document.getElementById('ship-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeShipModal();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+*.db
+pos_local.db
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build artifacts
+*.spec
+*.exe
+
+# Logs
+*.log
+
+# Cache
+.cache/
+
+# License — NEVER commit these to source control
+private.pem          # Trintz signing key — keep in secrets vault, never ship
+master.key           # Legacy symmetric key — replaced by RSA; keep if you have old deployments
+license.dat          # Client-side activated license — machine-specific, not source
+issued_licenses.log  # Internal Trintz issuance log — contains customer data
+license_serial.txt   # Auto-incrementing serial counter — internal Trintz use only
+# NOTE: public.pem is intentionally NOT listed here — it is safe to commit and
+#       is required by the Render deployment for license_manager to import cleanly.

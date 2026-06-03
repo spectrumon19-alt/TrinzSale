@@ -1,0 +1,1146 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Pre-render auth guard: runs before body paints, eliminates flash-to-blank -->
+    <script>
+        (function() {
+            function bail(url) {
+                document.documentElement.style.display = 'none';
+                window.location.replace(url);
+            }
+            try {
+                var t = localStorage.getItem('pos_token');
+                if (!t) return bail('login.html');
+                var p = JSON.parse(atob(t.split('.')[1]));
+                if (p.exp < Date.now() / 1000) {
+                    localStorage.removeItem('pos_token');
+                    return bail('login.html');
+                }
+                if (!['Admin', 'Super Admin', 'Manager'].includes(p.role)) return bail('noAccess.html');
+                // Token valid — restore visibility in case a previous redirect was aborted
+                document.documentElement.style.display = '';
+            } catch(e) {
+                bail('login.html');
+            }
+        })();
+    </script>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - TrintzPOS POS</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        #overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;opacity:0;transition:opacity 0.3s; }
+        .main-col { display:flex;flex-direction:column;min-width:0;flex:1 1 0%; }
+        @media (min-width:768px) { .main-col { margin-left:220px; } }
+        @media (min-width:768px) { .main-col.sidebar-hidden { margin-left:0; } }
+        main { flex:1; }
+
+        /* ── Admin page shell ──────────────────────── */
+        .admin-shell { padding:1rem;display:flex;flex-direction:column;gap:1.25rem; }
+        .admin-page-title { font-size:1rem;font-weight:700;color:var(--text-base); }
+        .admin-page-sub   { font-size:0.78rem;color:var(--text-muted);margin-top:2px; }
+
+        .admin-section { display:flex;flex-direction:column;gap:0.625rem; }
+        .admin-section-label {
+            font-size:0.62rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:0.07em;color:var(--text-subtle);
+            padding-bottom:0.35rem;border-bottom:1px solid var(--surface-border);
+        }
+
+        .tile-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:0.625rem; }
+
+        .admin-tile {
+            display:flex;align-items:center;gap:0.75rem;
+            padding:0.75rem 0.875rem;
+            background:var(--surface-alt);border:1px solid var(--surface-border);
+            border-radius:10px;text-decoration:none;cursor:pointer;
+            transition:border-color 0.15s,box-shadow 0.15s,transform 0.12s;
+        }
+        .admin-tile:hover { border-color:#6366f1;box-shadow:0 2px 10px rgba(99,102,241,0.13);transform:translateY(-1px); }
+        .tile-icon {
+            width:34px;height:34px;border-radius:8px;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;font-size:0.9rem;
+        }
+        .tile-icon.blue   { background:rgba(59,130,246,.12);color:#3b82f6; }
+        .tile-icon.green  { background:rgba(16,185,129,.12);color:#10b981; }
+        .tile-icon.purple { background:rgba(139,92,246,.12);color:#8b5cf6; }
+        .tile-icon.amber  { background:rgba(245,158,11,.12);color:#f59e0b; }
+        .tile-icon.orange { background:rgba(249,115,22,.12);color:#f97316; }
+        .tile-icon.indigo { background:rgba(99,102,241,.12);color:#6366f1; }
+        .tile-icon.teal   { background:rgba(20,184,166,.12);color:#14b8a6; }
+        .tile-icon.red    { background:rgba(239,68,68,.12); color:#ef4444; }
+        .tile-icon.cyan   { background:rgba(6,182,212,.12); color:#06b6d4; }
+        .tile-icon.rose   { background:rgba(236,72,153,.12);color:#ec4899; }
+        .tile-body { min-width:0; }
+        .tile-title { font-size:0.8rem;font-weight:700;color:var(--text-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .tile-desc  { font-size:0.67rem;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
+        .stats-bar {
+            display:grid;grid-template-columns:repeat(3,1fr);gap:0.625rem;
+            padding:0.875rem;border-radius:10px;
+            background:var(--surface-alt);border:1px solid var(--surface-border);
+        }
+        .stat-item { text-align:center; }
+        .stat-val  { font-size:1.5rem;font-weight:800;line-height:1; }
+        .stat-lbl  { font-size:0.7rem;color:var(--text-muted);margin-top:3px; }
+        .stat-item:nth-child(1) .stat-val { color:#3b82f6; }
+        .stat-item:nth-child(2) .stat-val { color:#10b981; }
+        .stat-item:nth-child(3) .stat-val { color:#8b5cf6; }
+
+        /* ── Inline panels ─────────────────────────── */
+        .admin-inline-panel { border-radius:12px;border:1px solid var(--surface-border);box-shadow:0 8px 32px rgba(0,0,0,0.12);overflow:hidden; }
+        .panel-hd { display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:linear-gradient(135deg,#4f46e5,#2563eb); }
+        .panel-hd-left { display:flex;align-items:center;gap:0.625rem; }
+        .panel-hd-icon { width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.9rem; }
+        .panel-hd-title { font-size:0.875rem;font-weight:700;color:#fff; }
+        .panel-hd-sub   { font-size:0.7rem;color:#c7d2fe;margin-top:1px; }
+        .panel-close-btn { background:rgba(255,255,255,0.15);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:0.3rem 0.65rem;font-size:1.1rem;line-height:1;transition:background 0.15s; }
+        .panel-close-btn:hover { background:rgba(255,255,255,0.28); }
+
+        /* ── Store settings form ───────────────────── */
+        .ss-panel-body { padding:1.25rem;background:var(--surface);display:grid;grid-template-columns:1fr 1fr;gap:1.25rem; }
+        @media(max-width:640px){ .ss-panel-body{grid-template-columns:1fr;} }
+        .ss-group-title { font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.625rem;padding-bottom:0.35rem;border-bottom:1px solid var(--surface-border); }
+        .ss-fields { display:flex;flex-direction:column;gap:0.625rem; }
+        .ss-field label { display:block;font-size:0.72rem;font-weight:600;color:var(--text-muted);margin-bottom:0.2rem; }
+        .ss-field input { width:100%;padding:0.48rem 0.65rem;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:7px;font-size:0.82rem;color:var(--text-base);outline:none;transition:border-color 0.15s; }
+        .ss-field input:focus { border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
+        .ss-field .hint { font-size:0.65rem;color:var(--text-subtle);margin-top:2px; }
+        .ss-save-btn { margin-top:0.5rem;padding:0.48rem 1.1rem;background:#6366f1;color:#fff;font-weight:700;font-size:0.82rem;border:none;border-radius:7px;cursor:pointer;transition:background 0.15s; }
+        .ss-save-btn:hover { background:#4f46e5; }
+        .ss-save-btn:disabled { background:#a5b4fc;cursor:not-allowed; }
+        #ss-upi-preview-wrap { display:none;align-items:center;gap:0.75rem;margin-top:0.5rem;padding:0.625rem;background:var(--surface-alt);border:1px solid #bfdbfe;border-radius:8px; }
+        #ss-upi-preview-wrap.visible { display:flex; }
+        .ss-qr-info { font-size:0.72rem;color:var(--text-muted);line-height:1.6; }
+        .ss-qr-info strong { color:var(--text-base);display:block;font-size:0.78rem; }
+
+        #admin-toast { position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999;padding:0.6rem 1rem;border-radius:8px;font-size:0.82rem;font-weight:600;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.18); }
+        #admin-toast.success { background:#059669;color:#fff; }
+        #admin-toast.error   { background:#dc2626;color:#fff; }
+
+        /* Keep old perm panel styles (used in existing JS) */
+        
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+    <!-- Mobile Menu Overlay (Click closes menu) -->
+    <div id="overlay"></div> 
+
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+
+            <!-- Nav links injected here by renderSidebarLinks() -->
+
+            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                <p class="text-gray-700 font-medium">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-col flex-1" style="overflow-x:hidden;">
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg transition"
+                            style="color:var(--text-muted);background:transparent;"
+                            onmouseenter="this.style.background='var(--surface-alt)'"
+                            onmouseleave="this.style.background='transparent'">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Admin Panel</p>
+                        <p class="hd-sub" id="live-datetime">Loading…</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-2">
+                    <span class="text-xs font-medium" style="color:var(--text-subtle);">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle-header" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p id="headerUserInfo" data-testid="header-user-info"
+                       class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                        Hi, <span id="nav-username" data-testid="nav-username"
+                                  class="font-bold" style="color:var(--text-base);">Guest</span>
+                    </p>
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main class="md:ml-0">
+                <div class="admin-shell">
+                    <div class="admin-page-header">
+                        <div class="admin-page-title">Admin Panel</div>
+                        <div class="admin-page-sub">Manage products, users, data tools and store configuration</div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="stats-bar">
+                        <div class="stat-item"><div class="stat-val" id="stats-products">—</div><div class="stat-lbl">Products</div></div>
+                        <div class="stat-item"><div class="stat-val" id="stats-suppliers">—</div><div class="stat-lbl">Suppliers</div></div>
+                        <div class="stat-item"><div class="stat-val" id="stats-users">—</div><div class="stat-lbl">Users</div></div>
+                    </div>
+
+                    <!-- Management section -->
+                    <div class="admin-section" data-tile-section>
+                        <div class="admin-section-label">Management</div>
+                        <div class="tile-grid">
+                            <a href="Product Management.html" class="admin-tile" data-min-level="2" data-permission="product-management">
+                                <div class="tile-icon blue"><i class="fas fa-box"></i></div>
+                                <div class="tile-body"><div class="tile-title">Products</div><div class="tile-desc">Add, edit &amp; manage stock</div></div>
+                            </a>
+                            <a href="Supplier Management.html" class="admin-tile" data-min-level="2" data-permission="supplier-management">
+                                <div class="tile-icon green"><i class="fas fa-truck"></i></div>
+                                <div class="tile-body"><div class="tile-title">Suppliers</div><div class="tile-desc">Supplier information &amp; ledger</div></div>
+                            </a>
+                            <a href="User Management.html" class="admin-tile" data-min-level="3" data-permission="user-management">
+                                <div class="tile-icon purple"><i class="fas fa-users"></i></div>
+                                <div class="tile-body"><div class="tile-title">Users</div><div class="tile-desc">Add &amp; manage staff accounts</div></div>
+                            </a>
+                            <a href="Invoice Viewer.html" class="admin-tile" data-min-level="2" data-permission="invoice-viewer">
+                                <div class="tile-icon amber"><i class="fas fa-file-invoice"></i></div>
+                                <div class="tile-body"><div class="tile-title">Invoice Viewer</div><div class="tile-desc">Browse &amp; reprint invoices</div></div>
+                            </a>
+                            <a href="creditManagement.html" class="admin-tile" data-min-level="2" data-permission="credit">
+                                <div class="tile-icon teal"><i class="fas fa-credit-card"></i></div>
+                                <div class="tile-body"><div class="tile-title">Credit Accounts</div><div class="tile-desc">Customer credit &amp; balances</div></div>
+                            </a>
+                            <a href="login-activity.html" class="admin-tile" data-min-level="2" data-permission="login-activity">
+                                <div class="tile-icon orange"><i class="fas fa-sign-in-alt"></i></div>
+                                <div class="tile-body"><div class="tile-title">Login Activity</div><div class="tile-desc">Monitor user logins</div></div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Tools section -->
+                    <div class="admin-section" data-tile-section>
+                        <div class="admin-section-label">Data Tools</div>
+                        <div class="tile-grid">
+                            <a href="Data Upload.html" class="admin-tile" data-min-level="3" data-permission="data-upload">
+                                <div class="tile-icon indigo"><i class="fas fa-upload"></i></div>
+                                <div class="tile-body"><div class="tile-title">Data Upload</div><div class="tile-desc">Bulk import sales &amp; stock</div></div>
+                            </a>
+                            <a href="ocrExcel.html" class="admin-tile" data-min-level="2" data-permission="ocr-excel">
+                                <div class="tile-icon cyan"><i class="fas fa-file-excel"></i></div>
+                                <div class="tile-body"><div class="tile-title">OCR → Excel</div><div class="tile-desc">Convert images to Excel</div></div>
+                            </a>
+                            <a href="qry2db.html" class="admin-tile" data-min-level="3" data-permission="qry2db">
+                                <div class="tile-icon rose"><i class="fas fa-database"></i></div>
+                                <div class="tile-body"><div class="tile-title">Query to DB</div><div class="tile-desc">Run custom SQL queries</div></div>
+                            </a>
+                            <a href="tally-export.html" class="admin-tile" data-min-level="2" data-permission="tally-export">
+                                <div class="tile-icon green"><i class="fas fa-file-export"></i></div>
+                                <div class="tile-body"><div class="tile-title">Tally Export</div><div class="tile-desc">Export vouchers as XML</div></div>
+                            </a>
+                            <a href="backup.html" class="admin-tile" data-min-level="3" data-permission="backup">
+                                <div class="tile-icon indigo"><i class="fas fa-shield-alt"></i></div>
+                                <div class="tile-body"><div class="tile-title">Auto Backup</div><div class="tile-desc">Schedule &amp; manage DB backups</div></div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Configuration section -->
+                    <div class="admin-section" data-tile-section>
+                        <div class="admin-section-label">Configuration</div>
+                        <div class="tile-grid">
+                            <button type="button" class="admin-tile" data-min-level="2" data-permission="store-settings" onclick="showStoreSettings()">
+                                <div class="tile-icon indigo"><i class="fas fa-store"></i></div>
+                                <div class="tile-body"><div class="tile-title">Store Settings</div><div class="tile-desc">Name, UPI, GST &amp; address</div></div>
+                            </button>
+                            <button type="button" class="admin-tile" data-min-level="4" onclick="showPermissionsPanel()">
+                                <div class="tile-icon red"><i class="fas fa-shield-alt"></i></div>
+                                <div class="tile-body"><div class="tile-title">Permissions</div><div class="tile-desc">Control user screen access</div></div>
+                            </button>
+                            <a href="service.html" class="admin-tile" data-min-level="2" data-permission="service">
+                                <div class="tile-icon amber"><i class="fas fa-tools"></i></div>
+                                <div class="tile-body"><div class="tile-title">Service</div><div class="tile-desc">DB health &amp; schema tools</div></div>
+                            </a>
+                            <a href="ai-settings.html" class="admin-tile" data-min-level="3" data-permission="ai-settings">
+                                <div class="tile-icon purple"><i class="fas fa-robot"></i></div>
+                                <div class="tile-body"><div class="tile-title">AI Settings</div><div class="tile-desc">Configure LLM providers &amp; API keys</div></div>
+                            </a>
+                            <a href="license_activation.html" class="admin-tile" data-min-level="3" data-permission="admin">
+                                <div class="tile-icon indigo"><i class="fas fa-key"></i></div>
+                                <div class="tile-body"><div class="tile-title">License</div><div class="tile-desc">View &amp; manage software license</div></div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- ── Store Settings inline panel ──────────────────── -->
+                    <div id="store-settings-panel" class="admin-inline-panel" style="display:none;">
+                        <div class="panel-hd">
+                            <div class="panel-hd-left">
+                                <div class="panel-hd-icon"><i class="fas fa-store"></i></div>
+                                <div>
+                                    <div class="panel-hd-title">Store Settings</div>
+                                    <div class="panel-hd-sub">Business identity &amp; UPI payment configuration</div>
+                                </div>
+                            </div>
+                            <button class="panel-close-btn" onclick="hideStoreSettings()">&times;</button>
+                        </div>
+                        <div class="ss-panel-body">
+                            <!-- Store Identity -->
+                            <div>
+                                <div class="ss-group-title">Store Identity</div>
+                                <div class="ss-fields">
+                                    <div class="ss-field"><label>Store Name</label><input id="ss-store-name" type="text" placeholder="Nandi Agro" maxlength="100"></div>
+                                    <div class="ss-field"><label>Address</label><input id="ss-store-address" type="text" placeholder="Full address" maxlength="250"></div>
+                                    <div class="ss-field"><label>Phone</label><input id="ss-store-phone" type="text" placeholder="10-digit mobile" maxlength="30"></div>
+                                    <div class="ss-field"><label>GSTIN</label><input id="ss-store-gst" type="text" placeholder="29AASFN9214H1ZP" maxlength="20"></div>
+                                    <button class="ss-save-btn" id="ss-save-identity-btn" onclick="ssIdentity()">Save Identity</button>
+                                </div>
+                            </div>
+                            <!-- UPI -->
+                            <div>
+                                <div class="ss-group-title">UPI Payment</div>
+                                <div class="ss-fields">
+                                    <div class="ss-field">
+                                        <label>UPI ID</label>
+                                        <input id="ss-upi-id" type="text" placeholder="yourshop@upi" maxlength="100" oninput="ssRefreshQr()">
+                                        <span class="hint">Leave blank to hide QR at checkout</span>
+                                    </div>
+                                    <div class="ss-field">
+                                        <label>UPI Display Name</label>
+                                        <input id="ss-upi-name" type="text" placeholder="Nandi Agro" maxlength="100" oninput="ssRefreshQr()">
+                                    </div>
+                                    <!-- Live QR preview -->
+                                    <div id="ss-upi-preview-wrap">
+                                        <div id="ss-upi-qrcode"></div>
+                                        <div class="ss-qr-info">
+                                            <strong id="ss-upi-preview-name"></strong>
+                                            <span id="ss-upi-preview-id" style="font-size:0.68rem;word-break:break-all;"></span>
+                                            <span style="color:#10b981;font-size:0.68rem;margin-top:2px;display:block;">✓ Scannable QR ready</span>
+                                        </div>
+                                    </div>
+                                    <button class="ss-save-btn" id="ss-save-upi-btn" onclick="ssUpi()">Save UPI Settings</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Permissions inline panel ─────────────────────── -->
+                    <div id="permissions-panel" class="admin-inline-panel" style="display:none;">
+                        <div class="panel-hd">
+                            <div class="panel-hd-left">
+                                <div class="panel-hd-icon"><i class="fas fa-shield-alt"></i></div>
+                                <div>
+                                    <div class="panel-hd-title">Access Permissions</div>
+                                    <div class="panel-hd-sub">Grant or revoke page access per user</div>
+                                </div>
+                            </div>
+                            <button class="panel-close-btn" onclick="hidePermissionsPanel()">&times;</button>
+                        </div>
+
+                            <!-- Body: split layout -->
+                            <div class="flex bg-white" style="min-height:420px;">
+
+                                <!-- LEFT: User list -->
+                                <div class="flex flex-col border-r border-gray-200" style="width:270px;flex-shrink:0;">
+                                    <div class="p-3 border-b border-gray-100 bg-gray-50">
+                                        <div class="relative">
+                                            <i class="fas fa-search absolute left-3 text-gray-400 text-xs" style="top:50%;transform:translateY(-50%)"></i>
+                                            <input type="text" id="perm-user-search" placeholder="Search users…"
+                                                   oninput="filterPermUsers(this.value)"
+                                                   class="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                                        </div>
+                                    </div>
+                                    <div id="perm-user-list" class="overflow-y-auto flex-1">
+                                        <div class="flex items-center justify-center h-32 text-gray-400 text-xs">Loading users…</div>
+                                    </div>
+                                </div>
+
+                                <!-- RIGHT: Permission grid -->
+                                <div class="flex-1 flex flex-col min-w-0">
+
+                                    <!-- Selected user header -->
+                                    <div id="perm-user-header" class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between" style="display:none;">
+                                        <div class="flex items-center gap-3">
+                                            <div id="perm-user-avatar" class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"></div>
+                                            <div>
+                                                <p id="perm-user-fullname" class="font-semibold text-sm text-gray-800"></p>
+                                                <p id="perm-user-role-text" class="text-xs text-gray-500"></p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="grantAllPermissions()" class="text-xs px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition font-medium">
+                                                <i class="fas fa-check-double mr-1"></i>Grant All
+                                            </button>
+                                            <button onclick="revokeAllPermissions()" class="text-xs px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition font-medium">
+                                                <i class="fas fa-ban mr-1"></i>Revoke All
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Empty state -->
+                                    <div id="perm-empty-state" class="flex-1 flex items-center justify-center text-gray-400">
+                                        <div class="text-center py-12">
+                                            <i class="fas fa-user-lock text-5xl mb-4 text-gray-200"></i>
+                                            <p class="text-sm font-medium text-gray-400">Select a user from the list</p>
+                                            <p class="text-xs text-gray-300 mt-1">to manage their screen access</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Admin full-access notice -->
+                                    <div id="perm-admin-notice" class="flex-1 items-center justify-center text-center py-12" style="display:none;">
+                                        <i class="fas fa-crown text-5xl mb-4 text-yellow-300"></i>
+                                        <p class="text-sm font-semibold text-gray-600">Full Access Role</p>
+                                        <p class="text-xs text-gray-400 mt-1">This role has unrestricted access to all screens.</p>
+                                    </div>
+
+                                    <!-- Permission summary bar (shown above the grid) -->
+                                    <div id="perm-summary-bar" style="display:none;">
+                                        <div class="perm-summary-inner">
+                                            <!-- Top row: counts + progress -->
+                                            <div class="perm-summary-top">
+                                                <div class="perm-sum-stat perm-sum-granted">
+                                                    <i class="fas fa-check-circle"></i>
+                                                    <span id="ps-granted-count">0</span>
+                                                    <span class="perm-sum-label">Active</span>
+                                                </div>
+                                                <div class="perm-sum-progress-wrap">
+                                                    <div class="perm-sum-progress-track">
+                                                        <div id="ps-progress-bar" class="perm-sum-progress-fill"></div>
+                                                    </div>
+                                                    <span id="ps-pct" class="perm-sum-pct">0%</span>
+                                                </div>
+                                                <div class="perm-sum-stat perm-sum-denied">
+                                                    <i class="fas fa-times-circle"></i>
+                                                    <span id="ps-denied-count">0</span>
+                                                    <span class="perm-sum-label">Restricted</span>
+                                                </div>
+                                            </div>
+                                            <!-- Per-category breakdown -->
+                                            <div id="ps-categories" class="perm-sum-cats"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Permission categories -->
+                                    <div id="perm-grid-wrapper" class="flex-1 overflow-y-auto p-4 space-y-4" style="display:none;"></div>
+
+                                    <!-- Save footer -->
+                                    <div id="perm-save-footer" class="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between" style="display:none;">
+                                        <span id="perm-save-status" class="text-sm font-medium"></span>
+                                        <button onclick="savePermissions()" class="px-5 py-2 text-white text-sm font-semibold rounded-lg transition" style="background:linear-gradient(135deg,#4f46e5,#2563eb);">
+                                            <i class="fas fa-save mr-1.5"></i>Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <style>
+                        /* Permission toggle switch */
+                        .perm-toggle { display:inline-flex;align-items:center;cursor:pointer;user-select:none; }
+                        .perm-toggle input { display:none; }
+                        .perm-slider { width:38px;height:20px;background:#d1d5db;border-radius:10px;position:relative;transition:background .2s;flex-shrink:0; }
+                        .perm-slider::after { content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:8px;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.25); }
+                        .perm-toggle input:checked + .perm-slider { background:#4f46e5; }
+                        .perm-toggle input:checked + .perm-slider::after { left:20px; }
+                        /* User card in left panel */
+                        .perm-user-card { display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-left:3px solid transparent;transition:background .15s,border-color .15s,box-shadow .15s; }
+                        .perm-user-card:hover { background:#463e69;border-left-color:#a5b4fc; }
+                        .perm-user-card.active {
+                            background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%);
+                            border-left-color:#3730a3;
+                            box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12), 0 2px 8px rgba(79,70,229,0.25);
+                        }
+                        /* Text inside the active card → white for full contrast */
+                        .perm-user-card.active p { color:#fff !important; }
+                        .perm-user-card.active p .font-normal,
+                        .perm-user-card.active p span { color:rgba(255,255,255,0.78) !important; }
+                        /* Role badge inside active card — slightly translucent white pill */
+                        .perm-user-card.active .perm-role-badge {
+                            background:rgba(255,255,255,0.22) !important;
+                            color:#fff !important;
+                            border:1px solid rgba(255,255,255,0.35);
+                        }
+                        .perm-avatar { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0; }
+                        /* Active avatar — white ring */
+                        .perm-user-card.active .perm-avatar { box-shadow:0 0 0 2px rgba(255,255,255,0.6); }
+                        /* ── Permission Summary Bar ── */
+                        #perm-summary-bar { border-bottom:1px solid #e5e7eb; background:#fafbff; flex-shrink:0; }
+                        .perm-summary-inner { padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+
+                        .perm-summary-top { display:flex; align-items:center; gap:10px; }
+                        .perm-sum-stat { display:flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; white-space:nowrap; }
+                        .perm-sum-granted { color:#059669; }
+                        .perm-sum-denied  { color:#9ca3af; }
+                        .perm-sum-stat i  { font-size:0.82rem; }
+                        .perm-sum-stat span.perm-sum-label { font-weight:500; font-size:0.68rem; color:#6b7280; }
+                        .perm-sum-stat span:not(.perm-sum-label) { font-size:1rem; font-weight:800; }
+
+                        .perm-sum-progress-wrap { flex:1; display:flex; align-items:center; gap:7px; }
+                        .perm-sum-progress-track { flex:1; height:7px; background:#e5e7eb; border-radius:4px; overflow:hidden; }
+                        .perm-sum-progress-fill { height:100%; border-radius:4px; transition:width .4s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,#4f46e5,#10b981); }
+                        .perm-sum-pct { font-size:0.7rem; font-weight:700; color:#6b7280; min-width:30px; text-align:right; }
+
+                        /* Per-category chips row */
+                        .perm-sum-cats { display:flex; flex-wrap:wrap; gap:6px; }
+                        .perm-cat-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 9px 3px 7px;
+                            border-radius:20px; font-size:0.68rem; font-weight:600;
+                            border:1px solid; transition:background .15s; }
+                        .perm-cat-chip-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+                        .perm-cat-chip-name { color:#374151; }
+                        .perm-cat-chip-count { font-weight:700; }
+                        .perm-cat-chip.all-granted  { background:#f0fdf4; border-color:#bbf7d0; }
+                        .perm-cat-chip.all-granted .perm-cat-chip-dot   { background:#10b981; }
+                        .perm-cat-chip.all-granted .perm-cat-chip-count { color:#059669; }
+                        .perm-cat-chip.none-granted { background:#f9fafb; border-color:#e5e7eb; }
+                        .perm-cat-chip.none-granted .perm-cat-chip-dot   { background:#d1d5db; }
+                        .perm-cat-chip.none-granted .perm-cat-chip-count { color:#9ca3af; }
+                        .perm-cat-chip.partial      { background:#eff6ff; border-color:#bfdbfe; }
+                        .perm-cat-chip.partial .perm-cat-chip-dot   { background:#6366f1; }
+                        .perm-cat-chip.partial .perm-cat-chip-count { color:#4f46e5; }
+
+                        /* Category header count badge */
+                        .perm-cat-badge { margin-left:auto; font-size:0.65rem; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef2ff; color:#4f46e5; }
+                        .perm-cat-badge.full   { background:#dcfce7; color:#16a34a; }
+                        .perm-cat-badge.none   { background:#f3f4f6; color:#9ca3af; }
+
+                        /* Toggle row: status label */
+                        .perm-item-status { font-size:0.65rem; font-weight:600; padding:1px 6px; border-radius:6px; margin-right:6px; }
+                        .perm-item-status.on  { background:#dcfce7; color:#15803d; }
+                        .perm-item-status.off { background:#f3f4f6; color:#9ca3af; }
+
+                        /* Category section */
+                        .perm-category { border:1px solid #e5e7eb;border-radius:10px;overflow:hidden; }
+                        .perm-category-head { display:flex;align-items:center;gap:8px;padding:8px 14px;background:#f9fafb;border-bottom:1px solid #e5e7eb; }
+                        .perm-item { display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #f3f4f6;transition:background .15s; }
+                        .perm-item:last-child { border-bottom:none; }
+                        .perm-item:hover { background:#463e69; }
+                        </style>
+
+                    </div><!-- /permissions-panel -->
+
+                </div><!-- /admin-shell -->
+            </main>
+
+           
+        </div>
+    </div>
+
+    <div id="admin-toast"></div>
+
+    <script src="qrcode.min.js"></script>
+    <script src="config.js"></script>
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+        // Check authentication immediately when page starts loading
+        if (!isAuthenticated()) {
+            window.location.href = 'login.html';
+        } else if (!isAdmin()) {
+            // If user is not admin, redirect to no access page
+            window.location.href = 'noAccess.html';
+        }
+
+        // Menu Toggle Functions - Now in sidebar-utils.js
+        // toggleMenu() and closeMenu() are defined in sidebar-utils.js
+
+        // Global variables
+        let currentUser = null;
+        
+        // DOM Elements
+        const logoutBtn = document.getElementById('nav-logout-btn');
+        const usernameSpan = document.getElementById('nav-username');
+        
+        // Function to update DB status in sidebar
+        function updateDBStatus() {
+            const token = localStorage.getItem('pos_token');
+            const authStatusEl = document.getElementById('authStatus');
+            if (!token) {
+                if (authStatusEl) {
+                    authStatusEl.textContent = 'Not Authenticated';
+                    authStatusEl.className = 'text-xs text-red-500';
+                }
+                return;
+            }
+            
+            // Update auth status
+            if (authStatusEl) {
+                authStatusEl.textContent = 'Authenticated';
+                authStatusEl.className = 'text-xs text-green-500';
+            }
+            
+            // Fetch data counts for each entity separately as fallback
+            const apiBaseUrl = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            Promise.all([
+                fetch(apiBaseUrl + '/api/products', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Products fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0),
+                
+                fetch(apiBaseUrl + '/api/suppliers', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Suppliers fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0),
+                
+                fetch(apiBaseUrl + '/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (!response.ok) throw new Error('Users fetch failed');
+                    return response.json();
+                }).then(data => data.length).catch(() => 0)
+            ])
+            .then(([productCount, supplierCount, userCount]) => {
+                const productCountEl = document.getElementById('productCount');
+                const supplierCountEl = document.getElementById('supplierCount');
+                const userCountEl = document.getElementById('userCount');
+                if (productCountEl) productCountEl.textContent = productCount;
+                if (supplierCountEl) supplierCountEl.textContent = supplierCount;
+                if (userCountEl) userCountEl.textContent = userCount;
+                
+                // Update quick stats
+                const statsProducts = document.getElementById('stats-products');
+                const statsSuppliers = document.getElementById('stats-suppliers');
+                const statsUsers = document.getElementById('stats-users');
+                if (statsProducts) statsProducts.textContent = productCount;
+                if (statsSuppliers) statsSuppliers.textContent = supplierCount;
+                if (statsUsers) statsUsers.textContent = userCount;
+            })
+            .catch(error => {
+                console.error('Error fetching data counts:', error);
+                const productCountEl = document.getElementById('productCount');
+                const supplierCountEl = document.getElementById('supplierCount');
+                const userCountEl = document.getElementById('userCount');
+                if (productCountEl) productCountEl.textContent = 'Error';
+                if (supplierCountEl) supplierCountEl.textContent = 'Error';
+                if (userCountEl) userCountEl.textContent = 'Error';
+            });
+        }
+        
+        // Navigation component script
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile Menu Toggle Logic
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', toggleMenu);
+            }
+            
+            // Set up logout button
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('pos_token');
+                    window.location.href = 'login.html';
+                });
+            }
+            
+            // Update username display
+            const user = getCurrentUser();
+            if (user) {
+                if (usernameSpan) {
+                    usernameSpan.textContent = user.username;
+                }
+
+                // Store current user
+                currentUser = user;
+
+                if (user.role === 'Super Admin') {
+                    // Super Admin: ensure cache is set then filter immediately
+                    localStorage.setItem('pos_permissions', JSON.stringify({ _admin: true }));
+                    _filterAdminTiles(user.role);
+                } else {
+                    // Others: hide tiles until fresh permissions arrive, then filter
+                    document.querySelectorAll('[data-tile-section]').forEach(s => s.style.opacity = '0');
+                    const _revealTiles = () => {
+                        document.querySelectorAll('[data-tile-section]').forEach(s => {
+                            s.style.transition = 'opacity 0.15s';
+                            s.style.opacity = '';
+                        });
+                    };
+                    (typeof cacheUserPermissions === 'function' ? cacheUserPermissions() : Promise.resolve())
+                        .then(() => { _filterAdminTiles(user.role); _revealTiles(); })
+                        .catch(() => { _filterAdminTiles(user.role); _revealTiles(); });
+                }
+            }
+
+            // Update DB status
+            updateDBStatus();
+        });
+
+        // Role level map (matches User Management.html)
+        const ADMIN_ROLE_LEVEL = { 'Manager': 2, 'Admin': 3, 'Super Admin': 4 };
+
+        function _filterAdminTiles(role) {
+            const myLevel = ADMIN_ROLE_LEVEL[role] || 3;
+
+            // Read DB permissions from cache (Super Admin has _admin:true so always passes)
+            let perms = {};
+            try {
+                const raw = localStorage.getItem('pos_permissions');
+                if (raw) perms = JSON.parse(raw);
+            } catch (e) {}
+            const isSuperAdmin = perms._admin === true;
+
+            document.querySelectorAll('.admin-tile[data-min-level]').forEach(tile => {
+                const minLevel  = parseInt(tile.getAttribute('data-min-level'), 10) || 1;
+                const permId    = tile.getAttribute('data-permission');
+                const levelOk   = myLevel >= minLevel;
+                const permOk    = isSuperAdmin || !permId || perms[permId] === true;
+                tile.style.display = (levelOk && permOk) ? '' : 'none';
+            });
+
+            // Hide entire section if all its tiles are hidden
+            document.querySelectorAll('[data-tile-section]').forEach(section => {
+                const grid = section.querySelector('.tile-grid');
+                if (!grid) return;
+                const anyVisible = Array.from(grid.querySelectorAll('.admin-tile'))
+                    .some(t => t.style.display !== 'none');
+                section.style.display = anyVisible ? '' : 'none';
+            });
+        }
+        
+        // ── Store Settings ────────────────────────────────────────────────────────
+        function showStoreSettings() {
+            const panel = document.getElementById('store-settings-panel');
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            ssLoad();
+        }
+        function hideStoreSettings() {
+            document.getElementById('store-settings-panel').style.display = 'none';
+        }
+
+        async function ssLoad() {
+            const token = localStorage.getItem('pos_token');
+            try {
+                const res = await fetch('/api/store-settings', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('ss-store-name').value    = d.store_name        || '';
+                document.getElementById('ss-store-address').value = d.store_address     || '';
+                document.getElementById('ss-store-phone').value   = d.store_phone       || '';
+                document.getElementById('ss-store-gst').value     = d.store_gst         || '';
+                document.getElementById('ss-upi-id').value        = d.upi_id            || '';
+                document.getElementById('ss-upi-name').value      = d.upi_display_name  || '';
+                ssRefreshQr();
+            } catch (e) { adminToast('Could not load settings', 'error'); }
+        }
+
+        let _ssQrInst = null;
+        function ssRefreshQr() {
+            const upiId   = document.getElementById('ss-upi-id').value.trim();
+            const upiName = document.getElementById('ss-upi-name').value.trim() || 'Store';
+            const wrap    = document.getElementById('ss-upi-preview-wrap');
+            const qrEl    = document.getElementById('ss-upi-qrcode');
+            if (!upiId) { wrap.classList.remove('visible'); return; }
+            wrap.classList.add('visible');
+            document.getElementById('ss-upi-preview-name').textContent = upiName;
+            document.getElementById('ss-upi-preview-id').textContent   = upiId;
+            qrEl.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrEl, {
+                    text: `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&cu=INR`,
+                    width: 80, height: 80, correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+        }
+
+        async function ssSave(payload, btnId) {
+            const token = localStorage.getItem('pos_token');
+            const btn = document.getElementById(btnId);
+            const orig = btn.textContent;
+            btn.disabled = true; btn.textContent = 'Saving…';
+            try {
+                const res = await fetch('/api/store-settings', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+                localStorage.removeItem('_upi_settings_cache');
+                adminToast('Settings saved successfully', 'success');
+            } catch (e) { adminToast(e.message, 'error'); }
+            btn.disabled = false; btn.textContent = orig;
+        }
+
+        function ssIdentity() {
+            ssSave({
+                store_name:    document.getElementById('ss-store-name').value.trim(),
+                store_address: document.getElementById('ss-store-address').value.trim(),
+                store_phone:   document.getElementById('ss-store-phone').value.trim(),
+                store_gst:     document.getElementById('ss-store-gst').value.trim()
+            }, 'ss-save-identity-btn');
+        }
+        function ssUpi() {
+            ssSave({
+                upi_id:           document.getElementById('ss-upi-id').value.trim(),
+                upi_display_name: document.getElementById('ss-upi-name').value.trim()
+            }, 'ss-save-upi-btn');
+        }
+
+        function adminToast(msg, type) {
+            const el = document.getElementById('admin-toast');
+            el.textContent = msg; el.className = type; el.style.display = 'block';
+            clearTimeout(el._t);
+            el._t = setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        // ── Permissions Management ────────────────────────────────────────────────
+        let permScreens = [];
+        let permUsers   = [];
+        let permUsersAll = [];   // unfiltered copy for search
+        let currentPermUserId  = null;
+        let currentPermissions = {};
+        let currentPermReadOnly = false;
+
+        // Permission categories — controls grouping in the right panel
+        const PERM_CATEGORIES = [
+            { label: 'Core Operations',  icon: 'fa-store',        color: '#2563eb', screens: ['dashboard','sales','returns','purchase','inventory'] },
+            { label: 'Analytics',        icon: 'fa-chart-line',   color: '#7c3aed', screens: ['reports','gst-reports','invoice-viewer'] },
+            { label: 'Customer & Credit',icon: 'fa-credit-card',  color: '#059669', screens: ['credit'] },
+            { label: 'Catalog & Supply', icon: 'fa-boxes',        color: '#d97706', screens: ['supplier-management','product-management'] },
+            { label: 'AI & Tools',       icon: 'fa-robot',        color: '#6366f1', screens: ['ai-chat','ocr-excel','ai-settings'] },
+            { label: 'Administration',   icon: 'fa-cog',          color: '#dc2626', screens: ['admin','service','user-management','data-upload','qry2db','backup','tally-export','login-activity','store-settings'] },
+        ];
+
+        // Role → visual style
+        function roleStyle(role) {
+            const map = {
+                'Admin':       { bg: '#7c3aed', label: 'Admin' },
+                'Super Admin': { bg: '#4f46e5', label: 'Super Admin' },
+                'Manager':     { bg: '#2563eb', label: 'Manager' },
+                'Cashier':     { bg: '#059669', label: 'Cashier' },
+            };
+            return map[role] || { bg: '#6b7280', label: role };
+        }
+
+        function showPermissionsPanel() {
+            const me = getCurrentUser();
+            if (!me || me.role !== 'Super Admin') return;
+            const panel = document.getElementById('permissions-panel');
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            loadPermissionsData();
+        }
+
+        function hidePermissionsPanel() {
+            document.getElementById('permissions-panel').style.display = 'none';
+        }
+
+        function loadPermissionsData() {
+            const token = localStorage.getItem('pos_token');
+            if (!token) return;
+            const apiBaseUrl = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            showLoading();
+
+            Promise.all([
+                fetch(apiBaseUrl + '/api/admin/permissions/screens', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+                fetch(apiBaseUrl + '/api/admin/users',               { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+            ])
+            .then(([screens, users]) => {
+                permScreens  = screens;
+                permUsers    = users;
+                permUsersAll = users;
+                renderUserList(users);
+                hideLoading();
+            })
+            .catch(err => { hideLoading(); console.error('Permissions load error:', err); });
+        }
+
+        function renderUserList(users) {
+            const list = document.getElementById('perm-user-list');
+            if (!users.length) {
+                list.innerHTML = '<div class="text-center py-8 text-xs text-gray-400">No users found</div>';
+                return;
+            }
+            list.innerHTML = '';
+            users.forEach(u => {
+                const rs = roleStyle(u.role);
+                const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const div = document.createElement('div');
+                div.className = 'perm-user-card' + (u.user_id === currentPermUserId ? ' active' : '');
+                div.dataset.userId = u.user_id;
+                div.innerHTML = `
+                    <div class="perm-avatar" style="background:${rs.bg}">${initials}</div>
+                    <div class="flex-1 min-w-0" style="min-width:0;">
+                        <p class="text-xs font-semibold truncate" style="color:#CCC6C6;line-height:1.4;">${u.username}${u.full_name ? ' <span class="font-normal" style="color:#6b7280;">· ' + u.full_name + '</span>' : ''}</p>
+                        <span class="perm-role-badge inline-block text-xs px-2 py-0.5 rounded-full text-white mt-0.5" style="background:${rs.bg};font-size:10px;line-height:1.6;">${rs.label}</span>
+                    </div>`;
+                div.addEventListener('click', () => selectPermUser(u));
+                list.appendChild(div);
+            });
+        }
+
+        function filterPermUsers(q) {
+            const lower = q.toLowerCase();
+            const filtered = permUsersAll.filter(u =>
+                u.username.toLowerCase().includes(lower) ||
+                (u.full_name || '').toLowerCase().includes(lower) ||
+                u.role.toLowerCase().includes(lower)
+            );
+            renderUserList(filtered);
+        }
+
+        function selectPermUser(user) {
+            currentPermUserId = user.user_id;
+
+            // Highlight active card
+            document.querySelectorAll('.perm-user-card').forEach(c => c.classList.remove('active'));
+            const card = document.querySelector(`.perm-user-card[data-user-id="${user.user_id}"]`);
+            if (card) card.classList.add('active');
+
+            // Update header
+            const rs = roleStyle(user.role);
+            const initials = (user.full_name || user.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const avatar = document.getElementById('perm-user-avatar');
+            avatar.textContent = initials;
+            avatar.style.background = rs.bg;
+            document.getElementById('perm-user-fullname').textContent = user.username + (user.full_name ? ' — ' + user.full_name : '');
+            document.getElementById('perm-user-role-text').textContent = rs.label;
+
+            _showSection('header');
+
+            // Super Admin only: read-only full-access grid
+            if (user.role === 'Super Admin') {
+                currentPermReadOnly = true;
+                const allPerms = {};
+                permScreens.forEach(s => { allPerms[s.id] = true; });
+                buildPermGrid(allPerms);
+                return;
+            }
+
+            // All other roles (Cashier, Manager, Admin): load and edit permissions from API
+            currentPermReadOnly = false;
+            const token = localStorage.getItem('pos_token');
+            const apiBaseUrl = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            fetch(apiBaseUrl + `/api/admin/permissions/${user.user_id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(r => r.json())
+                .then(data => buildPermGrid(data.permissions || {}))
+                .catch(() => buildPermGrid({}));
+        }
+
+        function _showSection(which) {
+            const el = id => document.getElementById(id);
+            el('perm-empty-state').style.display    = which === 'empty' ? 'flex'  : 'none';
+            el('perm-admin-notice').style.display   = 'none';
+            el('perm-grid-wrapper').style.display   = which === 'grid'  ? 'block' : 'none';
+            el('perm-summary-bar').style.display    = which === 'grid'  ? 'block' : 'none';
+            el('perm-save-footer').style.display    = (which === 'grid' && !currentPermReadOnly) ? 'flex' : 'none';
+            el('perm-user-header').style.display    = (which !== 'empty') ? 'flex' : 'none';
+        }
+
+        // Rebuild the summary bar from currentPermissions
+        function _refreshPermSummary() {
+            const total   = permScreens.length;
+            const granted = permScreens.filter(s => currentPermissions[s.id] === true).length;
+            const denied  = total - granted;
+            const pct     = total ? Math.round((granted / total) * 100) : 0;
+
+            document.getElementById('ps-granted-count').textContent = granted;
+            document.getElementById('ps-denied-count').textContent  = denied;
+            document.getElementById('ps-pct').textContent           = pct + '%';
+            document.getElementById('ps-progress-bar').style.width  = pct + '%';
+
+            // Per-category chips
+            const catsEl = document.getElementById('ps-categories');
+            catsEl.innerHTML = '';
+            PERM_CATEGORIES.forEach(cat => {
+                const screens  = permScreens.filter(s => cat.screens.includes(s.id));
+                if (!screens.length) return;
+                const catGrant = screens.filter(s => currentPermissions[s.id] === true).length;
+                const catTotal = screens.length;
+                const cls      = catGrant === catTotal ? 'all-granted' : catGrant === 0 ? 'none-granted' : 'partial';
+                const chip     = document.createElement('span');
+                chip.className = 'perm-cat-chip ' + cls;
+                chip.innerHTML = `<span class="perm-cat-chip-dot"></span>
+                    <span class="perm-cat-chip-name">${cat.label}</span>
+                    <span class="perm-cat-chip-count">${catGrant}/${catTotal}</span>`;
+                catsEl.appendChild(chip);
+            });
+
+            // Update category count badges inside the grid
+            document.querySelectorAll('[data-cat-badge]').forEach(badge => {
+                const catId    = badge.getAttribute('data-cat-badge');
+                const cat      = PERM_CATEGORIES.find(c => c.label === catId);
+                if (!cat) return;
+                const screens  = permScreens.filter(s => cat.screens.includes(s.id));
+                const catGrant = screens.filter(s => currentPermissions[s.id] === true).length;
+                const catTotal = screens.length;
+                badge.textContent = catGrant + ' / ' + catTotal;
+                badge.className   = 'perm-cat-badge' +
+                    (catGrant === catTotal ? ' full' : catGrant === 0 ? ' none' : '');
+            });
+
+            // Update per-row status labels
+            document.querySelectorAll('[data-status-for]').forEach(lbl => {
+                const sid = lbl.getAttribute('data-status-for');
+                const on  = currentPermissions[sid] === true;
+                lbl.textContent = on ? 'Active' : 'Off';
+                lbl.className   = 'perm-item-status ' + (on ? 'on' : 'off');
+            });
+        }
+
+        function buildPermGrid(permissions) {
+            currentPermissions = Object.assign({}, permissions);
+            const wrapper = document.getElementById('perm-grid-wrapper');
+            wrapper.innerHTML = '';
+
+            if (currentPermReadOnly) {
+                const banner = document.createElement('div');
+                banner.style.cssText = 'margin:0 0 10px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#1d4ed8;';
+                banner.innerHTML = '<i class="fas fa-lock" style="font-size:11px;"></i><span>Super Admin has unrestricted access to all screens — permissions cannot be modified.</span>';
+                wrapper.appendChild(banner);
+            }
+
+            PERM_CATEGORIES.forEach(cat => {
+                const catScreens = permScreens.filter(s => cat.screens.includes(s.id));
+                if (!catScreens.length) return;
+
+                const section = document.createElement('div');
+                section.className = 'perm-category';
+                section.innerHTML = `
+                    <div class="perm-category-head">
+                        <i class="fas ${cat.icon} text-xs" style="color:${cat.color}"></i>
+                        <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide" style="flex:1;">${cat.label}</span>
+                        <span class="perm-cat-badge" data-cat-badge="${cat.label}">0 / ${catScreens.length}</span>
+                    </div>`;
+
+                catScreens.forEach(screen => {
+                    const hasAccess = currentPermissions[screen.id] === true;
+                    const item = document.createElement('div');
+                    item.className = 'perm-item';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2" style="flex:1;min-width:0;">
+                            <i class="fas ${screen.icon} text-xs" style="color:#9ca3af;width:14px;text-align:center;flex-shrink:0;"></i>
+                            <span class="text-sm text-gray-700" style="flex:1;">${screen.name}</span>
+                            <span class="perm-item-status ${hasAccess ? 'on' : 'off'}" data-status-for="${screen.id}">${hasAccess ? 'Active' : 'Off'}</span>
+                        </div>
+                        <label class="perm-toggle" style="margin-left:10px;${currentPermReadOnly ? 'opacity:0.65;cursor:not-allowed;' : ''}">
+                            <input type="checkbox" data-screen="${screen.id}" ${hasAccess ? 'checked' : ''}
+                                   ${currentPermReadOnly ? 'disabled' : `onchange="onPermToggle('${screen.id}', this.checked)"`}>
+                            <span class="perm-slider"></span>
+                        </label>`;
+                    section.appendChild(item);
+                });
+
+                wrapper.appendChild(section);
+            });
+
+            _showSection('grid');
+            _refreshPermSummary();
+        }
+
+        function onPermToggle(screenId, checked) {
+            currentPermissions[screenId] = checked;
+            _refreshPermSummary();
+        }
+
+        function grantAllPermissions() {
+            if (!currentPermUserId) return;
+            permScreens.forEach(s => { currentPermissions[s.id] = true; });
+            buildPermGrid(currentPermissions);
+        }
+
+        function revokeAllPermissions() {
+            if (!currentPermUserId) return;
+            permScreens.forEach(s => { currentPermissions[s.id] = false; });
+            buildPermGrid(currentPermissions);
+        }
+
+        // Re-fetch permissions and re-filter tiles whenever this tab regains focus.
+        // This handles the case where another admin changed the current user's permissions
+        // in a different tab or browser session.
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState !== 'visible') return;
+            const me = getCurrentUser();
+            if (!me || me.role === 'Super Admin') return;
+            if (typeof cacheUserPermissions === 'function') {
+                cacheUserPermissions().then(function () {
+                    _filterAdminTiles(me.role);
+                    if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
+                });
+            }
+        });
+
+        function savePermissions() {
+            if (!currentPermUserId) return;
+            const token = localStorage.getItem('pos_token');
+            const apiBaseUrl = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+            const statusEl = document.getElementById('perm-save-status');
+            showLoading();
+            fetch(apiBaseUrl + `/api/admin/permissions/${currentPermUserId}`, {
+                method:  'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ permissions: currentPermissions })
+            })
+            .then(r => {
+                if (!r.ok) return r.json().then(d => { throw new Error(d.message || 'Save failed'); });
+                return r.json();
+            })
+            .then(() => {
+                hideLoading();
+                statusEl.textContent  = '✓ Permissions saved';
+                statusEl.style.color  = '#059669';
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+
+                // If we just changed the current user's own permissions, apply immediately
+                const me = getCurrentUser();
+                if (me && me.user_id === currentPermUserId) {
+                    localStorage.setItem('pos_permissions', JSON.stringify(currentPermissions));
+                    _filterAdminTiles(me.role);
+                    if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
+                }
+            })
+            .catch(err => {
+                hideLoading();
+                statusEl.textContent  = '✗ ' + err.message;
+                statusEl.style.color  = '#dc2626';
+                setTimeout(() => { statusEl.textContent = ''; }, 5000);
+            });
+        }
+
+    </script>
+</body>
+</html>

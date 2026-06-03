@@ -1,0 +1,1049 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - Login</title>
+    <!-- CRITICAL: Prevent flash - MUST be first -->
+    <style>
+        html, body {
+            background: #1a1a2e !important;
+            margin: 0;
+            padding: 0;
+        }
+        #app-splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+            opacity: 1;
+            z-index: 9999;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #app-splash.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+    <div id="app-splash"></div>
+    <script>
+        function hideSplash() {
+            const splash = document.getElementById('app-splash');
+            if (splash) {
+                splash.classList.add('hidden');
+            }
+        }
+
+        // Hide splash when page is ready
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', hideSplash, { once: true });
+        } else {
+            hideSplash();
+        }
+
+        // Fallback: hide after 200ms
+        setTimeout(hideSplash, 200);
+    </script>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .login-container {
+            max-width: 450px;
+            margin: 50px auto;
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid var(--surface-border);
+        }
+        .login-header { text-align:center; margin-bottom:30px; }
+        .login-header img { height:90px; width:auto; object-fit:contain; margin:0 auto 10px; display:block; }
+        .login-header p  { color:var(--text-muted); font-size:1.05rem; }
+
+        .section-title {
+            text-align:center; margin-bottom:24px; color:var(--text-base);
+            font-weight:600; font-size:1.2rem;
+        }
+
+        .form-group { margin-bottom:22px; }
+        .form-group label { display:block; margin-bottom:7px; font-weight:600; color:var(--text-muted); font-size:14px; }
+        .form-group input {
+            width:100%; padding:12px 15px; border:1px solid var(--input-border); border-radius:6px;
+            font-size:15px; transition:border-color .3s, box-shadow .3s; box-sizing:border-box;
+            background:var(--input-bg); color:var(--text-base);
+        }
+        .form-group input:focus {
+            outline:none; border-color:#3498db; box-shadow:0 0 0 3px rgba(52,152,219,.1);
+        }
+        .field-wrap { position:relative; }
+        .toggle-pw {
+            position:absolute; right:12px; top:50%; transform:translateY(-50%);
+            background:none; border:none; cursor:pointer; color:#95a5a6;
+            font-size:16px; padding:0; line-height:1;
+        }
+        .toggle-pw:hover { color:#7f8c8d; }
+
+        /* Buttons */
+        .btn-primary {
+            width:100%; padding:13px; border:none; border-radius:6px; font-size:15px;
+            font-weight:600; cursor:pointer; transition:all .3s;
+            background:linear-gradient(135deg,#3498db,#2980b9); color:#fff;
+            box-shadow:0 2px 5px rgba(52,152,219,.3);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background:linear-gradient(135deg,#2980b9,#2573a7);
+            transform:translateY(-2px); box-shadow:0 4px 10px rgba(52,152,219,.4);
+        }
+        .btn-primary:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+        .btn-success {
+            width:100%; padding:13px; border:none; border-radius:6px; font-size:15px;
+            font-weight:600; cursor:pointer; transition:all .3s;
+            background:linear-gradient(135deg,#27ae60,#219a52); color:#fff;
+            box-shadow:0 2px 5px rgba(39,174,96,.3);
+        }
+        .btn-success:hover:not(:disabled) {
+            background:linear-gradient(135deg,#219a52,#1a7a42); transform:translateY(-2px);
+        }
+        .btn-success:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+        .btn-danger {
+            width:100%; padding:13px; border:none; border-radius:6px; font-size:15px;
+            font-weight:600; cursor:pointer; transition:all .3s;
+            background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff;
+            box-shadow:0 2px 5px rgba(231,76,60,.3);
+        }
+        .btn-danger:hover:not(:disabled) {
+            background:linear-gradient(135deg,#c0392b,#a93226); transform:translateY(-2px);
+        }
+        .btn-danger:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+        /* Alert */
+        .alert {
+            display:none; padding:11px 14px; border-radius:6px;
+            font-size:14px; font-weight:500; margin-bottom:18px; line-height:1.5;
+        }
+        .alert.error   { background:#fef2f2; color:#c0392b; border:1px solid #f5c6cb; }
+        .alert.success { background:#eafaf1; color:#1e8449; border:1px solid #a9dfbf; }
+        .alert.info    { background:#eaf4fb; color:#1a5276; border:1px solid #aed6f1; }
+        .alert.warning { background:#fef9e7; color:#7d6608; border:1px solid #f7dc6f; }
+
+        /* Step indicator */
+        .step-indicator {
+            display:flex; align-items:center; justify-content:center;
+            gap:8px; margin-bottom:8px;
+        }
+        .step-dot {
+            width:30px; height:30px; border-radius:50%; border:2px solid var(--surface-border);
+            display:flex; align-items:center; justify-content:center;
+            font-size:12px; font-weight:700; color:var(--text-muted); flex-shrink:0;
+        }
+        .step-dot.active { background:#3498db; border-color:#3498db; color:#fff; }
+        .step-dot.done   { background:#27ae60; border-color:#27ae60; color:#fff; }
+        .step-line { flex:1; height:2px; background:var(--surface-border); max-width:70px; }
+        .step-line.done { background:#27ae60; }
+        .step-labels {
+            display:flex; justify-content:space-between;
+            margin-bottom:22px; padding:0 4px;
+        }
+        .step-lbl { font-size:11px; color:#aaa; text-align:center; min-width:30px; }
+        .step-lbl.active { color:#3498db; font-weight:600; }
+        .step-lbl.done   { color:#27ae60; }
+
+        /* OTP UI */
+        .otp-info {
+            text-align:center; background:var(--surface-alt); border-radius:8px;
+            padding:16px; margin-bottom:20px; border:1px solid var(--surface-border);
+        }
+        .email-badge {
+            display:inline-block; background:#eaf4fb; color:#1a5276;
+            border:1px solid #aed6f1; border-radius:20px;
+            padding:4px 14px; font-size:13px; font-weight:600; margin-top:6px;
+        }
+        .otp-timer { font-size:12px; color:#e67e22; margin-top:8px; font-weight:500; }
+        .otp-box {
+            width:100%; padding:16px; text-align:center; font-size:32px;
+            letter-spacing:14px; font-family:monospace; font-weight:700;
+            border:2px solid var(--input-border); border-radius:6px; transition:border-color .3s;
+            box-sizing:border-box; background:var(--input-bg); color:var(--text-base);
+        }
+        .otp-box:focus { outline:none; border-color:#3498db; box-shadow:0 0 0 3px rgba(52,152,219,.12); }
+
+        /* Resend */
+        .resend-row { text-align:center; margin-top:12px; }
+        .resend-btn {
+            background:none; border:none; color:#3498db; font-size:13px;
+            cursor:pointer; text-decoration:underline; padding:0;
+        }
+        .resend-btn:disabled { color:#bbb; cursor:not-allowed; text-decoration:none; }
+
+        /* Remember device */
+        .remember-row {
+            display:flex; align-items:center; gap:8px; margin:14px 0 4px;
+            font-size:13px; color:#555; cursor:pointer; user-select:none;
+        }
+        .remember-row input[type=checkbox] { width:16px; height:16px; cursor:pointer; flex-shrink:0; }
+
+        /* Password strength */
+        .pw-requirements { margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+        .pw-req { font-size:12px; color:#aaa; display:flex; align-items:center; gap:4px; }
+        .pw-req.ok  { color:#27ae60; }
+
+        /* Links */
+        .forgot-link {
+            display:block; text-align:right; font-size:13px; color:#3498db;
+            text-decoration:none; margin-top:-14px; margin-bottom:20px; cursor:pointer;
+        }
+        .forgot-link:hover { text-decoration:underline; }
+        .back-btn {
+            background:none; border:none; color:#95a5a6; font-size:13px;
+            cursor:pointer; margin-top:14px; display:block; width:100%; text-align:center;
+            padding:4px;
+        }
+        .back-btn:hover { color:#7f8c8d; }
+
+        /* Success card */
+        .success-card { text-align:center; padding:16px 0; }
+        .success-icon {
+            width:72px; height:72px; border-radius:50%;
+            margin:0 auto 16px; display:flex; align-items:center;
+            justify-content:center; font-size:34px;
+        }
+        .success-icon.green { background:#eafaf1; color:#27ae60; }
+        .progress-bar { height:4px; background:#eee; border-radius:2px; margin-top:24px; overflow:hidden; }
+        .progress-fill { height:100%; width:0; transition:width 3s linear; }
+        .progress-fill.green { background:#27ae60; }
+
+        /* Divider */
+        .divider { text-align:center; margin:18px 0 0; color:#bbb; font-size:13px; }
+
+        @media (max-width:768px) {
+            .login-container { margin:30px auto; padding:28px; max-width:92%; }
+        }
+        @media (max-width:480px) {
+            .login-container { margin:16px auto; padding:20px; }
+            .pw-requirements { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+<div class="login-container">
+
+    <div class="login-header">
+        <img src="assets/logo.png" alt="Trintz Data Labs">
+        <p>Professional Point of Sale Solution</p>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         LOGIN FLOW  (step1 → step2)
+    ════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Login step indicator — shown only during OTP verification -->
+    <div id="login-indicator" style="display:none">
+        <div class="step-indicator">
+            <div class="step-dot done">&#10003;</div>
+            <div class="step-line done"></div>
+            <div class="step-dot active">2</div>
+        </div>
+        <div class="step-labels">
+            <span class="step-lbl done">Password</span>
+            <span class="step-lbl active">Verify</span>
+        </div>
+    </div>
+
+    <!-- Step 1 — Username + Password -->
+    <div id="login-step1">
+        <p class="section-title">Login to Your Account</p>
+        <form id="login-form" data-testid="login-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" data-testid="username-input"
+                    required placeholder="Enter your username" autocomplete="username"/>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" data-testid="password-input"
+                    required placeholder="Enter your password" autocomplete="current-password"/>
+            </div>
+            <a class="forgot-link" onclick="showReset()" tabindex="0"
+               onkeydown="if(event.key==='Enter')showReset()">Forgot password?</a>
+            <button type="submit" id="login-btn" class="btn-primary" data-testid="login-btn">
+                Sign In
+            </button>
+        </form>
+    </div>
+
+    <!-- Step 2-TOTP — Google Authenticator verification -->
+    <div id="login-step2-totp" style="display:none">
+        <p class="section-title">Authenticator Verification</p>
+        <div class="otp-info">
+            <div style="font-size:22px;margin-bottom:6px">📱</div>
+            <div style="font-size:13px;color:#555;font-weight:600;">Open Google Authenticator</div>
+            <div style="font-size:12px;color:#888;margin-top:4px;">Enter the 6-digit code shown for <strong>TrintzPOS</strong></div>
+        </div>
+        <div class="form-group">
+            <label style="text-align:center;display:block">6-digit code</label>
+            <input id="totp-input" class="otp-box" type="text" inputmode="numeric"
+                maxlength="6" placeholder="000000" autocomplete="one-time-code"/>
+        </div>
+        <label class="remember-row">
+            <input type="checkbox" id="remember-device-totp" checked/>
+            Remember this device for 2 days
+        </label>
+        <button id="totp-verify-btn" class="btn-success" onclick="submitTOTP()">
+            Verify &amp; Sign In
+        </button>
+        <button class="back-btn" onclick="backToLoginStep1()">&#8592; Back to login</button>
+    </div>
+
+    <!-- Step 2-TOTP-SETUP — Forced enrollment (admin-required MFA) -->
+    <div id="login-step2-totp-setup" style="display:none">
+        <p class="section-title">Set Up Authenticator</p>
+        <div class="otp-info" style="margin-bottom:8px;">
+            <div style="font-size:20px;margin-bottom:4px">🔐</div>
+            <div style="font-size:13px;color:#555;font-weight:600;">Your account requires Google Authenticator</div>
+            <div style="font-size:12px;color:#888;margin-top:4px;">Scan the QR code below with your app to continue</div>
+        </div>
+        <div id="totp-enroll-qr-wrap" style="text-align:center;margin:12px 0;">
+            <img id="totp-enroll-qr" src="" alt="QR Code" style="width:150px;height:150px;border:1px solid #ddd;border-radius:8px;"/>
+        </div>
+        <div style="margin-bottom:10px;font-size:11px;color:#888;text-align:center;">
+            Or enter key manually: <code id="totp-enroll-secret" style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all;"></code>
+        </div>
+        <div class="form-group">
+            <label style="text-align:center;display:block;font-size:12px;">Enter the 6-digit code to confirm</label>
+            <input id="totp-enroll-code" class="otp-box" type="text" inputmode="numeric"
+                maxlength="6" placeholder="000000" autocomplete="one-time-code"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/>
+        </div>
+        <p id="totp-enroll-msg" style="font-size:12px;text-align:center;min-height:18px;margin-bottom:6px;"></p>
+        <button id="totp-enroll-btn" class="btn-success" onclick="submitTotpEnroll()">Activate &amp; Sign In</button>
+        <button class="back-btn" onclick="backToLoginStep1()">&#8592; Back to login</button>
+    </div>
+
+    <!-- Step 2 — Login OTP verification -->
+    <div id="login-step2" style="display:none">
+        <p class="section-title">Verify Your Identity</p>
+        <div class="otp-info">
+            <div style="font-size:13px;color:#555">Verification code sent to</div>
+            <div id="login-otp-badge" class="email-badge"></div>
+            <div class="otp-timer" id="login-otp-timer">Expires in 5:00</div>
+        </div>
+        <div class="form-group">
+            <label style="text-align:center;display:block">Enter 6-digit code</label>
+            <input id="login-otp-input" class="otp-box" type="text" inputmode="numeric"
+                maxlength="6" placeholder="000000" autocomplete="one-time-code"
+                data-testid="otp-input"/>
+        </div>
+        <label class="remember-row">
+            <input type="checkbox" id="remember-device" checked/>
+            Remember this device for 2 days
+        </label>
+        <button id="login-verify-btn" class="btn-success" onclick="submitLoginOTP()"
+                data-testid="verify-btn">
+            Verify &amp; Sign In
+        </button>
+        <div class="resend-row">
+            <span style="font-size:13px;color:#777">Didn't receive it? </span>
+            <button id="login-resend-btn" class="resend-btn" onclick="resendLoginOTP()" disabled>
+                Resend code
+            </button>
+            <span id="login-resend-timer" style="font-size:12px;color:#bbb"></span>
+        </div>
+        <button class="back-btn" onclick="backToLoginStep1()">&#8592; Back to login</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         PASSWORD RESET FLOW  (r-step1 → r-step2 → r-step3 → r-step4)
+    ════════════════════════════════════════════════════════════════════════ -->
+
+    <div id="reset-section" style="display:none">
+
+        <!-- Reset step indicator -->
+        <div id="reset-indicator">
+            <div class="step-indicator">
+                <div id="rd1" class="step-dot active">1</div>
+                <div id="rl1" class="step-line"></div>
+                <div id="rd2" class="step-dot">2</div>
+                <div id="rl2" class="step-line"></div>
+                <div id="rd3" class="step-dot">3</div>
+            </div>
+            <div class="step-labels">
+                <span id="rlbl1" class="step-lbl active">Username</span>
+                <span id="rlbl2" class="step-lbl">Verify</span>
+                <span id="rlbl3" class="step-lbl">New Password</span>
+            </div>
+        </div>
+
+        <!-- Reset Step 1 — Enter username -->
+        <div id="r-step1">
+            <p class="section-title">Reset Password</p>
+            <p style="font-size:13px;color:#666;text-align:center;margin:-10px 0 20px">
+                Enter your username and we'll send a verification code to your registered email address.
+            </p>
+            <div class="form-group">
+                <label for="reset-username">Username</label>
+                <input type="text" id="reset-username" autocomplete="username"
+                    placeholder="Enter your username"/>
+            </div>
+            <button id="send-reset-btn" class="btn-danger" onclick="sendResetCode()">
+                Send Reset Code
+            </button>
+            <button class="back-btn" onclick="backToLogin()">&#8592; Back to login</button>
+        </div>
+
+        <!-- Reset Step 2 — Enter OTP -->
+        <div id="r-step2" style="display:none">
+            <p class="section-title">Enter Reset Code</p>
+            <div class="otp-info">
+                <div style="font-size:13px;color:#555">Reset code sent to</div>
+                <div id="reset-email-badge" class="email-badge"></div>
+                <div class="otp-timer" id="reset-otp-timer">Expires in 5:00</div>
+            </div>
+            <div class="form-group">
+                <label style="text-align:center;display:block">Enter 6-digit code</label>
+                <input id="reset-otp-input" class="otp-box" type="text" inputmode="numeric"
+                    maxlength="6" placeholder="000000" autocomplete="one-time-code"/>
+            </div>
+            <button id="verify-reset-btn" class="btn-danger" onclick="goToNewPassword()">
+                Verify Code
+            </button>
+            <div class="resend-row">
+                <span style="font-size:13px;color:#777">Didn't receive it? </span>
+                <button id="reset-resend-btn" class="resend-btn" onclick="resendResetCode()" disabled>
+                    Resend code
+                </button>
+                <span id="reset-resend-timer" style="font-size:12px;color:#bbb"></span>
+            </div>
+            <button class="back-btn" onclick="setResetStep(1)">&#8592; Back</button>
+        </div>
+
+        <!-- Reset Step 3 — Set new password -->
+        <div id="r-step3" style="display:none">
+            <p class="section-title">Set New Password</p>
+            <div class="form-group">
+                <label for="new-password">New Password</label>
+                <div class="field-wrap">
+                    <input id="new-password" type="password" autocomplete="new-password"
+                        placeholder="Min 8 characters" oninput="checkResetPw()"/>
+                    <button type="button" class="toggle-pw" onclick="togglePw('new-password')">&#128065;</button>
+                </div>
+                <div class="pw-requirements">
+                    <span id="rr-len"     class="pw-req">&#x2717; 8+ characters</span>
+                    <span id="rr-upper"   class="pw-req">&#x2717; Uppercase</span>
+                    <span id="rr-lower"   class="pw-req">&#x2717; Lowercase</span>
+                    <span id="rr-digit"   class="pw-req">&#x2717; Number</span>
+                    <span id="rr-special" class="pw-req" style="grid-column:1/-1">&#x2717; Special char (!@#$%)</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="new-confirm">Confirm New Password</label>
+                <div class="field-wrap">
+                    <input id="new-confirm" type="password" autocomplete="new-password"
+                        placeholder="Repeat new password"/>
+                    <button type="button" class="toggle-pw" onclick="togglePw('new-confirm')">&#128065;</button>
+                </div>
+            </div>
+            <button id="set-pw-btn" class="btn-danger" onclick="setNewPassword()">
+                Reset Password
+            </button>
+            <button class="back-btn" onclick="setResetStep(2)">&#8592; Back</button>
+        </div>
+
+        <!-- Reset Step 4 — Success -->
+        <div id="r-step4" style="display:none">
+            <div class="success-card">
+                <div class="success-icon green">&#10003;</div>
+                <h3 style="color:#1e8449;margin:0 0 8px">Password Reset!</h3>
+                <p style="color:#555;font-size:14px;margin:0 0 4px">
+                    Your password has been updated successfully.
+                </p>
+                <p style="color:#777;font-size:13px">Redirecting to login&hellip;</p>
+                <div class="progress-bar">
+                    <div id="reset-prog" class="progress-fill green"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /reset-section -->
+
+</div><!-- /login-container -->
+<div id="footer-container"></div>
+</div><!-- /container -->
+
+<script src="auth-utils.js"></script>
+<script src="component-utils.js"></script>
+<script>
+// ── Shared state ───────────────────────────────────────────────────────────────
+var _loginUserId    = null;
+var _loginSetupToken = null;
+var _resetUserId    = null;
+var _resetOtp       = null;   // stored after step-2 validation, sent with final reset
+
+var _loginOtpTimer    = null, _loginResendTimer  = null;
+var _resetOtpTimer    = null, _resetResendTimer  = null;
+
+// ── Device fingerprint ─────────────────────────────────────────────────────────
+// Builds a SHA-256 fingerprint from browser characteristics + a per-device
+// random salt stored in localStorage.
+//
+// Security properties:
+//   • Incognito / private browsing  → localStorage blocked → no salt → returns ''
+//     → server always challenges (TOTP / email OTP) ✓
+//   • New browser (Chrome → Firefox) → different userAgent → different hash ✓
+//   • Same browser, same device     → salt persists → same fingerprint for 2 days ✓
+async function getDeviceFingerprint() {
+    // Collect stable browser/device signals
+    var signals = [
+        navigator.userAgent || '',
+        [screen.width, screen.height, screen.colorDepth].join('x'),
+        (Intl.DateTimeFormat().resolvedOptions().timeZone) || '',
+        navigator.language  || '',
+        navigator.platform  || '',
+        String(navigator.hardwareConcurrency  || 0),
+        String(navigator.deviceMemory || 0)
+    ];
+
+    // Per-device random salt — absent in incognito (storage blocked/cleared on tab close)
+    // If we can't read/write localStorage, return '' so the server always challenges (TOTP/OTP).
+    var salt = '';
+    try {
+        salt = localStorage.getItem('pos_device_salt') || '';
+        if (!salt) {
+            var bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            salt = Array.from(bytes).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+            localStorage.setItem('pos_device_salt', salt);
+        }
+        localStorage.removeItem('pos_device_fp');
+    } catch(e) { /* storage blocked — salt stays empty */ }
+
+    // No salt = incognito / private mode → always force a challenge, never trust
+    if (!salt) return '';
+
+    signals.push(salt);
+    var raw = signals.join('||');
+
+    try {
+        var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+        var hex = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+        return 'fp2_' + hex;
+    } catch(e) {
+        // Fallback for HTTP (no crypto.subtle) — djb2 hash
+        var h = 5381;
+        for (var i = 0; i < raw.length; i++) { h = ((h << 5) + h) ^ raw.charCodeAt(i); }
+        return 'fp2_fb_' + (h >>> 0).toString(16) + '_' + salt;
+    }
+}
+
+// ── Alert ──────────────────────────────────────────────────────────────────────
+function showAlert(msg, type) {
+    var el = document.getElementById('alert');
+    el.className = 'alert ' + (type || 'error');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideAlert() { document.getElementById('alert').style.display = 'none'; }
+
+// ── Generic timer helpers ──────────────────────────────────────────────────────
+function startCountdown(timerId, timerElId, secs) {
+    clearInterval(timerId);
+    function tick() {
+        var m = Math.floor(secs / 60), s = secs % 60;
+        var el = document.getElementById(timerElId);
+        if (!el) return;
+        el.textContent = 'Expires in ' + m + ':' + (s < 10 ? '0' : '') + s;
+        el.style.color  = secs <= 60 ? '#e74c3c' : '#e67e22';
+        if (secs <= 0) { el.textContent = 'Code expired — click Resend'; clearInterval(timerId); }
+        secs--;
+    }
+    tick();
+    return setInterval(tick, 1000);
+}
+
+function startResendCooldown(btnId, timerElId, secs) {
+    var btn = document.getElementById(btnId);
+    var tim = document.getElementById(timerElId);
+    btn.disabled = true;
+    var iv = setInterval(function() {
+        if (tim) tim.textContent = '(' + secs + 's)';
+        secs--;
+        if (secs < 0) {
+            clearInterval(iv);
+            btn.disabled = false;
+            if (tim) tim.textContent = '';
+        }
+    }, 1000);
+    return iv;
+}
+
+function setLoading(id, loading, label) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled  = loading;
+    btn.innerHTML = loading ? 'Please wait&hellip;' : label;
+}
+
+function togglePw(id) {
+    var el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// ── Timeout notice ─────────────────────────────────────────────────────────────
+if (new URLSearchParams(window.location.search).get('timeout') === '1')
+    showAlert('Session expired due to inactivity. Please log in again.', 'info');
+
+// ════════════════════════════════════════════════════════════════════════════════
+// LOGIN FLOW
+// ════════════════════════════════════════════════════════════════════════════════
+
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    hideAlert();
+
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value;
+    if (!username || !password) return showAlert('Username and password are required.');
+
+    setLoading('login-btn', true, 'Sign In');
+    try {
+        var res  = await fetch('/api/login', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                username:           username,
+                password:           password,
+                device_fingerprint: await getDeviceFingerprint()
+            })
+        });
+        var data = await res.json();
+
+        if (res.status === 401) return showAlert('Invalid username or password. Please try again.');
+        if (!res.ok)            return showAlert(data.message || 'Login failed.');
+
+        if (data.requires_totp_setup) {
+            _loginUserId      = data.user_id;
+            _loginSetupToken  = data.setup_token;
+            showView('login-step2-totp-setup');
+            document.getElementById('totp-enroll-code').value = '';
+            document.getElementById('totp-enroll-msg').textContent = 'Loading QR code…';
+            document.getElementById('totp-enroll-btn').disabled = true;
+            // Fetch QR using setup token
+            fetch('/api/totp/setup', { headers: { 'Authorization': 'Bearer ' + _loginSetupToken } })
+            .then(r => r.json())
+            .then(d => {
+                document.getElementById('totp-enroll-qr').src = d.qr_code;
+                document.getElementById('totp-enroll-secret').textContent = d.secret;
+                document.getElementById('totp-enroll-msg').textContent = '';
+                document.getElementById('totp-enroll-btn').disabled = false;
+                document.getElementById('totp-enroll-code').focus();
+            })
+            .catch(() => {
+                document.getElementById('totp-enroll-msg').textContent = 'Failed to load QR. Please try again.';
+                document.getElementById('totp-enroll-msg').style.color = '#ef4444';
+            });
+        } else if (data.requires_totp) {
+            _loginUserId = data.user_id;
+            showView('login-step2-totp');
+            document.getElementById('login-indicator').style.display = 'block';
+            document.getElementById('totp-input').value = '';
+            document.getElementById('totp-input').focus();
+            hideAlert();
+        } else if (data.requires_otp) {
+            _loginUserId = data.user_id;
+            document.getElementById('login-otp-badge').textContent = data.email || '';
+            showView('login-step2');
+            document.getElementById('login-indicator').style.display = 'block';
+            document.getElementById('login-otp-input').value = '';
+            document.getElementById('login-otp-input').focus();
+            showAlert('Code sent to ' + (data.email || 'your email') + '.', 'success');
+            _loginOtpTimer   = startCountdown(_loginOtpTimer,   'login-otp-timer', 300);
+            _loginResendTimer = startResendCooldown('login-resend-btn', 'login-resend-timer', 60);
+        } else {
+            localStorage.setItem('pos_token', data.token);
+            window.location.href = 'dashboard.html';
+        }
+    } catch(err) {
+        showAlert('Network error. Please check your connection.');
+    } finally {
+        setLoading('login-btn', false, 'Sign In');
+    }
+});
+
+async function submitLoginOTP() {
+    hideAlert();
+    var otp = document.getElementById('login-otp-input').value.trim();
+    if (!/^\d{6}$/.test(otp)) return showAlert('Please enter the 6-digit code from your email.');
+
+    setLoading('login-verify-btn', true, 'Verify &amp; Sign In');
+    try {
+        var res  = await fetch('/api/verify-login-otp', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                user_id:            _loginUserId,
+                otp:                otp,
+                device_fingerprint: await getDeviceFingerprint(),
+                remember_device:    document.getElementById('remember-device').checked
+            })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            if (res.status === 429) return showAlert('Too many attempts. Please log in again.');
+            return showAlert(data.message || 'Incorrect code. Try again.');
+        }
+        localStorage.setItem('pos_token', data.token);
+        clearInterval(_loginOtpTimer); clearInterval(_loginResendTimer);
+
+        // Login successful - go to dashboard
+        // License guard will handle license check via API
+        window.location.href = 'dashboard.html';
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+    } finally {
+        setLoading('login-verify-btn', false, 'Verify &amp; Sign In');
+    }
+}
+
+async function resendLoginOTP() {
+    hideAlert();
+    document.getElementById('login-resend-btn').disabled = true;
+    try {
+        var res  = await fetch('/api/resend-login-otp', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ user_id: _loginUserId })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            document.getElementById('login-resend-btn').disabled = false;
+            return showAlert(data.message || 'Failed to resend.');
+        }
+        showAlert('New code sent to your email.', 'success');
+        document.getElementById('login-otp-input').value = '';
+        document.getElementById('login-otp-input').focus();
+        _loginOtpTimer   = startCountdown(_loginOtpTimer,   'login-otp-timer', 300);
+        _loginResendTimer = startResendCooldown('login-resend-btn', 'login-resend-timer', 60);
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+        document.getElementById('login-resend-btn').disabled = false;
+    }
+}
+
+function backToLoginStep1() {
+    clearInterval(_loginOtpTimer); clearInterval(_loginResendTimer);
+    _loginUserId = null;
+    document.getElementById('login-indicator').style.display = 'none';
+    showView('login-step1');
+    hideAlert();
+}
+
+// Login OTP: auto-submit on 6th digit
+document.getElementById('login-otp-input').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    if (this.value.length === 6) submitLoginOTP();
+});
+document.getElementById('login-otp-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitLoginOTP();
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
+// PASSWORD RESET FLOW
+// ════════════════════════════════════════════════════════════════════════════════
+
+function showReset() {
+    clearInterval(_loginOtpTimer); clearInterval(_loginResendTimer);
+    document.getElementById('login-indicator').style.display = 'none';
+    showView('reset-section');
+    setResetStep(1);
+    hideAlert();
+    setTimeout(function() {
+        document.getElementById('reset-username').focus();
+    }, 50);
+}
+
+function backToLogin() {
+    clearInterval(_resetOtpTimer); clearInterval(_resetResendTimer);
+    _resetUserId = null; _resetOtp = null;
+    showView('login-step1');
+    hideAlert();
+}
+
+async function submitTOTP() {
+    hideAlert();
+    var code = document.getElementById('totp-input').value.trim();
+    if (!/^\d{6}$/.test(code)) return showAlert('Please enter the 6-digit code from your app.');
+
+    setLoading('totp-verify-btn', true, 'Verify &amp; Sign In');
+    try {
+        var res  = await fetch('/api/verify-totp-login', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                user_id:            _loginUserId,
+                code:               code,
+                device_fingerprint: await getDeviceFingerprint(),
+                remember_device:    document.getElementById('remember-device-totp').checked
+            })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            if (res.status === 429) return showAlert('Too many attempts. Please log in again.');
+            document.getElementById('totp-input').value = '';
+            document.getElementById('totp-input').focus();
+            return showAlert(data.message || 'Incorrect code. Try again.');
+        }
+        localStorage.setItem('pos_token', data.token);
+        window.location.href = 'dashboard.html';
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+    } finally {
+        setLoading('totp-verify-btn', false, 'Verify &amp; Sign In');
+    }
+}
+
+async function submitTotpEnroll() {
+    var code = document.getElementById('totp-enroll-code').value.trim();
+    if (!/^\d{6}$/.test(code)) {
+        document.getElementById('totp-enroll-msg').textContent = 'Enter the 6-digit code from your app.';
+        document.getElementById('totp-enroll-msg').style.color = '#ef4444';
+        return;
+    }
+    setLoading('totp-enroll-btn', true, 'Activate &amp; Sign In');
+    document.getElementById('totp-enroll-msg').textContent = '';
+    try {
+        var res  = await fetch('/api/totp/enable', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _loginSetupToken },
+            body:    JSON.stringify({ code: code })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            document.getElementById('totp-enroll-code').value = '';
+            document.getElementById('totp-enroll-code').focus();
+            document.getElementById('totp-enroll-msg').textContent = data.message || 'Incorrect code. Try again.';
+            document.getElementById('totp-enroll-msg').style.color = '#ef4444';
+            return;
+        }
+        // On success, server returns a full session token
+        localStorage.setItem('pos_token', data.token);
+        window.location.href = 'dashboard.html';
+    } catch(err) {
+        document.getElementById('totp-enroll-msg').textContent = 'Network error. Please try again.';
+        document.getElementById('totp-enroll-msg').style.color = '#ef4444';
+    } finally {
+        setLoading('totp-enroll-btn', false, 'Activate &amp; Sign In');
+    }
+}
+
+document.getElementById('totp-enroll-code').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    if (this.value.length === 6) submitTotpEnroll();
+});
+document.getElementById('totp-enroll-code').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitTotpEnroll();
+});
+
+// TOTP input: auto-submit on 6th digit
+document.getElementById('totp-input').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    if (this.value.length === 6) submitTOTP();
+});
+document.getElementById('totp-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitTOTP();
+});
+
+// Switch between top-level views
+function showView(id) {
+    ['login-step1','login-step2','login-step2-totp','login-step2-totp-setup','reset-section'].forEach(function(v) {
+        document.getElementById(v).style.display = v === id ? 'block' : 'none';
+    });
+}
+
+// Move between reset sub-steps
+function setResetStep(n) {
+    [1,2,3,4].forEach(function(i) {
+        document.getElementById('r-step' + i).style.display = i === n ? 'block' : 'none';
+    });
+    document.getElementById('reset-indicator').style.display = n === 4 ? 'none' : 'block';
+    if (n <= 3) {
+        [1,2,3].forEach(function(i) {
+            var dot  = document.getElementById('rd' + i);
+            var lbl  = document.getElementById('rlbl' + i);
+            if (i < n)       { dot.className = 'step-dot done';   lbl.className = 'step-lbl done'; }
+            else if (i === n){ dot.className = 'step-dot active'; lbl.className = 'step-lbl active'; }
+            else             { dot.className = 'step-dot';        lbl.className = 'step-lbl'; }
+            if (i < 3) {
+                document.getElementById('rl' + i).className = 'step-line' + (i < n ? ' done' : '');
+            }
+        });
+    }
+}
+
+// Reset Step 1 — send OTP
+async function sendResetCode() {
+    hideAlert();
+    var username = document.getElementById('reset-username').value.trim();
+    if (!username) return showAlert('Please enter your username.');
+
+    setLoading('send-reset-btn', true, 'Send Reset Code');
+    try {
+        var res  = await fetch('/api/forgot-password', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username: username })
+        });
+        var data = await res.json();
+        if (!res.ok) return showAlert(data.message || 'Failed to send reset code.');
+
+        _resetUserId = data.user_id;
+        if (!_resetUserId) {
+            // Username not found or no email — show non-revealing message
+            return showAlert(data.message, 'info');
+        }
+        document.getElementById('reset-email-badge').textContent = data.email || '';
+        setResetStep(2);
+        showAlert('Reset code sent to ' + (data.email || 'your email') + '.', 'success');
+        document.getElementById('reset-otp-input').value = '';
+        document.getElementById('reset-otp-input').focus();
+        _resetOtpTimer   = startCountdown(_resetOtpTimer,   'reset-otp-timer', 300);
+        _resetResendTimer = startResendCooldown('reset-resend-btn', 'reset-resend-timer', 60);
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+    } finally {
+        setLoading('send-reset-btn', false, 'Send Reset Code');
+    }
+}
+
+// Reset Step 2 — validate OTP (client-side format check only; real check at final step)
+function goToNewPassword() {
+    hideAlert();
+    var otp = document.getElementById('reset-otp-input').value.trim();
+    if (!/^\d{6}$/.test(otp)) return showAlert('Please enter the 6-digit code from your email.');
+    _resetOtp = otp;
+    clearInterval(_resetOtpTimer); clearInterval(_resetResendTimer);
+    setResetStep(3);
+    document.getElementById('new-password').focus();
+}
+
+async function resendResetCode() {
+    hideAlert();
+    document.getElementById('reset-resend-btn').disabled = true;
+    var username = document.getElementById('reset-username').value.trim();
+    try {
+        var res  = await fetch('/api/forgot-password', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username: username })
+        });
+        var data = await res.json();
+        if (!res.ok || !data.user_id) {
+            document.getElementById('reset-resend-btn').disabled = false;
+            return showAlert(data.message || 'Failed to resend.');
+        }
+        showAlert('New reset code sent to your email.', 'success');
+        document.getElementById('reset-otp-input').value = '';
+        document.getElementById('reset-otp-input').focus();
+        _resetOtpTimer   = startCountdown(_resetOtpTimer,   'reset-otp-timer', 300);
+        _resetResendTimer = startResendCooldown('reset-resend-btn', 'reset-resend-timer', 60);
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+        document.getElementById('reset-resend-btn').disabled = false;
+    }
+}
+
+// Password strength checker
+function checkResetPw() {
+    var v = document.getElementById('new-password').value;
+    function set(id, ok, txt) {
+        var el = document.getElementById(id);
+        el.className = 'pw-req' + (ok ? ' ok' : '');
+        el.innerHTML = (ok ? '&#x2713; ' : '&#x2717; ') + txt;
+    }
+    set('rr-len',     v.length >= 8,                               '8+ characters');
+    set('rr-upper',   /[A-Z]/.test(v),                             'Uppercase');
+    set('rr-lower',   /[a-z]/.test(v),                             'Lowercase');
+    set('rr-digit',   /\d/.test(v),                                'Number');
+    set('rr-special', /[!@#$%^&*()\-_=+\[\]{}|;:,.<>?]/.test(v), 'Special char');
+}
+
+// Reset Step 3 — set new password
+async function setNewPassword() {
+    hideAlert();
+    var pw  = document.getElementById('new-password').value;
+    var cpw = document.getElementById('new-confirm').value;
+
+    if (pw.length < 8)                                         return showAlert('Password must be at least 8 characters.');
+    if (!/[A-Z]/.test(pw))                                     return showAlert('Password needs an uppercase letter.');
+    if (!/[a-z]/.test(pw))                                     return showAlert('Password needs a lowercase letter.');
+    if (!/\d/.test(pw))                                        return showAlert('Password needs a number.');
+    if (!/[!@#$%^&*()\-_=+\[\]{}|;:,.<>?]/.test(pw))         return showAlert('Password needs a special character.');
+    if (pw !== cpw)                                            return showAlert('Passwords do not match.');
+
+    setLoading('set-pw-btn', true, 'Reset Password');
+    try {
+        var res  = await fetch('/api/reset-password', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                user_id:      _resetUserId,
+                otp:          _resetOtp,
+                new_password: pw
+            })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            if (res.status === 429) return showAlert('Too many attempts. Please request a new code.');
+            // If OTP error, send back to OTP step
+            if (data.message && data.message.toLowerCase().includes('code'))
+                setResetStep(2);
+            return showAlert(data.message || 'Failed to reset password.');
+        }
+        _resetOtp = null;
+        setResetStep(4);
+        hideAlert();
+        setTimeout(function() {
+            document.getElementById('reset-prog').style.width = '100%';
+        }, 100);
+        setTimeout(backToLogin, 3200);
+    } catch(err) {
+        showAlert('Network error. Please try again.');
+    } finally {
+        setLoading('set-pw-btn', false, 'Reset Password');
+    }
+}
+
+// Reset OTP: auto-format, Enter key
+document.getElementById('reset-otp-input').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+});
+document.getElementById('reset-otp-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') goToNewPassword();
+});
+
+// Template download buttons (preserved from original)
+['download-sales-template','download-purchase-template','download-product-template'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    var map = {
+        'download-sales-template':    'templates/sales_template.xlsx',
+        'download-purchase-template': 'templates/purchase_order_template.xlsx',
+        'download-product-template':  'templates/product_template.xlsx'
+    };
+    btn.addEventListener('click', function() {
+        var a = document.createElement('a');
+        a.href = map[id]; a.download = map[id].split('/').pop();
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    });
+});
+
+</script>
+</body>
+</html>

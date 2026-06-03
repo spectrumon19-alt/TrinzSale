@@ -1,0 +1,35 @@
+services:
+- type: web
+  name: webapp-pos
+  env: python
+  buildCommand: pip install -r requirements.txt
+  preDeployCommand: python predeploy.py
+  startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --preload wsgi:application
+  healthCheckPath: /login.html
+  envVars:
+  - key: PYTHON_VERSION
+    value: 3.11.0
+  - key: LICENSE_GUARD_ENABLED
+    value: "false"
+  - key: SECRET_KEY
+    sync: false
+  - key: DB_HOST
+    sync: false
+  - key: DB_NAME
+    sync: false
+  - key: DB_USER
+    sync: false
+  - key: DB_PASSWORD
+    sync: false
+  - key: DB_PORT
+    value: "5432"
+  - key: BREVO_API_KEY
+    sync: false
+  - key: BREVO_SENDER_EMAIL
+    sync: false
+  - key: BREVO_SENDER_NAME
+    value: "TrintzPOS Support"
+  - key: BREVO_SMTP_USER
+    sync: false
+  - key: BREVO_SMTP_PASSWORD
+    sync: false

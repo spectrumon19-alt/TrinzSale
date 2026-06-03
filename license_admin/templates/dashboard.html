@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Overview of all issued licenses and quick actions{% endblock %}
+
+{% block header_actions %}
+    {% if key_exists %}
+    <button onclick="openIssueModal()"
+            class="btn-primary">
+        <i class="fas fa-plus mr-2"></i> Issue License
+    </button>
+    {% else %}
+    <a href="{{ url_for('pages.settings') }}"
+       class="btn-secondary text-amber-600 border-amber-300 hover:bg-amber-50">
+        <i class="fas fa-exclamation-triangle mr-2 text-amber-500"></i> Set up keys first
+    </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if not key_exists %}
+<div class="flex items-start gap-3 p-4 mb-6 bg-amber-50 border border-amber-200 rounded-xl">
+    <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5 flex-shrink-0"></i>
+    <div>
+        <div class="font-semibold text-amber-800 text-sm">Private key not found</div>
+        <div class="text-xs text-amber-700 mt-0.5">
+            Copy <code class="bg-amber-100 px-1 rounded">private.pem</code> to the
+            <code class="bg-amber-100 px-1 rounded">keys/</code> folder, or
+            <a href="{{ url_for('pages.settings') }}" class="underline font-semibold">generate a new key pair</a>
+            in Settings. You cannot issue licenses without it.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Stats ──────────────────────────────────────────────────────────────────── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <div class="stat-card">
+        <div class="stat-icon bg-indigo-50 text-indigo-600"><i class="fas fa-id-card"></i></div>
+        <div class="stat-val text-indigo-600">{{ stats.total }}</div>
+        <div class="stat-lbl">Total Issued</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon bg-emerald-50 text-emerald-600"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-val text-emerald-600">{{ stats.active }}</div>
+        <div class="stat-lbl">Active</div>
+    </div>
+
+    <div class="stat-card border-amber-100">
+        <div class="stat-icon bg-amber-50 text-amber-600"><i class="fas fa-clock"></i></div>
+        <div class="stat-val text-amber-600">{{ stats.expiring }}</div>
+        <div class="stat-lbl">Expiring ≤ 30d</div>
+    </div>
+
+    <div class="stat-card border-red-100">
+        <div class="stat-icon bg-red-50 text-red-500"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-val text-red-500">{{ stats.expired }}</div>
+        <div class="stat-lbl">Expired / Revoked</div>
+    </div>
+
+</div>
+
+<!-- ── Recent licenses ────────────────────────────────────────────────────────── -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">Recent Licenses</div>
+            <div class="card-sub">Last {{ recent|length }} issued</div>
+        </div>
+        <a href="{{ url_for('pages.licenses') }}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+            View all <i class="fas fa-arrow-right ml-1 text-xs"></i>
+        </a>
+    </div>
+
+    {% if recent %}
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Serial</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Expiry</th>
+                    <th>Status</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lic in recent %}
+                <tr>
+                    <td><span class="font-mono text-xs text-indigo-600 font-semibold">{{ lic.serial }}</span></td>
+                    <td>
+                        <div class="font-semibold text-sm text-slate-800">{{ lic.customer }}</div>
+                        <div class="text-xs text-slate-400">{{ lic.email }}</div>
+                    </td>
+                    <td><span class="type-badge">{{ lic.license_type }}</span></td>
+                    <td>
+                        <div class="text-sm">{{ lic.expiry_date[:10] }}</div>
+                        {% if lic.status == 'active' or lic.status == 'expiring' %}
+                        <div class="text-xs text-slate-400">{{ lic.days_remaining }}d left</div>
+                        {% endif %}
+                    </td>
+                    <td>{% include "_status_badge.html" %}</td>
+                    <td class="text-right">
+                        <button onclick="viewKey('{{ lic.serial }}')"
+                                class="action-btn" title="View license key">
+                            <i class="fas fa-key"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-id-card text-3xl text-slate-300 mb-3"></i>
+        <p class="font-semibold text-slate-500">No licenses yet</p>
+        <p class="text-sm text-slate-400 mt-1">Click <strong>Issue License</strong> to generate your first license key</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

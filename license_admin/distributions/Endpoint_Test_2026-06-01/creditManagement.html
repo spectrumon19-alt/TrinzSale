@@ -1,0 +1,2177 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function(){
+            function bail(u){document.documentElement.style.display='none';window.location.replace(u);}
+            try{
+                var t=localStorage.getItem('pos_token');
+                if(!t)return bail('login.html');
+                var p=JSON.parse(atob(t.split('.')[1]));
+                if(p.exp<Date.now()/1000){localStorage.removeItem('pos_token');return bail('login.html');}
+                if(!['Admin','Super Admin','Manager','Cashier'].includes(p.role))return bail('noAccess.html');
+                document.documentElement.style.display='';
+            }catch(e){bail('login.html');}
+        })();
+    </script>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Management - TrintzPOS POS</title>
+    <!-- Load Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        /* ── Layout (matches other pages) ─────────────────────────────── */
+        .main-col{display:flex;flex-direction:column;min-width:0;flex:1 1 0%;}
+        @media(min-width:768px){.main-col{margin-left:220px;}}
+        @media(min-width:768px){.main-col.sidebar-hidden{margin-left:0;}}
+        main{flex:1;}
+
+        #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;opacity:0;transition:opacity .3s;}
+
+        /* Balance colours */
+        .negative-balance{color:#e74c3c;font-weight:600;}
+        .positive-balance{color:#27ae60;font-weight:600;}
+        .zero-balance{color:#7f8c8d;font-weight:600;}
+
+        /* Cards */
+        .form-card{background:var(--surface);border-radius:8px;padding:.9rem 1rem;margin-bottom:.85rem;border:1px solid var(--surface-border);}
+        .form-card h2{color:var(--text-base);font-weight:700;margin-bottom:.65rem;font-size:.95rem;}
+        .form-card h3{color:var(--text-base);font-weight:600;margin-bottom:.5rem;font-size:.85rem;}
+
+        /* Inputs */
+        .form-control{width:100%;padding:.42rem .65rem;border:1px solid var(--input-border,#d1d5db);border-radius:7px;font-size:.82rem;background:var(--input-bg,var(--surface));color:var(--text-base);transition:border-color .15s;box-sizing:border-box;}
+        .form-control:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+        .form-control::placeholder{color:var(--text-subtle,#9ca3af);}
+        textarea.form-control{resize:vertical;}
+        label{font-weight:600;color:var(--text-muted);margin-bottom:.25rem;font-size:.75rem;display:block;}
+
+        /* Table */
+        .credit-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);}
+        .credit-table th{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:600;text-transform:uppercase;font-size:.68rem;letter-spacing:.4px;padding:.55rem .75rem;}
+        .credit-table td{padding:.48rem .75rem;font-size:.8rem;text-align:left;border-bottom:1px solid var(--surface-border);color:var(--text-base);}
+        .credit-table tr:last-child td{border-bottom:none;}
+        .credit-table tr:nth-child(even){background:var(--surface-alt);}
+        .credit-table tr:hover{background:rgba(99,102,241,.05);}
+
+        /* Buttons — override styles.css where needed */
+        .btn-primary{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:.42rem .9rem;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:opacity .15s,transform .15s;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;}
+        .btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+        .btn-secondary{background:var(--secondary,#64748b);color:#fff;border:none;padding:.42rem .9rem;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;}
+        .btn-secondary:hover{opacity:.88;}
+        .btn-success{background:#059669;color:#fff;border:none;padding:.42rem .9rem;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;}
+        .btn-success:hover{opacity:.88;}
+        .btn-danger{background:#dc2626;color:#fff;border:none;padding:.42rem .9rem;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;justify-content:center;gap:.3rem;}
+        .btn-danger:hover{opacity:.88;}
+        .btn-icon{padding:.32rem .42rem;border-radius:6px;font-size:.75rem;}
+        button:disabled{opacity:.45;cursor:not-allowed;}
+
+        /* Transaction modal */
+        .modal-content{background:var(--surface);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.22);max-width:28rem;width:90%;}
+        .modal-header{padding:.85rem 1.1rem;border-bottom:1px solid var(--surface-border);display:flex;justify-content:space-between;align-items:center;}
+        .modal-title{font-size:.92rem;font-weight:700;color:var(--text-base);}
+        .modal-body{padding:.9rem 1.1rem;}
+        .modal-footer{padding:.75rem 1.1rem;border-top:1px solid var(--surface-border);display:flex;justify-content:flex-end;gap:.5rem;}
+
+        /* Page header */
+        .page-header{margin-bottom:.85rem;}
+        .page-title{font-size:1.05rem;
+            font-weight: 800;
+            color: #c5c9cf;
+            margin-bottom: 0.25rem;
+        }
+        
+        .page-subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        
+        .section-divider {
+            border-top: 1px solid var(--surface-border);
+            margin: 1.5rem 0;
+        }
+        
+        .balance-display {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+
+    <!-- Mobile Menu Overlay (Click closes menu) -->
+    <div id="overlay"></div> 
+
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar/Navigation -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+
+            <!-- Nav links injected here by renderSidebarLinks() -->
+
+            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.5);">
+            <div style="background:var(--surface);border-radius:10px;padding:1.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2" style="border-color:#6366f1;"></div>
+                <p style="font-size:.85rem;font-weight:600;color:var(--text-base);">Loading…</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-col flex-1" style="overflow-x:hidden;">
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg" onclick="toggleMenu()" style="color:var(--text-muted);background:transparent;">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">Credit Management</p>
+                        <p class="hd-sub">Manage customer credit accounts</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="text-xs hidden sm:block" style="color:var(--text-subtle);">Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span></p>
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main style="padding:.75rem 1rem;">
+                <div style="background:var(--surface);border:1px solid var(--surface-border);border-radius:10px;padding:1rem;box-shadow:var(--surface-shadow,0 2px 8px rgba(0,0,0,.07));">
+                    <section class="admin-panel">
+                        <div class="page-header">
+                            <h1 class="page-title">Credit Management</h1>
+                            <p class="page-subtitle" style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">Manage customer credit accounts</p>
+                        </div>
+                        
+                        <!-- Customer Registration Form -->
+                        <div class="form-card">
+                            <h2>Register New Customer</h2>
+                            <form id="customer-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div class="form-group">
+                                        <label for="customer-name" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer Name *</label>
+                                        <input type="text" id="customer-name" class="form-control" required placeholder="Enter customer full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-mobile" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Mobile Number *</label>
+                                        <input type="tel" id="customer-mobile" class="form-control" required placeholder="Enter 10-digit mobile number">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-email" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Email Address</label>
+                                        <input type="email" id="customer-email" class="form-control" placeholder="customer@example.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-id" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer ID <span class="text-gray-500">(Auto-generated if left blank)</span></label>
+                                        <input type="text" id="customer-id" class="form-control" disabled>
+                                        <small class="text-gray-500">Auto-generated by system</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer-address" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Address</label>
+                                        <textarea id="customer-address" class="form-control" rows="2" placeholder="Enter customer address"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="initial-balance" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Initial Balance (₹)</label>
+                                        <input type="number" id="initial-balance" class="form-control" step="0.01" value="0" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fas fa-user-plus mr-2"></i> Register Customer
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Toolbar: Search + Date + Export -->
+                        <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:flex-end;margin-bottom:.75rem;">
+                            <!-- Search -->
+                            <div style="position:relative;flex:1;min-width:160px;">
+                                <i class="fas fa-search" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--text-subtle);pointer-events:none;"></i>
+                                <input type="text" id="search-customer" class="form-control" style="padding-left:1.8rem;" placeholder="Search name, mobile, ID…">
+                                <button id="clear-search-btn" class="hidden" style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8rem;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <!-- Date range -->
+                            <input type="date" id="start-date" class="form-control" style="width:130px;" title="From date">
+                            <input type="date" id="end-date"   class="form-control" style="width:130px;" title="To date">
+                            <!-- Action buttons -->
+                            <button id="apply-date-filter" class="btn-primary"><i class="fas fa-filter"></i> Filter</button>
+                            <button id="clear-date-filter" class="btn-secondary"><i class="fas fa-times"></i></button>
+                            <button id="search-btn"  class="btn-primary"><i class="fas fa-search"></i> Search</button>
+                            <button id="refresh-btn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            <button id="export-all-report"      class="btn-success"><i class="fas fa-file-export"></i> Export All</button>
+                            <button id="export-selected-report" class="btn-primary" disabled><i class="fas fa-file-export"></i> Selected</button>
+                        </div>
+                        
+                        <!-- Customer List -->
+                        <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--surface-border);">
+                            <table class="credit-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th class="w-12">
+                                            <span class="sr-only">Select</span>
+                                        </th>
+                                        <th>Customer ID</th>
+                                        <th>Name</th>
+                                        <th>Mobile</th>
+                                        <th>Email</th>
+                                        <th>Current Balance</th>
+                                        <th class="w-32">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customer-list">
+                                    <!-- Customer data will be populated here -->
+                                    <tr>
+                                        <td colspan="8" class="text-center py-6 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Loading customers...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;">
+                            <span style="font-size:.75rem;color:var(--text-muted);">Showing <span id="page-info">0</span> of <span id="total-customers">0</span> customers</span>
+                            <div style="display:flex;gap:.4rem;">
+                                <button id="prev-page" class="btn-secondary btn-icon" disabled><i class="fas fa-chevron-left"></i></button>
+                                <button id="next-page" class="btn-secondary btn-icon" disabled><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <!-- Footer Container -->
+            <div id="footer-container"></div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div id="transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Update Credit Balance</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="transaction-form">
+                <input type="hidden" id="customer-id-modal">
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer Name</label>
+                        <p id="customer-name-modal" class="font-medium text-lg"></p>
+                    </div>
+                    <div class="mb-4">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Current Balance</label>
+                        <p id="current-balance-modal" class="font-medium text-lg balance-display"></p>
+                    </div>
+                    <div class="mb-4">
+                        <label for="transaction-type" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Transaction Type *</label>
+                        <select id="transaction-type" class="form-control" required>
+                            <option value="">Select transaction type</option>
+                            <option value="credit">Credit (Increase balance)</option>
+                            <option value="debit">Debit (Decrease balance)</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="transaction-amount" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Amount (₹) *</label>
+                        <input type="number" id="transaction-amount" class="form-control" step="0.01" min="0.01" required placeholder="Enter amount">
+                    </div>
+                    <div class="mb-4">
+                        <label for="transaction-note" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Note</label>
+                        <textarea id="transaction-note" class="form-control" rows="2" placeholder="Optional note about this transaction"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancel-transaction" class="btn-secondary">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        Update Balance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script src="config.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+        // API Base URL - Use configuration from config.js
+        const API_BASE = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL + '/api' : '/api';
+
+        // Global variables
+        let currentUser = null;
+        let customers = [];
+        let filteredCustomers = [];
+        let currentPage = 1;
+        const customersPerPage = 10;
+        let selectedCustomerIds = new Set(); // For export selection
+        let dateFilteredCustomers = []; // For date filtering
+        let searchTimeout = null; // For search debounce
+
+        // DOM Elements - Will be initialized in DOMContentLoaded
+        let logoutBtn;
+        let usernameSpan;
+        let customerForm;
+        let searchInput;
+        let searchBtn;
+        let refreshBtn;
+        let clearSearchBtn;
+        let customerList;
+        let pageInfo;
+        let totalCustomers;
+        let prevPageBtn;
+        let nextPageBtn;
+        let transactionModal;
+        let transactionForm;
+        let closeModalBtn;
+        let cancelTransactionBtn;
+        let startDateInput;
+        let endDateInput;
+        let applyDateFilterBtn;
+        let clearDateFilterBtn;
+        let exportAllReportBtn;
+        let exportSelectedReportBtn;
+        let pinSidebarBtn; // Pin/Unpin sidebar button
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize DOM elements now that HTML has loaded
+            logoutBtn = document.getElementById('nav-logout-btn');
+            usernameSpan = document.getElementById('nav-username');
+            customerForm = document.getElementById('customer-form');
+            searchInput = document.getElementById('search-customer');
+            searchBtn = document.getElementById('search-btn');
+            refreshBtn = document.getElementById('refresh-btn');
+            clearSearchBtn = document.getElementById('clear-search-btn');
+            customerList = document.getElementById('customer-list');
+            pageInfo = document.getElementById('page-info');
+            totalCustomers = document.getElementById('total-customers');
+            prevPageBtn = document.getElementById('prev-page');
+            nextPageBtn = document.getElementById('next-page');
+            transactionModal = document.getElementById('transaction-modal');
+            transactionForm = document.getElementById('transaction-form');
+            closeModalBtn = document.getElementById('close-modal');
+            cancelTransactionBtn = document.getElementById('cancel-transaction');
+            startDateInput = document.getElementById('start-date');
+            endDateInput = document.getElementById('end-date');
+            applyDateFilterBtn = document.getElementById('apply-date-filter');
+            clearDateFilterBtn = document.getElementById('clear-date-filter');
+            exportAllReportBtn = document.getElementById('export-all-report');
+            exportSelectedReportBtn = document.getElementById('export-selected-report');
+            // pinSidebarBtn is now handled by sidebar-utils.js
+            
+            // Check authentication
+            if (!isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            } else if (!checkPagePermission()) {
+                window.location.href = 'noAccess.html';
+                return;
+            }
+            
+            // Set up logout button
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    localStorage.removeItem('pos_token');
+                    window.location.href = 'login.html';
+                });
+            }
+
+            // Update username display
+            const user = getCurrentUser();
+            if (user) {
+                if (usernameSpan) usernameSpan.textContent = user.username;
+                currentUser = user;
+            }
+            
+            // Update form UI
+            updateFormUI();
+            
+            // Set up form submission
+            if (customerForm) {
+                customerForm.addEventListener('submit', handleCustomerRegistration);
+            }
+            
+            // Set up search with both input and button
+            if (searchInput) {
+                // Handle typing in search box (with debounce)
+                searchInput.addEventListener('input', handleSearch);
+                
+                // Handle Enter key press
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSearch();
+                    }
+                });
+            }
+            
+            // Set up clear search button
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', clearSearch);
+            }
+            
+            // Set up search button
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    handleSearch();
+                });
+            }
+            
+            // Set up refresh button
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    console.log('Refresh button clicked');
+                    // Clear search input
+                    if (searchInput) {
+                        searchInput.value = '';
+                    }
+                    loadCustomers();
+                });
+            }
+            
+            // Set up pagination
+            if (prevPageBtn) {
+                prevPageBtn.addEventListener('click', () => changePage(currentPage - 1));
+            }
+            
+            if (nextPageBtn) {
+                nextPageBtn.addEventListener('click', () => changePage(currentPage + 1));
+            }
+            
+            // Set up transaction modal
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', closeTransactionModal);
+            }
+            
+            if (cancelTransactionBtn) {
+                cancelTransactionBtn.addEventListener('click', closeTransactionModal);
+            }
+            
+            if (transactionForm) {
+                transactionForm.addEventListener('submit', handleTransaction);
+            }
+            
+            // Set up date filters
+            if (applyDateFilterBtn) {
+                applyDateFilterBtn.addEventListener('click', applyDateFilter);
+            }
+            
+            if (clearDateFilterBtn) {
+                clearDateFilterBtn.addEventListener('click', clearDateFilter);
+            }
+            
+            // Set up export buttons
+            if (exportAllReportBtn) {
+                exportAllReportBtn.addEventListener('click', exportAllCustomersReport);
+            }
+            
+            if (exportSelectedReportBtn) {
+                exportSelectedReportBtn.addEventListener('click', exportSelectedCustomersReport);
+            }
+            
+            // Pin/Unpin sidebar button is now handled by sidebar-utils.js
+            
+            // Initialize date fields with default values (last 30 days)
+            initializeDateFields();
+            
+            initializeSidebarPin();
+            window.sidebarInitialized = true;
+            
+            // Load initial data
+            loadCustomers();
+            
+            // Test if credit tables exist
+            testCreditTables();
+        });
+        
+        // Handle window resize events (now handled by sidebar-utils.js)
+        // window.addEventListener('resize', function() { ... });
+        
+        // Test function to check if credit tables exist
+        async function testCreditTables() {
+            try {
+                const token = localStorage.getItem('pos_token');
+                if (!token) return;
+                
+                // Try to fetch one customer to test if tables exist
+                const response = await fetch(`${API_BASE}/customers?page=1&per_page=1`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Credit tables test - Response status:', response.status);
+                if (response.ok) {
+                    console.log('Credit tables appear to exist and are accessible');
+                } else {
+                    console.log('Credit tables may not exist or there is an issue with access');
+                    try {
+                        const errorData = await response.json();
+                        console.log('Error details:', errorData);
+                    } catch (e) {
+                        console.log('Could not parse error details');
+                    }
+                }
+            } catch (error) {
+                console.log('Error testing credit tables:', error);
+            }
+        }
+
+        // Initialize date fields with default values
+        function initializeDateFields() {
+            try {
+                // Don't set default dates to avoid filtering out customers by default
+                if (startDateInput) startDateInput.value = '';
+                if (endDateInput) endDateInput.value = '';
+            } catch (e) {
+                console.error('Error initializing date fields:', e);
+                // Set to empty values if there's an error
+                if (startDateInput) startDateInput.value = '';
+                if (endDateInput) endDateInput.value = '';
+            }
+        }
+
+        // Load customers from API
+        async function loadCustomers() {
+            console.log('=== LOADING CUSTOMERS ===' );
+            console.log('API_BASE:', API_BASE);
+            showLoading();
+            
+            try {
+                const token = localStorage.getItem('pos_token');
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
+                
+                const url = `${API_BASE}/customers?page=1&per_page=100`;
+                console.log('Fetching from URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    console.error('Error response:', errorData);
+                    throw new Error(`HTTP ${response.status}: ${errorData}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                if (!data.customers || !Array.isArray(data.customers)) {
+                    console.error('Invalid response structure:', data);
+                    throw new Error('Invalid response from server');
+                }
+                
+                console.log('Customers received:', data.customers.length);
+                
+                // Map customers
+                customers = data.customers.map(customer => ({
+                    id: customer.customer_id,
+                    code: customer.customer_code,
+                    name: customer.name,
+                    mobile: customer.mobile,
+                    email: customer.email,
+                    address: customer.address,
+                    balance: customer.current_balance,
+                    createdAt: customer.created_at,
+                    transactions: []
+                }));
+                
+                console.log('Customers mapped:', customers.length);
+                
+                // Filter and render
+                applyFilters();
+                renderCustomerList();
+                console.log('=== CUSTOMERS LOADED SUCCESSFULLY ===' );
+                
+            } catch (error) {
+                console.error('Error:', error);
+                if (customerList) {
+                    customerList.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-red-500">
+                                Error: ${error.message}
+                                <br><br>
+                                <button onclick="location.reload()" class="btn-primary">Reload Page</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Apply all filters (search and date)
+        function applyFilters() {
+            console.log('Applying filters, customers count:', customers.length);
+            
+            // Validate that customers array exists
+            if (!customers || !Array.isArray(customers)) {
+                console.error('Customers data is invalid:', customers);
+                filteredCustomers = [];
+                return;
+            }
+            
+            // Start with all customers
+            let result = [...customers];
+            
+            // Apply search filter
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            console.log('Search term:', searchTerm);
+            
+            if (searchTerm) {
+                result = result.filter(customer => {
+                    // Add null checks for all properties
+                    try {
+                        return (
+                            (customer.name && customer.name.toLowerCase().includes(searchTerm)) ||
+                            (customer.mobile && customer.mobile.toString().includes(searchTerm)) ||
+                            (customer.id && customer.id.toString().toLowerCase().includes(searchTerm)) ||
+                            (customer.code && customer.code.toLowerCase().includes(searchTerm)) ||
+                            (customer.email && customer.email.toLowerCase().includes(searchTerm))
+                        );
+                    } catch (e) {
+                        console.error('Error filtering customer:', e, customer);
+                        return false;
+                    }
+                });
+                console.log('Filtered customers count:', result.length);
+            }
+            
+            // Apply date filter
+            const startDate = startDateInput ? startDateInput.value : '';
+            const endDate = endDateInput ? endDateInput.value : '';
+            
+            if (startDate && endDate) {
+                result = result.filter(customer => {
+                    // Check if customer has any transactions in the date range
+                    if (!customer.transactions || customer.transactions.length === 0) {
+                        // If no transactions, include customer only if created in date range
+                        try {
+                            if (customer.createdAt) {
+                                const createdDate = new Date(customer.createdAt).toISOString().split('T')[0];
+                                return createdDate >= startDate && createdDate <= endDate;
+                            }
+                            return false;
+                        } catch (e) {
+                            console.error('Error parsing customer creation date:', e);
+                            return false;
+                        }
+                    }
+                    
+                    // Check if any transaction is in date range
+                    return customer.transactions.some(transaction => {
+                        try {
+                            if (transaction.date || transaction.created_at) {
+                                const transactionDate = new Date(transaction.date || transaction.created_at).toISOString().split('T')[0];
+                                return transactionDate >= startDate && transactionDate <= endDate;
+                            }
+                            return false;
+                        } catch (e) {
+                            console.error('Error parsing transaction date:', e);
+                            return false;
+                        }
+                    });
+                });
+            }
+            
+            filteredCustomers = result;
+            dateFilteredCustomers = result;
+        }
+
+        // Apply date filter
+        function applyDateFilter() {
+            applyFilters();
+            currentPage = 1;
+            renderCustomerList();
+        }
+
+        // Clear date filter
+        function clearDateFilter() {
+            // Reset date inputs to default values
+            initializeDateFields();
+            applyFilters();
+            currentPage = 1;
+            renderCustomerList();
+        }
+
+        // Handle customer registration
+        async function handleCustomerRegistration(e) {
+            e.preventDefault();
+            console.log('Customer registration form submitted');
+            
+            const name = document.getElementById('customer-name').value.trim();
+            const mobile = document.getElementById('customer-mobile').value.trim();
+            const email = document.getElementById('customer-email').value.trim();
+            const address = document.getElementById('customer-address').value.trim();
+            const initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
+            // Removed invoiceNo field
+            
+            // Validation
+            if (!name || !mobile) {
+                alert('Please fill in all required fields (Name and Mobile).');
+                return;
+            }
+            
+            // Create customer data object
+            const customerData = {
+                name: name,
+                mobile: mobile,
+                email: email || null,
+                address: address || null,
+                // Removed invoice_no field
+                initial_balance: initialBalance
+            };
+            
+            try {
+                // Send request to API
+                const response = await fetch(`${API_BASE}/customers`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(customerData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Customer registered:', result);
+                
+                // Reset form
+                customerForm.reset();
+                document.getElementById('initial-balance').value = '0';
+                
+                // Reload customer list
+                loadCustomers();
+                
+                // Show success message
+                alert(`Customer registered successfully!\nCustomer ID: ${result.customer.customer_code}`);
+            } catch (error) {
+                console.error('Error registering customer:', error);
+                alert(`Error registering customer: ${error.message}`);
+            }
+        }
+
+        // Update the form to make Customer ID optional
+        function updateFormUI() {
+            const customerIdInput = document.getElementById('customer-id');
+            const customerIdLabel = document.querySelector('label[for="customer-id"]');
+            
+            if (customerIdLabel) {
+                customerIdLabel.innerHTML = 'Customer ID <span class="text-gray-500">(Auto-generated by system)</span>';
+            }
+            
+            if (customerIdInput) {
+                customerIdInput.disabled = true;
+            }
+        }
+
+        // Handle search with debounce
+        function handleSearch() {
+            console.log('Search triggered, search term:', searchInput ? searchInput.value : 'searchInput is null');
+            
+            // Check if searchInput exists
+            if (!searchInput) {
+                console.error('Search input element not found');
+                return;
+            }
+            
+            // Get the search term
+            const searchTerm = searchInput.value.trim();
+            console.log('Processing search for term:', searchTerm);
+            
+            // Clear any existing timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+                searchTimeout = null;
+            }
+            
+            // If search term is empty, reset to show all customers
+            if (!searchTerm) {
+                console.log('Empty search term, showing all customers');
+                applyFilters();
+                currentPage = 1;
+                renderCustomerList();
+                return;
+            }
+            
+            // Debounce search requests - wait 300ms after user stops typing
+            searchTimeout = setTimeout(() => {
+                console.log('Executing search filter with term:', searchTerm);
+                applyFilters();
+                currentPage = 1;
+                renderCustomerList();
+            }, 300);
+        }
+        
+        // Clear search function
+        function clearSearch() {
+            console.log('Clear search clicked');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            applyFilters();
+            currentPage = 1;
+            renderCustomerList();
+        }
+
+        // Render customer list with pagination
+        function renderCustomerList() {
+            console.log('=== RENDERING CUSTOMER LIST ===' );
+            console.log('Rendering customer list, filtered customers:', filteredCustomers ? filteredCustomers.length : 'filteredCustomers is null');
+            console.log('filteredCustomers:', filteredCustomers);
+            console.log('customerList DOM element exists:', !!customerList);
+            
+            // Validate that filteredCustomers exists
+            if (!filteredCustomers || !Array.isArray(filteredCustomers)) {
+                console.error('Filtered customers data is invalid:', filteredCustomers);
+                if (customerList) {
+                    customerList.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-red-500">
+                                Error: Invalid customer data. Please refresh the page.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    console.error('customerList DOM element not found!');
+                }
+                return;
+            }
+            
+            const startIndex = (currentPage - 1) * customersPerPage;
+            const endIndex = startIndex + customersPerPage;
+            const pageCustomers = filteredCustomers.slice(startIndex, endIndex);
+            console.log('Page customers:', pageCustomers.length);
+            console.log('pageCustomers:', pageCustomers);
+            
+            if (pageCustomers.length === 0) {
+                console.log('No customers on this page');
+                if (customerList) {
+                    customerList.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-gray-500">
+                                ${searchInput && searchInput.value || startDateInput && startDateInput.value || endDateInput && endDateInput.value ? 'No customers found matching your filters.' : 'No customers registered yet.'}
+                            </td>
+                        </tr>
+                    `;
+                }
+                updatePagination();
+                return;
+            }
+            
+            console.log('Clearing customerList innerHTML');
+            if (customerList) {
+                customerList.innerHTML = '';
+            } else {
+                console.error('customerList is null or undefined!');
+                return;
+            }
+            
+            console.log('Iterating through pageCustomers');
+            pageCustomers.forEach((customer, index) => {
+                console.log(`Processing customer ${index + 1}:`, customer);
+                const row = document.createElement('tr');
+                
+                // Determine balance class
+                let balanceClass = 'zero-balance';
+                if (customer.balance > 0) {
+                    balanceClass = 'positive-balance';
+                } else if (customer.balance < 0) {
+                    balanceClass = 'negative-balance';
+                }
+                
+                // Create checkbox for selection
+                const checkboxId = `select-${customer.id}`;
+                
+                row.innerHTML = `
+                    <td class="align-center">${index + 1}</td>
+                    <td class="align-center">
+                        <input type="checkbox" id="${checkboxId}" class="customer-checkbox" data-customer-id="${customer.id}">
+                    </td>
+                    <td class="font-medium">${customer.code || customer.id}</td>
+                    <td>${customer.name || ''}</td>
+                    <td>${customer.mobile || ''}</td>
+                    <td>${customer.email || '-'}</td>
+                    <td class="${balanceClass}">₹${Math.abs(customer.balance || 0).toFixed(2)}${customer.balance < 0 ? ' (Credit)' : customer.balance > 0 ? ' (Debt)' : ''}</td>
+                    <td>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary btn-icon update-balance" data-customer-id="${customer.id}" title="Update Balance">
+                                <i class="fas fa-wallet"></i>
+                            </button>
+                            <button class="btn-secondary btn-icon view-details" data-customer-id="${customer.id}" title="View Details / Edit / Delete">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn-success btn-icon export-customer" data-customer-id="${customer.id}" title="Export CSV">
+                                <i class="fas fa-file-export"></i>
+                            </button>
+                            <button class="btn-icon send-email-btn" data-customer-id="${customer.id}" data-customer-email="${customer.email || ''}" data-customer-name="${(customer.name||'').replace(/"/g,'&quot;')}" title="Send Statement by Email"
+                                    style="background:#0891b2;color:#fff;border:none;padding:.32rem .42rem;border-radius:6px;cursor:pointer;font-size:.75rem;">
+                                <i class="fas fa-envelope"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                console.log(`Appending row for customer ${customer.id}`);
+                customerList.appendChild(row);
+            });
+            
+            console.log('All rows appended, adding event listeners');
+            
+            // Add event listeners to checkboxes
+            document.querySelectorAll('.customer-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleCustomerSelection);
+            });
+            
+            // Add event listeners to action buttons
+            document.querySelectorAll('.update-balance').forEach(button => {
+                button.addEventListener('click', () => openTransactionModal(button.dataset.customerId));
+            });
+            
+            document.querySelectorAll('.view-details').forEach(button => {
+                button.addEventListener('click', () => viewCustomerDetails(button.dataset.customerId));
+            });
+            
+            document.querySelectorAll('.export-customer').forEach(button => {
+                button.addEventListener('click', () => exportCustomerReport(button.dataset.customerId));
+            });
+
+            document.querySelectorAll('.send-email-btn').forEach(button => {
+                button.addEventListener('click', () => openCreditEmailModal(
+                    button.dataset.customerId,
+                    button.dataset.customerName,
+                    button.dataset.customerEmail
+                ));
+            });
+            
+            console.log('Event listeners added, updating pagination');
+            updatePagination();
+            updateExportButtonState();
+            console.log('=== RENDER COMPLETE ===' );
+        }
+
+        // Handle customer selection for export
+        function handleCustomerSelection(event) {
+            const customerId = event.target.dataset.customerId;
+            if (event.target.checked) {
+                selectedCustomerIds.add(customerId);
+            } else {
+                selectedCustomerIds.delete(customerId);
+            }
+            updateExportButtonState();
+        }
+
+        // Update export button state
+        function updateExportButtonState() {
+            if (exportSelectedReportBtn) {
+                exportSelectedReportBtn.disabled = selectedCustomerIds.size === 0;
+            }
+        }
+
+        // Update pagination controls
+        function updatePagination() {
+            const total = filteredCustomers.length;
+            const totalPages = Math.ceil(total / customersPerPage);
+            
+            if (totalPages === 0) {
+                pageInfo.textContent = '0';
+                totalCustomers.textContent = '0';
+                prevPageBtn.disabled = true;
+                nextPageBtn.disabled = true;
+                return;
+            }
+            
+            const startIndex = (currentPage - 1) * customersPerPage + 1;
+            const endIndex = Math.min(startIndex + customersPerPage - 1, total);
+            
+            pageInfo.textContent = `${startIndex}-${endIndex}`;
+            totalCustomers.textContent = total;
+            
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages;
+        }
+
+        // Change page
+        function changePage(newPage) {
+            const totalPages = Math.ceil(filteredCustomers.length / customersPerPage);
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderCustomerList();
+            }
+        }
+
+        // Open transaction modal
+        async function openTransactionModal(customerId) {
+            try {
+                // Get customer details from API
+                const response = await fetch(`${API_BASE}/customers/${customerId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const customer = await response.json();
+                
+                // Populate modal fields
+                document.getElementById('customer-id-modal').value = customer.customer_id;
+                document.getElementById('customer-name-modal').textContent = customer.name;
+                document.getElementById('current-balance-modal').textContent = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Credit)' : customer.current_balance > 0 ? ' (Debt)' : ''}`;
+                
+                // Set balance color
+                const balanceModal = document.getElementById('current-balance-modal');
+                if (customer.current_balance > 0) {
+                    balanceModal.className = 'font-medium text-lg positive-balance';
+                } else if (customer.current_balance < 0) {
+                    balanceModal.className = 'font-medium text-lg negative-balance';
+                } else {
+                    balanceModal.className = 'font-medium text-lg zero-balance';
+                }
+                
+                // Reset form
+                document.getElementById('transaction-type').value = '';
+                document.getElementById('transaction-amount').value = '';
+                document.getElementById('transaction-note').value = '';
+                
+                // Show modal
+                transactionModal.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error opening transaction modal:', error);
+                alert(`Error loading customer details: ${error.message}`);
+            }
+        }
+
+        // Close transaction modal
+        function closeTransactionModal() {
+            transactionModal.classList.add('hidden');
+        }
+
+        // Handle transaction
+        async function handleTransaction(e) {
+            e.preventDefault();
+            
+            const customerId = document.getElementById('customer-id-modal').value;
+            const transactionType = document.getElementById('transaction-type').value;
+            const amount = parseFloat(document.getElementById('transaction-amount').value);
+            // Removed invoiceNo field
+            const note = document.getElementById('transaction-note').value.trim();
+            
+            // Validation
+            if (!transactionType) {
+                alert('Please select a transaction type.');
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount.');
+                return;
+            }
+            
+            try {
+                // Show loading indicator
+                showLoading();
+                
+                // Create transaction data
+                const transactionData = {
+                    transaction_type: transactionType,
+                    amount: amount,
+                    // Removed invoice_no field
+                    note: note || null
+                };
+                
+                // Send request to API
+                const response = await fetch(`${API_BASE}/customers/${customerId}/transactions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(transactionData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Transaction added:', result);
+                
+                // Close modal
+                closeTransactionModal();
+                
+                // Update the specific customer's balance in the customer list without reloading the entire list
+                updateCustomerBalanceInList(customerId, result.new_balance);
+                
+                // Show success message
+                alert('Balance updated successfully!');
+            } catch (error) {
+                console.error('Error adding transaction:', error);
+                alert(`Error updating balance: ${error.message}`);
+            } finally {
+                // Hide loading indicator
+                hideLoading();
+            }
+        }
+
+        // Update a specific customer's balance in the customer list
+        function updateCustomerBalanceInList(customerId, newBalance) {
+            // Find the customer in the customers array and update their balance
+            const customerIndex = customers.findIndex(customer => customer.id == customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex].balance = newBalance;
+                
+                // Also update in the filteredCustomers array
+                const filteredCustomerIndex = filteredCustomers.findIndex(customer => customer.id == customerId);
+                if (filteredCustomerIndex !== -1) {
+                    filteredCustomers[filteredCustomerIndex].balance = newBalance;
+                }
+                
+                // Re-render the customer list to reflect the updated balance
+                renderCustomerList();
+            }
+        }
+
+        let _viewCustomerId   = null;
+        let _viewCustomerName = null;
+
+        async function viewCustomerDetails(customerId) {
+            try {
+                const token = localStorage.getItem('pos_token');
+                const response = await fetch(`${API_BASE}/customers/${customerId}`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const c = await response.json();
+
+                _viewCustomerId   = c.customer_id;
+                _viewCustomerName = c.name;
+
+                // Avatar initials
+                const initials = (c.name || '?').trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+                document.getElementById('vd-avatar').textContent = initials;
+
+                // Header
+                document.getElementById('vd-name').textContent    = c.name || '-';
+                document.getElementById('vd-code').textContent    = c.customer_code || c.customer_uuid || '';
+                document.getElementById('vd-id').textContent      = c.customer_uuid  || '-';
+                document.getElementById('vd-mobile').textContent  = c.mobile  || '-';
+                document.getElementById('vd-email').textContent   = c.email   || '-';
+                document.getElementById('vd-address').textContent = c.address || '-';
+                document.getElementById('vd-reg').textContent     = c.created_at
+                    ? new Date(c.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+                    : '-';
+
+                // Balance strip
+                const bal      = parseFloat(c.current_balance) || 0;
+                const balEl    = document.getElementById('vd-balance');
+                const balIcon  = document.getElementById('vd-bal-icon');
+                const balBadge = document.getElementById('vd-balance-badge');
+                balEl.textContent = `₹${Math.abs(bal).toFixed(2)}`;
+                if (bal < 0) {
+                    balEl.style.color  = '#16a34a';
+                    balIcon.style.background = '#16a34a';
+                    balBadge.textContent = 'Credit';
+                    balBadge.style.cssText = 'font-size:.7rem;font-weight:700;padding:3px 12px;border-radius:20px;background:#dcfce7;color:#16a34a;';
+                } else if (bal > 0) {
+                    balEl.style.color  = '#dc2626';
+                    balIcon.style.background = '#dc2626';
+                    balBadge.textContent = 'Outstanding';
+                    balBadge.style.cssText = 'font-size:.7rem;font-weight:700;padding:3px 12px;border-radius:20px;background:#fee2e2;color:#dc2626;';
+                } else {
+                    balEl.style.color  = 'var(--text-muted)';
+                    balIcon.style.background = '#64748b';
+                    balBadge.textContent = 'Settled';
+                    balBadge.style.cssText = 'font-size:.7rem;font-weight:700;padding:3px 12px;border-radius:20px;background:var(--surface-alt);color:var(--text-muted);border:1px solid var(--surface-border);';
+                }
+
+                // Transactions
+                const txns = c.transactions || [];
+                document.getElementById('vd-txn-count').textContent = `${txns.length} transaction${txns.length !== 1 ? 's' : ''}`;
+                const tbody = document.getElementById('vd-txn-body');
+                if (txns.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding:.85rem;text-align:center;color:var(--text-muted);font-size:.75rem;font-style:italic;">No transactions yet</td></tr>`;
+                } else {
+                    tbody.innerHTML = txns.map((t, i) => {
+                        const date = t.created_at
+                            ? new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' })
+                            : '-';
+                        const isCredit = t.transaction_type === 'credit';
+                        const badge = isCredit
+                            ? `<span style="background:#dcfce7;color:#16a34a;padding:1px 7px;border-radius:20px;font-size:.62rem;font-weight:700;">+ Cr</span>`
+                            : `<span style="background:#fee2e2;color:#dc2626;padding:1px 7px;border-radius:20px;font-size:.62rem;font-weight:700;">− Dr</span>`;
+                        const amtColor = isCredit ? '#16a34a' : '#dc2626';
+                        const rowBg = i % 2 === 1 ? 'background:var(--surface-alt);' : '';
+                        const note  = t.note ? t.note.replace(/</g,'&lt;') : '';
+                        return `<tr style="${rowBg}">
+                            <td style="padding:.3rem .6rem;font-size:.72rem;color:var(--text-muted);white-space:nowrap;">${date}</td>
+                            <td style="padding:.3rem .6rem;">${badge}</td>
+                            <td style="padding:.3rem .6rem;text-align:right;font-size:.75rem;font-weight:700;color:${amtColor};white-space:nowrap;">${isCredit?'+':'−'}₹${parseFloat(t.amount).toFixed(2)}</td>
+                            <td style="padding:.3rem .6rem;font-size:.72rem;color:var(--text-muted);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${note}">${note||'—'}</td>
+                        </tr>`;
+                    }).join('');
+                }
+
+                const modal = document.getElementById('view-details-modal');
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+            } catch (err) {
+                console.error('Error viewing customer details:', err);
+                alert(`Error loading customer details: ${err.message}`);
+            }
+        }
+
+        function closeViewDetailsModal() {
+            const modal = document.getElementById('view-details-modal');
+            modal.classList.add('hidden');
+            modal.style.display = '';
+        }
+
+        function editFromViewModal() {
+            if (!_viewCustomerId) return;
+            closeViewDetailsModal();
+            openEditCustomerModal(_viewCustomerId);
+        }
+
+        function deleteFromViewModal() {
+            if (!_viewCustomerId) return;
+            closeViewDetailsModal();
+            deleteCustomer(_viewCustomerId, _viewCustomerName);
+        }
+
+        // Export report for a single customer
+        async function exportCustomerReport(customerId) {
+            try {
+                // Get customer details from API
+                const response = await fetch(`${API_BASE}/customers/${customerId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const customer = await response.json();
+                
+                // Filter transactions by date range if applicable
+                let transactions = customer.transactions || [];
+                const startDate = startDateInput.value;
+                const endDate = endDateInput.value;
+                
+                if (startDate && endDate) {
+                    transactions = transactions.filter(transaction => {
+                        try {
+                            const transactionDate = new Date(transaction.created_at).toISOString().split('T')[0];
+                            return transactionDate >= startDate && transactionDate <= endDate;
+                        } catch (e) {
+                            console.error('Error parsing transaction date in export:', e);
+                            return false;
+                        }
+                    });
+                }
+                
+                // Sort transactions by date (oldest first)
+                transactions.sort((a, b) => {
+                    try {
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    } catch (e) {
+                        console.error('Error sorting transactions by date:', e);
+                        return 0;
+                    }
+                });
+                
+                // Generate CSV content
+                let csvContent = 'Customer Credit Report\n';
+                csvContent += `Generated on: ${new Date().toLocaleString()}\n\n`;
+                csvContent += `Customer ID: ${customer.customer_uuid}\n`;
+                csvContent += `Customer Name: ${customer.name}\n`;
+                csvContent += `Mobile: ${customer.mobile}\n`;
+                csvContent += `Email: ${customer.email || 'N/A'}\n`;
+                csvContent += `Address: ${customer.address || 'N/A'}\n`;
+                csvContent += `Current Balance: ₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Credit)' : customer.current_balance > 0 ? ' (Debt)' : ''}\n\n`;
+                
+                if (transactions.length === 0) {
+                    csvContent += 'No transactions found for the selected date range.\n';
+                } else {
+                    // Add transaction headers
+                    csvContent += 'Date,Transaction Type,Amount (₹),Balance Before,Invoice Number,Note\n';
+                    
+                    let runningBalance = customer.current_balance;
+                    // Calculate initial balance by reversing all transactions
+                    for (let i = transactions.length - 1; i >= 0; i--) {
+                        const transaction = transactions[i];
+                        const amount = parseFloat(transaction.amount) || 0;
+                        if (transaction.transaction_type === 'credit') {
+                            runningBalance -= amount;
+                        } else {
+                            runningBalance += amount;
+                        }
+                    }
+                    
+                    // Add transactions with running balance
+                    transactions.forEach(transaction => {
+                        let date = '';
+                        try {
+                            date = new Date(transaction.created_at).toLocaleDateString();
+                        } catch (e) {
+                            console.error('Error formatting transaction date:', e);
+                            date = 'Invalid Date';
+                        }
+                        const type = transaction.transaction_type === 'credit' ? 'Credit' : 'Debit';
+                        const balanceBefore = runningBalance.toFixed(2);
+                        const invoiceNo = transaction.invoice_no || 'N/A';
+                        
+                        // Update running balance
+                        const amount = parseFloat(transaction.amount) || 0;
+                        if (transaction.transaction_type === 'credit') {
+                            runningBalance += amount;
+                        } else {
+                            runningBalance -= amount;
+                        }
+                        
+                        csvContent += `"${date}","${type}","${amount.toFixed(2)}","${balanceBefore}","${invoiceNo}","${transaction.note || ''}"\n`;
+                    });
+                }
+                
+                // Create and download CSV file
+                downloadCSV(csvContent, `customer_${customer.customer_uuid}_report.csv`);
+            } catch (error) {
+                console.error('Error exporting customer report:', error);
+                alert(`Error exporting customer report: ${error.message}`);
+            }
+        }
+
+        // Export report for all customers
+        async function exportAllCustomersReport() {
+            try {
+                // Get all customers from API
+                const response = await fetch(`${API_BASE}/customers`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const customersToExport = data.customers;
+                
+                if (customersToExport.length === 0) {
+                    alert('No customers found.');
+                    return;
+                }
+                
+                // Generate CSV content
+                let csvContent = 'All Customers Credit Report\n';
+                csvContent += `Generated on: ${new Date().toLocaleString()}\n`;
+                csvContent += `Date Range: ${startDateInput.value} to ${endDateInput.value}\n\n`;
+                
+                // Add customer summary
+                csvContent += 'Customer Summary\n';
+                csvContent += 'Customer ID,Customer Name,Mobile,Email,Current Balance\n';
+                
+                customersToExport.forEach(customer => {
+                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Credit)' : customer.current_balance > 0 ? ' (Debt)' : ''}`;
+                    csvContent += `"${customer.customer_uuid}","${customer.name}","${customer.mobile}","${customer.email || ''}","${balanceText}"\n`;
+                });
+                
+                csvContent += '\n';
+                
+                // Add detailed transactions for each customer
+                csvContent += 'Detailed Transactions\n';
+                csvContent += 'Customer ID,Customer Name,Date,Transaction Type,Amount (₹),Balance Before,Invoice Number,Note\n';
+                
+                // Fetch detailed transaction data for each customer
+                for (const customer of customersToExport) {
+                    try {
+                        const customerResponse = await fetch(`${API_BASE}/customers/${customer.customer_id}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (customerResponse.ok) {
+                            const customerData = await customerResponse.json();
+                            let transactions = customerData.transactions || [];
+                            
+                            // Filter transactions by date range if applicable
+                            const startDate = startDateInput.value;
+                            const endDate = endDateInput.value;
+                            
+                            if (startDate && endDate) {
+                                transactions = transactions.filter(transaction => {
+                                    try {
+                                        const transactionDate = new Date(transaction.created_at).toISOString().split('T')[0];
+                                        return transactionDate >= startDate && transactionDate <= endDate;
+                                    } catch (e) {
+                                        console.error('Error parsing transaction date in export:', e);
+                                        return false;
+                                    }
+                                });
+                            }
+                            
+                            // Sort transactions by date (oldest first)
+                            transactions.sort((a, b) => {
+                                try {
+                                    return new Date(a.created_at) - new Date(b.created_at);
+                                } catch (e) {
+                                    console.error('Error sorting transactions by date:', e);
+                                    return 0;
+                                }
+                            });
+                            
+                            if (transactions.length === 0) {
+                                csvContent += `"${customer.customer_uuid}","${customer.name}","No transactions","N/A","N/A","N/A","N/A","N/A"\n`;
+                            } else {
+                                let runningBalance = customerData.current_balance;
+                                // Calculate initial balance by reversing all transactions
+                                for (let i = transactions.length - 1; i >= 0; i--) {
+                                    const transaction = transactions[i];
+                                    const amount = parseFloat(transaction.amount) || 0;
+                                    if (transaction.transaction_type === 'credit') {
+                                        runningBalance -= amount;
+                                    } else {
+                                        runningBalance += amount;
+                                    }
+                                }
+                                
+                                // Add transactions with running balance
+                                transactions.forEach(transaction => {
+                                    let date = '';
+                                    try {
+                                        date = new Date(transaction.created_at).toLocaleDateString();
+                                    } catch (e) {
+                                        console.error('Error formatting transaction date:', e);
+                                        date = 'Invalid Date';
+                                    }
+                                    const type = transaction.transaction_type === 'credit' ? 'Credit' : 'Debit';
+                                    const balanceBefore = runningBalance.toFixed(2);
+                                    const invoiceNo = transaction.invoice_no || 'N/A';
+                                    
+                                    // Update running balance
+                                    const amount = parseFloat(transaction.amount) || 0;
+                                    if (transaction.transaction_type === 'credit') {
+                                        runningBalance += amount;
+                                    } else {
+                                        runningBalance -= amount;
+                                    }
+                                    
+                                    csvContent += `"${customer.customer_uuid}","${customer.name}","${date}","${type}","${amount.toFixed(2)}","${balanceBefore}","${invoiceNo}","${transaction.note || ''}"\n`;
+                                });
+                            }
+                        } else {
+                            csvContent += `"${customer.customer_uuid}","${customer.name}","Error loading data","N/A","N/A","N/A","N/A","N/A"\n`;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching customer data:', error);
+                        csvContent += `"${customer.customer_uuid}","${customer.name}","Error loading data","N/A","N/A","N/A","N/A","N/A"\n`;
+                    }
+                }
+                
+                // Create and download CSV file
+                downloadCSV(csvContent, 'all_customers_credit_report.csv');
+            } catch (error) {
+                console.error('Error exporting all customers report:', error);
+                alert(`Error exporting all customers report: ${error.message}`);
+            }
+        }
+
+        // Export report for selected customers
+        async function exportSelectedCustomersReport() {
+            if (selectedCustomerIds.size === 0) {
+                alert('Please select at least one customer to export.');
+                return;
+            }
+            
+            try {
+                // Get all customers from API
+                const response = await fetch(`${API_BASE}/customers`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Filter customers by selected IDs
+                const customersToExport = data.customers.filter(customer => 
+                    selectedCustomerIds.has(customer.customer_uuid.toString())
+                );
+                
+                if (customersToExport.length === 0) {
+                    alert('Selected customers not found.');
+                    return;
+                }
+                
+                // Generate CSV content
+                let csvContent = 'Selected Customers Credit Report\n';
+                csvContent += `Generated on: ${new Date().toLocaleString()}\n`;
+                csvContent += `Date Range: ${startDateInput.value} to ${endDateInput.value}\n\n`;
+                
+                // Add customer summary
+                csvContent += 'Customer Summary\n';
+                csvContent += 'Customer ID,Customer Name,Mobile,Email,Current Balance\n';
+                
+                customersToExport.forEach(customer => {
+                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Credit)' : customer.current_balance > 0 ? ' (Debt)' : ''}`;
+                    csvContent += `"${customer.customer_uuid}","${customer.name}","${customer.mobile}","${customer.email || ''}","${balanceText}"\n`;
+                });
+                
+                csvContent += '\n';
+                
+                // Add detailed transactions for each customer
+                csvContent += 'Detailed Transactions\n';
+                csvContent += 'Customer ID,Customer Name,Date,Transaction Type,Amount (₹),Balance Before,Invoice Number,Note\n';
+                
+                // Fetch detailed transaction data for each customer
+                for (const customer of customersToExport) {
+                    try {
+                        const customerResponse = await fetch(`${API_BASE}/customers/${customer.customer_id}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (customerResponse.ok) {
+                            const customerData = await customerResponse.json();
+                            let transactions = customerData.transactions || [];
+                            
+                            // Filter transactions by date range if applicable
+                            const startDate = startDateInput.value;
+                            const endDate = endDateInput.value;
+                            
+                            if (startDate && endDate) {
+                                transactions = transactions.filter(transaction => {
+                                    try {
+                                        const transactionDate = new Date(transaction.created_at).toISOString().split('T')[0];
+                                        return transactionDate >= startDate && transactionDate <= endDate;
+                                    } catch (e) {
+                                        console.error('Error parsing transaction date in export:', e);
+                                        return false;
+                                    }
+                                });
+                            }
+                            
+                            // Sort transactions by date (oldest first)
+                            transactions.sort((a, b) => {
+                                try {
+                                    return new Date(a.created_at) - new Date(b.created_at);
+                                } catch (e) {
+                                    console.error('Error sorting transactions by date:', e);
+                                    return 0;
+                                }
+                            });
+                            
+                            if (transactions.length === 0) {
+                                csvContent += `"${customer.customer_uuid}","${customer.name}","No transactions","N/A","N/A","N/A","N/A","N/A"\n`;
+                            } else {
+                                let runningBalance = customerData.current_balance;
+                                // Calculate initial balance by reversing all transactions
+                                for (let i = transactions.length - 1; i >= 0; i--) {
+                                    const transaction = transactions[i];
+                                    const amount = parseFloat(transaction.amount) || 0;
+                                    if (transaction.transaction_type === 'credit') {
+                                        runningBalance -= amount;
+                                    } else {
+                                        runningBalance += amount;
+                                    }
+                                }
+                                
+                                // Add transactions with running balance
+                                transactions.forEach(transaction => {
+                                    let date = '';
+                                    try {
+                                        date = new Date(transaction.created_at).toLocaleDateString();
+                                    } catch (e) {
+                                        console.error('Error formatting transaction date:', e);
+                                        date = 'Invalid Date';
+                                    }
+                                    const type = transaction.transaction_type === 'credit' ? 'Credit' : 'Debit';
+                                    const balanceBefore = runningBalance.toFixed(2);
+                                    const invoiceNo = transaction.invoice_no || 'N/A';
+                                    
+                                    // Update running balance
+                                    const amount = parseFloat(transaction.amount) || 0;
+                                    if (transaction.transaction_type === 'credit') {
+                                        runningBalance += amount;
+                                    } else {
+                                        runningBalance -= amount;
+                                    }
+                                    
+                                    csvContent += `"${customer.customer_uuid}","${customer.name}","${date}","${type}","${amount.toFixed(2)}","${balanceBefore}","${invoiceNo}","${transaction.note || ''}"\n`;
+                                });
+                            }
+                        } else {
+                            csvContent += `"${customer.customer_uuid}","${customer.name}","Error loading data","N/A","N/A","N/A","N/A","N/A"\n`;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching customer data:', error);
+                        csvContent += `"${customer.customer_uuid}","${customer.name}","Error loading data","N/A","N/A","N/A","N/A","N/A"\n`;
+                    }
+                }
+                
+                // Create and download CSV file
+                downloadCSV(csvContent, 'selected_customers_credit_report.csv');
+            } catch (error) {
+                console.error('Error exporting selected customers report:', error);
+                alert(`Error exporting selected customers report: ${error.message}`);
+            }
+        }
+
+        // Download CSV file
+        function downloadCSV(csvContent, filename) {
+            // Create blob
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // Create download link
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                // Feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                // Fallback for browsers that don't support download attribute
+                alert('Your browser does not support automatic downloads. Please copy the following content manually:\n\n' + csvContent);
+            }
+        }
+
+        // ── Delete Customer ───────────────────────────────────────────────────────
+
+        async function deleteCustomer(customerId, customerName) {
+            if (!confirm(`Delete customer "${customerName}"?\n\nThis will permanently remove the customer and all their transaction history. This cannot be undone.`)) return;
+
+            const token = localStorage.getItem('pos_token');
+            try {
+                const res = await fetch(`${API_BASE}/customers/${customerId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    customers = customers.filter(c => String(c.id) !== String(customerId));
+                    applyFilters();
+                    renderCustomerList();
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    alert('Delete failed: ' + (data.message || data.error || `HTTP ${res.status}`));
+                }
+            } catch (err) {
+                alert('Network error: ' + err.message);
+            }
+        }
+
+        // ── Edit Customer Details ─────────────────────────────────────────────────
+
+        let _editCustomerId = null;
+
+        function openEditCustomerModal(customerId) {
+            const customer = customers.find(c => String(c.id) === String(customerId));
+            if (!customer) { alert('Customer not found.'); return; }
+
+            _editCustomerId = customer.id;
+            document.getElementById('edit-cust-name').value    = customer.name    || '';
+            document.getElementById('edit-cust-mobile').value  = customer.mobile  || '';
+            document.getElementById('edit-cust-email').value   = customer.email   || '';
+            document.getElementById('edit-cust-address').value = customer.address || '';
+
+            const modal = document.getElementById('edit-customer-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            document.getElementById('edit-cust-name').focus();
+        }
+
+        function closeEditCustomerModal() {
+            const modal = document.getElementById('edit-customer-modal');
+            modal.classList.add('hidden');
+            modal.style.display = '';
+            _editCustomerId = null;
+        }
+
+        async function saveEditCustomer() {
+            if (!_editCustomerId) return;
+
+            const name    = document.getElementById('edit-cust-name').value.trim();
+            const mobile  = document.getElementById('edit-cust-mobile').value.trim();
+            const email   = document.getElementById('edit-cust-email').value.trim();
+            const address = document.getElementById('edit-cust-address').value.trim();
+
+            if (!name || !mobile) {
+                alert('Name and Mobile are required.');
+                return;
+            }
+
+            const saveBtn = document.getElementById('edit-cust-save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>Saving…';
+
+            const statusEl = document.getElementById('edit-cust-status');
+            statusEl.innerHTML = '';
+
+            try {
+                const token = localStorage.getItem('pos_token');
+                const res = await fetch(`${API_BASE}/customers/${_editCustomerId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name, mobile, email: email || null, address: address || null })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Update local cache
+                    const idx = customers.findIndex(c => String(c.id) === String(_editCustomerId));
+                    if (idx !== -1) {
+                        customers[idx] = { ...customers[idx], name, mobile, email: email || null, address: address || null };
+                    }
+                    statusEl.innerHTML = '<span style="color:#16a34a;font-size:13px;">&#10003; Saved successfully</span>';
+                    saveBtn.innerHTML = '<i class="fas fa-check" style="margin-right:6px;"></i>Saved!';
+                    applyFilters();
+                    renderCustomerList();
+                    setTimeout(closeEditCustomerModal, 900);
+                } else {
+                    throw new Error(data.message || data.error || 'Update failed');
+                }
+            } catch (err) {
+                statusEl.innerHTML = `<span style="color:#dc2626;font-size:13px;">&#9888; ${err.message}</span>`;
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save" style="margin-right:6px;"></i>Save Changes';
+            }
+        }
+
+        // ── Credit Email Modal ────────────────────────────────────────────────
+
+        let _emailTargetId = null;
+
+        function openCreditEmailModal(customerId, customerName, prefillEmail) {
+            _emailTargetId = customerId;
+            document.getElementById('cem-customer-name').textContent = customerName || 'Customer';
+            const emailInput = document.getElementById('cem-email');
+            emailInput.value = prefillEmail || '';
+            document.getElementById('cem-status').innerHTML = '';
+            const sendBtn = document.getElementById('cem-send-btn');
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:6px;"></i>Send Statement';
+            const backdrop = document.getElementById('credit-email-modal-backdrop');
+            backdrop.classList.remove('hidden');
+            backdrop.style.display = 'flex';
+            setTimeout(() => emailInput.focus(), 80);
+        }
+
+        function closeCreditEmailModal() {
+            const backdrop = document.getElementById('credit-email-modal-backdrop');
+            backdrop.classList.add('hidden');
+            backdrop.style.display = '';
+            _emailTargetId = null;
+        }
+
+        async function sendCreditStatement() {
+            if (!_emailTargetId) return;
+            const email = document.getElementById('cem-email').value.trim();
+            if (!email || !email.includes('@')) {
+                document.getElementById('cem-status').innerHTML =
+                    '<span style="color:#dc2626;font-size:13px;">&#9888; Please enter a valid email address.</span>';
+                return;
+            }
+            const sendBtn = document.getElementById('cem-send-btn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>Sending…';
+            document.getElementById('cem-status').innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/customers/${_emailTargetId}/send-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('pos_token')}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    document.getElementById('cem-status').innerHTML =
+                        `<span style="color:#16a34a;font-size:13px;">&#10003; ${data.message}</span>`;
+                    sendBtn.innerHTML = '<i class="fas fa-check" style="margin-right:6px;"></i>Sent!';
+                    setTimeout(closeCreditEmailModal, 1600);
+                } else {
+                    throw new Error(data.error || data.message || 'Failed to send email');
+                }
+            } catch (err) {
+                document.getElementById('cem-status').innerHTML =
+                    `<span style="color:#dc2626;font-size:13px;">&#9888; ${err.message}</span>`;
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:6px;"></i>Send Statement';
+            }
+        }
+
+        // ESC closes the credit email modal
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const backdrop = document.getElementById('credit-email-modal-backdrop');
+                if (backdrop && !backdrop.classList.contains('hidden')) closeCreditEmailModal();
+            }
+        });
+
+        // Loading overlay functions
+        function showLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+        }
+
+        function hideLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+    </script>
+
+    <!-- ── View Customer Details Modal ─────────────────────────────────── -->
+    <div id="view-details-modal"
+         class="fixed inset-0 z-50 hidden items-center justify-center"
+         style="background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);"
+         onclick="if(event.target===this) closeViewDetailsModal()">
+
+        <div style="background:var(--surface);border-radius:16px;box-shadow:0 32px 72px rgba(0,0,0,.35);width:92%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+
+            <!-- ── Header ── -->
+            <div style="position:relative;background:linear-gradient(135deg,#4f46e5 0%,#6366f1 60%,#818cf8 100%);padding:1.4rem 1.25rem 1rem;flex-shrink:0;">
+                <!-- Close X -->
+                <button onclick="closeViewDetailsModal()"
+                        style="position:absolute;top:.75rem;right:.75rem;background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;transition:background .15s;"
+                        onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <!-- Avatar + name -->
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div id="vd-avatar"
+                         style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:1px;"></div>
+                    <div>
+                        <h3 id="vd-name" style="color:#fff;font-weight:800;font-size:1.05rem;margin:0 0 2px;"></h3>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span id="vd-code" style="background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);font-size:.68rem;font-weight:600;padding:1px 8px;border-radius:20px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Balance strip ── -->
+            <div id="vd-balance-strip" style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.25rem;border-bottom:1px solid var(--surface-border);flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div id="vd-bal-icon" style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-rupee-sign" style="font-size:.85rem;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:.65rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0;">Current Balance</p>
+                        <p id="vd-balance" style="font-size:1.25rem;font-weight:800;margin:0;line-height:1.2;"></p>
+                    </div>
+                </div>
+                <span id="vd-balance-badge" style="font-size:.7rem;font-weight:700;padding:3px 12px;border-radius:20px;"></span>
+            </div>
+
+            <!-- ── Scrollable body ── -->
+            <div style="overflow-y:auto;padding:1rem 1.25rem;flex:1;display:flex;flex-direction:column;gap:.75rem;">
+
+                <!-- Contact info row -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;">
+                    <div style="background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:9px;padding:.65rem .85rem;">
+                        <p style="font-size:.63rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-phone" style="font-size:.6rem;"></i>Mobile
+                        </p>
+                        <p id="vd-mobile" style="font-size:.82rem;font-weight:600;color:var(--text-base);margin:0;"></p>
+                    </div>
+                    <div style="background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:9px;padding:.65rem .85rem;">
+                        <p style="font-size:.63rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-envelope" style="font-size:.6rem;"></i>Email
+                        </p>
+                        <p id="vd-email" style="font-size:.82rem;font-weight:600;color:var(--text-base);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+                    </div>
+                    <div style="background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:9px;padding:.65rem .85rem;">
+                        <p style="font-size:.63rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-id-card" style="font-size:.6rem;"></i>Customer ID
+                        </p>
+                        <p id="vd-id" style="font-size:.78rem;font-weight:600;color:var(--text-base);margin:0;word-break:break-all;"></p>
+                    </div>
+                    <div style="background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:9px;padding:.65rem .85rem;">
+                        <p style="font-size:.63rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-calendar-alt" style="font-size:.6rem;"></i>Registered
+                        </p>
+                        <p id="vd-reg" style="font-size:.82rem;font-weight:600;color:var(--text-base);margin:0;"></p>
+                    </div>
+                </div>
+
+                <!-- Address -->
+                <div style="background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:9px;padding:.65rem .85rem;">
+                    <p style="font-size:.63rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                        <i class="fas fa-map-marker-alt" style="font-size:.6rem;"></i>Address
+                    </p>
+                    <p id="vd-address" style="font-size:.82rem;color:var(--text-base);margin:0;"></p>
+                </div>
+
+                <!-- Transaction history -->
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
+                        <p style="font-size:.74rem;font-weight:700;color:var(--text-base);margin:0;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-history" style="font-size:.68rem;color:#6366f1;"></i>Transaction History
+                        </p>
+                        <span id="vd-txn-count" style="font-size:.65rem;font-weight:700;background:rgba(99,102,241,.12);color:#6366f1;padding:1px 8px;border-radius:20px;"></span>
+                    </div>
+                    <div style="border:1px solid var(--surface-border);border-radius:8px;overflow:hidden;">
+                        <div style="max-height:180px;overflow-y:auto;">
+                            <table style="width:100%;border-collapse:collapse;">
+                                <thead style="position:sticky;top:0;z-index:1;">
+                                    <tr style="background:linear-gradient(135deg,#4f46e5,#6366f1);">
+                                        <th style="padding:.35rem .6rem;color:#fff;font-weight:600;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Date</th>
+                                        <th style="padding:.35rem .6rem;color:#fff;font-weight:600;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;">Type</th>
+                                        <th style="padding:.35rem .6rem;color:#fff;font-weight:600;text-align:right;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;">Amount</th>
+                                        <th style="padding:.35rem .6rem;color:#fff;font-weight:600;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;">Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vd-txn-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Footer: Delete · Edit · Close ── -->
+            <div style="padding:.85rem 1.25rem;border-top:1px solid var(--surface-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface);">
+                <!-- Danger action on left -->
+                <button id="vd-delete-btn" onclick="deleteFromViewModal()"
+                        style="background:transparent;border:1.5px solid #dc2626;color:#dc2626;padding:.4rem .9rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all .15s;"
+                        onmouseover="this.style.background='#dc2626';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='#dc2626'">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+                <!-- Primary actions on right -->
+                <div style="display:flex;gap:.5rem;">
+                    <button onclick="editFromViewModal()"
+                            style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#fff;padding:.4rem .9rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-user-edit"></i> Edit Customer
+                    </button>
+                    <button onclick="closeViewDetailsModal()"
+                            style="background:var(--surface-alt);border:1px solid var(--surface-border);color:var(--text-muted);padding:.4rem .85rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Details Modal -->
+    <div id="edit-customer-modal"
+         class="fixed inset-0 z-50 hidden items-center justify-center"
+         style="background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);"
+         onclick="if(event.target===this) closeEditCustomerModal()">
+        <div class="modal-panel w-full mx-4" style="max-width:460px;">
+
+            <div class="modal-head" style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
+                <h3 style="color:#fff;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-user-edit" style="font-size:0.85rem;"></i>
+                    Edit Customer Details
+                </h3>
+                <button onclick="closeEditCustomerModal()" class="modal-close-btn" style="color:#fff;background:rgba(255,255,255,.2);">
+                    <i class="fas fa-times" style="font-size:0.65rem;"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding:1.5rem;">
+                <div style="display:grid;gap:1rem;">
+
+                    <div>
+                        <label style="display:block;font-size:13px;font-weight:600;color:var(--text-base);margin-bottom:5px;">
+                            Full Name <span style="color:#dc2626;">*</span>
+                        </label>
+                        <input id="edit-cust-name" type="text" placeholder="Customer full name"
+                               class="form-control"
+                               onkeydown="if(event.key==='Enter') document.getElementById('edit-cust-mobile').focus()">
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-base);margin-bottom:5px;">
+                                Mobile <span style="color:#dc2626;">*</span>
+                            </label>
+                            <input id="edit-cust-mobile" type="tel" placeholder="10-digit mobile"
+                                   class="form-control"
+                                   onkeydown="if(event.key==='Enter') document.getElementById('edit-cust-email').focus()">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:var(--text-base);margin-bottom:5px;">
+                                Email
+                            </label>
+                            <input id="edit-cust-email" type="email" placeholder="email@example.com"
+                                   class="form-control"
+                                   onkeydown="if(event.key==='Enter') document.getElementById('edit-cust-address').focus()">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="display:block;font-size:13px;font-weight:600;color:var(--text-base);margin-bottom:5px;">
+                            Address
+                        </label>
+                        <textarea id="edit-cust-address" rows="2" placeholder="Customer address (optional)"
+                                  class="form-control" style="resize:vertical;min-height:60px;"></textarea>
+                    </div>
+
+                </div>
+
+                <div id="edit-cust-status" style="min-height:20px;margin-top:10px;"></div>
+
+                <div style="display:flex;gap:10px;margin-top:1.2rem;">
+                    <button id="edit-cust-save-btn" onclick="saveEditCustomer()" class="btn-primary" style="flex:1;">
+                        <i class="fas fa-save" style="margin-right:6px;"></i>Save Changes
+                    </button>
+                    <button onclick="closeEditCustomerModal()" class="btn-secondary" style="flex:1;">
+                        <i class="fas fa-times" style="margin-right:6px;"></i>Cancel
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- ── Credit Email Modal ─────────────────────────────────────────── -->
+    <div id="credit-email-modal-backdrop"
+         class="fixed inset-0 z-50 hidden items-center justify-center"
+         style="background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);"
+         onclick="if(event.target===this) closeCreditEmailModal()">
+
+        <div style="background:var(--surface);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.3);width:92%;max-width:420px;overflow:hidden;">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#0891b2,#0e7490);padding:1.1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-envelope" style="color:#fff;font-size:.9rem;"></i>
+                    </div>
+                    <div>
+                        <h3 style="color:#fff;font-weight:700;font-size:.92rem;margin:0;">Send Credit Statement</h3>
+                        <p id="cem-customer-name" style="color:rgba(255,255,255,.8);font-size:.72rem;margin:0;"></p>
+                    </div>
+                </div>
+                <button onclick="closeCreditEmailModal()"
+                        style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;"
+                        onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:1.25rem;">
+                <p style="font-size:.78rem;color:var(--text-muted);margin:0 0 .85rem;">
+                    The customer's full credit transaction history will be sent as a <strong>CSV attachment</strong>.
+                </p>
+
+                <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-base);margin-bottom:5px;">
+                    Recipient Email <span style="color:#dc2626;">*</span>
+                </label>
+                <input id="cem-email" type="email" placeholder="customer@example.com"
+                       class="form-control" style="margin-bottom:.75rem;"
+                       onkeydown="if(event.key==='Enter') sendCreditStatement()">
+
+                <div id="cem-status" style="min-height:18px;font-size:13px;margin-bottom:.6rem;"></div>
+
+                <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+                    <button onclick="closeCreditEmailModal()"
+                            style="background:var(--surface-alt);border:1px solid var(--surface-border);color:var(--text-muted);padding:.42rem .85rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button id="cem-send-btn" onclick="sendCreditStatement()"
+                            style="background:linear-gradient(135deg,#0891b2,#0e7490);border:none;color:#fff;padding:.42rem .95rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Send Statement
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="chat-widget.js?v=2"></script>
+</body>
+</html>

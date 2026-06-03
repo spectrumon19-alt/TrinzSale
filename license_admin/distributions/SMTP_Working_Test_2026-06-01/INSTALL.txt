@@ -1,0 +1,50 @@
+TrintzPOS - Installation Guide
+================================
+Prepared for : SMTP Working Test
+Build date   : 2026-06-01
+Python version: 3.13.2
+Support      : support@trintzlabs.com
+
+REQUIREMENTS
+------------
+- Windows 10/11 (64-bit)
+- Python 3.13.2 (same version as this build)
+  Download: https://python.org/downloads
+- PostgreSQL 14+
+- Port 5001 available
+
+SETUP (5 steps)
+---------------
+1. Install Python 3.13.2
+   Check "Add Python to PATH" during install.
+
+2. Open Command Prompt in this folder, run:
+     pip install -r requirements.txt
+
+3. Configure database:
+   a. Create a PostgreSQL database named pos_db
+   b. Copy .env.example to .env
+   c. Fill in DB_HOST, DB_USER, DB_PASSWORD in .env
+   d. Generate secret key:
+      python -c "import secrets; print(secrets.token_hex(32))"
+      Paste as SECRET_KEY in .env
+
+4. Start the app:
+   Double-click start.bat  (or run: python launcher.py)
+   Open browser: http://localhost:5001
+
+5. Initialise database:
+   Go to http://localhost:5001/register.html
+   Create your Super Admin account.
+
+LICENSE ACTIVATION
+------------------
+On first start you will be prompted for your license key.
+To activate: http://localhost:5001/license_activation.html
+
+SUPPORT
+-------
+Email : support@trintzlabs.com
+Hours : Mon-Sat, 9 AM - 6 PM IST
+
+(c) 2025 Trintz Data Labs. All rights reserved.

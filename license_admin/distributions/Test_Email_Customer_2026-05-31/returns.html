@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Returns & Refunds - TrintzPOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        #overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:40;display:none;opacity:0;transition:opacity .3s; }
+        .flex-1 { display:flex;flex-direction:column; }
+        main { flex:1; }
+        /* Page tables only — does NOT apply inside .receipt-paper */
+        .main-layout table { width:100%;border-collapse:separate;border-spacing:0;border-radius:.75rem;overflow:hidden;background:#fff; }
+        .main-layout th,.main-layout td { padding:.5rem .625rem;text-align:left;border-bottom:1px solid #e5e7eb;font-size:.875rem; }
+        .main-layout th { background:linear-gradient(135deg,#3498db,#2c80b9);color:#fff;font-weight:600;text-transform:uppercase;font-size:.7rem;letter-spacing:.3px; }
+        .main-layout tr:nth-child(even) { background:#f9fafb; }
+        .main-layout tr:hover { background:rgba(59,130,246,.05); }
+        .form-control { width:100%;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:.5rem;font-size:.875rem;transition:all .2s;background:#fff;color:#111827;min-height:2.25rem; }
+        .form-control:focus { outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2); }
+        .btn { display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:none;border-radius:.5rem;cursor:pointer;font-weight:600;font-size:.8rem;padding:.5rem 1rem;transition:all .2s; }
+        .btn-primary   { background:linear-gradient(135deg,#3498db,#2c80b9);color:#fff; }
+        .btn-primary:hover   { filter:brightness(1.08); }
+        .btn-success   { background:linear-gradient(135deg,#10b981,#059669);color:#fff; }
+        .btn-success:hover   { filter:brightness(1.08); }
+        .btn-secondary { background:linear-gradient(135deg,#6b7280,#4b5563);color:#fff; }
+        .btn-secondary:hover { filter:brightness(1.08); }
+        .btn-danger    { background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff; }
+        .btn-warning   { background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff; }
+        .card { background:#fff;border-radius:.75rem;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:1.25rem; }
+        .section-label { font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:.5rem; }
+        .badge { display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600; }
+        .badge-green  { background:#d1fae5;color:#065f46; }
+        .badge-red    { background:#fee2e2;color:#991b1b; }
+        .badge-yellow { background:#fef3c7;color:#92400e; }
+        .qty-input { width:70px;padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;text-align:center;font-size:.875rem; }
+        /* ── Receipt paper ──────────────────────────────────────────────────── */
+        .receipt-paper {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            padding: 20px 24px;
+            background: #fff;
+            color: #111;
+            max-width: 360px;
+            margin: 0 auto;
+        }
+        .rcpt-co-name  { text-align:center;font-size:20px;font-weight:900;letter-spacing:3px;margin-bottom:2px; }
+        .rcpt-co-sub   { text-align:center;font-size:11px;color:#666;margin-bottom:8px; }
+        .rcpt-title    { text-align:center;font-size:11px;font-weight:700;border:1.5px solid #111;
+                         display:inline-block;padding:3px 14px;letter-spacing:1.5px;margin-bottom:4px; }
+        .rcpt-title-wrap { text-align:center; }
+        .rcpt-dash     { color:#bbb;font-size:10px;text-align:center;letter-spacing:2px;margin:8px 0; }
+        .rcpt-kv       { width:100%;border-collapse:collapse;font-size:12px;margin-bottom:2px; }
+        .rcpt-kv td    { padding:2px 0;vertical-align:top; }
+        .rcpt-kv td:first-child { color:#555;width:42%;white-space:nowrap; }
+        .rcpt-kv td:last-child  { font-weight:600;text-align:right; }
+        .rcpt-items    { width:100%;border-collapse:collapse;font-size:12px;margin:4px 0; }
+        .rcpt-items th { font-size:11px;font-weight:700;padding:4px 0;border-bottom:1px solid #888; }
+        .rcpt-items td { padding:3px 0; }
+        .rcpt-items th:first-child, .rcpt-items td:first-child { text-align:left; }
+        .rcpt-items th:nth-child(2), .rcpt-items td:nth-child(2) { text-align:center;width:36px; }
+        .rcpt-items th:last-child, .rcpt-items td:last-child { text-align:right; }
+        .rcpt-totals   { width:100%;border-collapse:collapse;font-size:12px;margin-top:4px; }
+        .rcpt-totals td { padding:2px 0; }
+        .rcpt-totals td:last-child { text-align:right; }
+        .rcpt-grand td  { font-size:15px;font-weight:900;padding-top:6px;border-top:1.5px solid #111; }
+        .rcpt-footer   { text-align:center;font-size:10px;color:#999;margin-top:12px;line-height:1.8; }
+        .no-print      { /* hidden in print */ }
+
+        @media print {
+            body * { visibility:hidden !important; }
+            .no-print { display:none !important; }
+        }
+
+        /* ── Dark theme overrides for custom classes ─────────────────────── */
+        html.dark .card {
+            background-color: #162032 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,.4) !important;
+        }
+        html.dark .section-label { color: #8eacc8 !important; }
+        html.dark .form-control {
+            background-color: #1a2840 !important;
+            border-color: #2d4a63 !important;
+            color: #e8f0fe !important;
+        }
+        html.dark .form-control:focus {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 3px rgba(96,165,250,.2) !important;
+        }
+        html.dark .form-control::placeholder { color: #4e6a85 !important; }
+        html.dark .qty-input {
+            background-color: #1a2840 !important;
+            border-color: #2d4a63 !important;
+            color: #e8f0fe !important;
+        }
+        html.dark .badge-green  { background: #052e1c !important; color: #6ee7b7 !important; }
+        html.dark .badge-red    { background: #2a0d0d !important; color: #fca5a5 !important; }
+        html.dark .badge-yellow { background: #2d2100 !important; color: #fde68a !important; }
+        html.dark .main-layout table { background-color: #162032 !important; border-color: #253650 !important; }
+        html.dark .main-layout th { background: #0f1a28 !important; color: #e9ecf0 !important; border-color: #253650 !important; }
+        html.dark .main-layout td { border-color: #253650 !important; }
+        html.dark .main-layout tr:nth-child(even) { background-color: #14243a !important; }
+        html.dark .main-layout tr:hover { background-color: #1e3550 !important; }
+        html.dark .border-t { border-color: #253650 !important; }
+        /* ── Force receipt modal to stay light regardless of html.dark ────────
+           Uses ID specificity (1,1,x) which beats html.dark .class (0,2,x)
+           even when both carry !important                                    */
+        html.dark #receipt-modal [data-rcpt-box] { background:#fff !important; color:#111 !important; }
+        html.dark #receipt-modal table          { background:transparent !important; }
+        html.dark #receipt-modal thead,
+        html.dark #receipt-modal thead tr       { background:transparent !important; }
+        html.dark #receipt-modal th             { background:transparent !important; color:#111 !important; border-color:#888 !important; }
+        html.dark #receipt-modal td             { color:#111 !important; border-color:#888 !important; background:transparent !important; }
+        html.dark #receipt-modal tbody tr:nth-child(even) { background:transparent !important; }
+        html.dark #receipt-modal tbody tr:hover { background:transparent !important; }
+        html.dark #receipt-modal .rcpt-co-sub   { color:#666 !important; }
+        html.dark #receipt-modal .rcpt-dash     { color:#bbb !important; }
+        html.dark #receipt-modal .rcpt-footer   { color:#999 !important; }
+        html.dark #receipt-modal .rcpt-kv td:first-child { color:#555 !important; }
+        html.dark #receipt-modal #rcpt-refund-method     { color:#059669 !important; }
+    </style>
+</head>
+<body class="font-sans">
+
+<div id="overlay" onclick="closeMenu()"></div>
+
+<div class="main-layout flex min-h-screen">
+    <!-- Sidebar -->
+    <nav id="sidebar" data-testid="sidebar"
+         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+         style="width:220px;">
+
+        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            </span>
+        </a>
+
+        <!-- Nav links injected here by renderSidebarLinks() -->
+
+        <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
+        <div class="px-4 mt-auto sidebar-pin-area">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                <label class="sidebar-toggle">
+                    <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p class="text-gray-700 font-medium">Processing...</p>
+        </div>
+    </div>
+
+    <div class="flex-1 md:ml-[220px]">
+        <header id="pos-header">
+            <div class="flex items-center gap-3">
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg transition"
+                        style="color:var(--text-muted);background:transparent;"
+                        onmouseenter="this.style.background='var(--surface-alt)'"
+                        onmouseleave="this.style.background='transparent'">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <div>
+                    <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Returns</p>
+                    <p class="hd-sub" id="live-datetime">Loading…</p>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center gap-2">
+                <span class="text-xs font-medium" style="color:var(--text-subtle);">Pin Sidebar</span>
+                <label class="sidebar-toggle">
+                    <input type="checkbox" id="pin-sidebar-toggle-header" class="toggle-checkbox">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="flex items-center gap-3">
+                <p id="headerUserInfo" data-testid="header-user-info"
+                   class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                    Hi, <span id="nav-username" data-testid="nav-username"
+                              class="font-bold" style="color:var(--text-base);">Guest</span>
+                </p>
+                <button id="nav-logout-btn" data-testid="logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="p-3 md:p-4">
+
+            <!-- Alert -->
+            <div id="alert-box" style="display:none;" class="mb-3 p-3 rounded-lg text-sm font-medium"></div>
+
+            <!-- TABS -->
+            <div class="flex gap-2 mb-4">
+                <button onclick="switchTab('new')"     id="tab-new"     class="btn btn-primary">🔄 New Return</button>
+                <button onclick="switchTab('history')" id="tab-history" class="btn btn-secondary">📋 Return History</button>
+            </div>
+
+            <!-- ═══ NEW RETURN TAB ═══ -->
+            <div id="tab-new-content">
+
+                <!-- STEP 1: Search Invoice -->
+                <div class="card mb-4">
+                    <p class="section-label">Step 1 — Find Original Invoice</p>
+                    <div class="flex gap-2 items-end flex-wrap">
+                        <div class="flex-1 min-w-48">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Invoice Number or Customer Mobile</label>
+                            <input id="search-q" type="text" class="form-control" placeholder="e.g. D01P001_260515 or 9876543210"
+                                   onkeydown="if(event.key==='Enter') searchInvoice()">
+                        </div>
+                        <button onclick="searchInvoice()" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                    <div id="search-results-list" class="mt-3" style="display:none;"></div>
+                </div>
+
+                <!-- STEP 2: Select Items (shown after invoice selected) -->
+                <div id="return-form-section" style="display:none;">
+                    <div class="card mb-4">
+                        <p class="section-label">Step 2 — Invoice Details</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div><p class="text-xs text-gray-500">Invoice #</p><p id="inv-number" class="font-semibold text-sm text-blue-700"></p></div>
+                            <div><p class="text-xs text-gray-500">Date</p><p id="inv-date" class="font-semibold text-sm"></p></div>
+                            <div><p class="text-xs text-gray-500">Customer</p><p id="inv-customer" class="font-semibold text-sm"></p></div>
+                            <div><p class="text-xs text-gray-500">Grand Total</p><p id="inv-total" class="font-semibold text-sm text-green-700"></p></div>
+                        </div>
+
+                        <p class="section-label">Select Items to Return</p>
+                        <div class="overflow-x-auto mb-4">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width:36px;"></th>
+                                        <th>Product</th>
+                                        <th>SKU</th>
+                                        <th>Pack</th>
+                                        <th class="text-right">Rate</th>
+                                        <th class="text-center">Orig Qty</th>
+                                        <th class="text-center">Returned</th>
+                                        <th class="text-center">Returnable</th>
+                                        <th class="text-center">Return Qty</th>
+                                        <th class="text-right">Refund Amt</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="return-items-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Return Reason <span class="text-red-500">*</span></label>
+                                <select id="return-reason" class="form-control">
+                                    <option value="">-- Select reason --</option>
+                                    <option>Damaged Product</option>
+                                    <option>Wrong Item Delivered</option>
+                                    <option>Customer Changed Mind</option>
+                                    <option>Quality Issue</option>
+                                    <option>Duplicate Order</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Refund Method <span class="text-red-500">*</span></label>
+                                <select id="refund-method" class="form-control">
+                                    <option value="Cash">Cash</option>
+                                    <option value="Store Credit">Store Credit</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Original Payment">Original Payment</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1">Notes (optional)</label>
+                                <input id="return-notes" type="text" class="form-control" placeholder="Any additional notes…">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between border-t pt-3">
+                            <div>
+                                <span class="text-sm text-gray-600">Total Refund Amount:</span>
+                                <span id="return-total-display" class="text-lg font-bold text-blue-700 ml-2">₹0.00</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="clearReturnForm()" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                                <button onclick="processReturn()" id="process-btn" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Process Return
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /tab-new-content -->
+
+            <!-- ═══ HISTORY TAB ═══ -->
+            <div id="tab-history-content" style="display:none;">
+                <div class="card">
+                    <div class="flex flex-wrap gap-3 items-end mb-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">From</label>
+                            <input type="date" id="hist-from" class="form-control" style="width:150px;">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">To</label>
+                            <input type="date" id="hist-to" class="form-control" style="width:150px;">
+                        </div>
+                        <button onclick="loadHistory()" class="btn btn-primary"><i class="fas fa-search"></i> Load</button>
+                        <button onclick="loadToday()" class="btn btn-secondary">Today</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Return No.</th>
+                                    <th>Date</th>
+                                    <th>Orig Invoice</th>
+                                    <th>Customer</th>
+                                    <th>Reason</th>
+                                    <th>Refund Method</th>
+                                    <th class="text-right">Amount</th>
+                                    <th>By</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body">
+                                <tr><td colspan="10" class="text-center py-4 text-gray-400">Select a date range and click Load</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="hist-summary" class="mt-3 text-right text-sm text-gray-600" style="display:none;"></div>
+                </div>
+            </div>
+
+        </main>
+        <div id="footer-container"></div>
+    </div>
+</div>
+
+<!-- Return Receipt Modal — preview uses an iframe so it's 100% isolated from page CSS/dark-mode -->
+<div id="receipt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:#fff;color:#111;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);width:100%;max-width:430px;max-height:90vh;display:flex;flex-direction:column;">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #e5e7eb;border-radius:12px 12px 0 0;background:#f9fafb;flex-shrink:0;">
+            <span style="font-weight:600;font-size:13px;color:#374151;">Return Receipt Preview</span>
+            <button onclick="closeReceiptModal()" style="background:none;border:none;cursor:pointer;font-size:22px;line-height:1;color:#9ca3af;padding:0 4px;">&times;</button>
+        </div>
+
+        <!-- iframe preview — completely isolated from dark mode -->
+        <iframe id="receipt-iframe"
+                style="flex:1;border:none;background:#fff;border-radius:0;min-height:420px;"
+                sandbox="allow-same-origin allow-modals"></iframe>
+
+        <!-- Footer buttons -->
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:10px 18px;border-top:1px solid #e5e7eb;background:#f9fafb;border-radius:0 0 12px 12px;flex-shrink:0;">
+            <button onclick="printReceipt()" class="btn btn-primary"><i class="fas fa-print"></i> Print</button>
+            <button onclick="closeReceiptModal()" class="btn btn-secondary">Close</button>
+        </div>
+
+    </div>
+</div>
+
+<script src="auth-utils.js"></script>
+<script src="component-utils.js"></script>
+<script src="sidebar-utils.js"></script>
+<script>
+if (!isAuthenticated()) { window.location.href = 'login.html'; }
+
+const API = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : '';
+const token = () => localStorage.getItem('pos_token');
+
+// ── init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSidebarPin && initializeSidebarPin();
+    const user = getCurrentUser();
+    if (user) document.getElementById('nav-username').textContent = user.username;
+    document.getElementById('nav-logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('pos_token');
+        window.location.href = 'login.html';
+    });
+    document.getElementById('menu-toggle').addEventListener('click', toggleMenu);
+
+    // set today's date defaults
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('hist-from').value = today;
+    document.getElementById('hist-to').value   = today;
+
+    // recalculate total whenever qty inputs change
+    document.getElementById('return-items-body').addEventListener('input', recalcTotal);
+
+    // auto-load invoice if ?invoice_id=X was passed (from View Invoices "Return" button)
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoInvoiceId = urlParams.get('invoice_id');
+    if (autoInvoiceId) {
+        loadReturnableItems(parseInt(autoInvoiceId));
+    }
+});
+
+// ── tabs ───────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+    document.getElementById('tab-new-content').style.display     = tab === 'new'     ? 'block' : 'none';
+    document.getElementById('tab-history-content').style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById('tab-new').className     = 'btn ' + (tab === 'new'     ? 'btn-primary' : 'btn-secondary');
+    document.getElementById('tab-history').className = 'btn ' + (tab === 'history' ? 'btn-primary' : 'btn-secondary');
+}
+
+// ── alert ──────────────────────────────────────────────────────────────────
+function showAlert(msg, type='error') {
+    const el = document.getElementById('alert-box');
+    el.textContent = msg;
+    el.className   = 'mb-3 p-3 rounded-lg text-sm font-medium ' +
+        (type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+         type === 'info'    ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                              'bg-red-50 text-red-700 border border-red-200');
+    el.style.display = 'block';
+    if (type === 'success') setTimeout(() => el.style.display = 'none', 4000);
+}
+
+// ── state ──────────────────────────────────────────────────────────────────
+let _selectedInvoice = null;
+let _returnableItems  = [];
+
+// ── STEP 1: search invoice ─────────────────────────────────────────────────
+async function searchInvoice() {
+    const q = document.getElementById('search-q').value.trim();
+    if (!q) return showAlert('Enter an invoice number or mobile number');
+    document.getElementById('search-results-list').style.display = 'none';
+    try {
+        const res  = await fetch(`${API}/api/sales-invoices/search?q=${encodeURIComponent(q)}`,
+                                 { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.message || 'Search failed');
+        if (!data.length) return showAlert('No completed invoices found for "' + q + '"', 'info');
+        renderSearchResults(data);
+    } catch { showAlert('Network error'); }
+}
+
+function renderSearchResults(invoices) {
+    const el = document.getElementById('search-results-list');
+    el.innerHTML = '';
+    invoices.forEach(inv => {
+        const d = document.createElement('div');
+        d.className = 'flex justify-between items-center p-2 border rounded-lg mb-1 hover:bg-blue-50 cursor-pointer text-sm';
+        d.innerHTML = `
+            <div>
+                <span class="font-semibold text-blue-700">${inv.invoice_number}</span>
+                <span class="text-gray-400 mx-2">|</span>
+                <span class="text-gray-600">${formatDate(inv.invoice_date)}</span>
+                <span class="text-gray-400 mx-2">|</span>
+                <span>${inv.customer_name || 'Walk-in'}</span>
+                ${inv.customer_mobile ? `<span class="text-gray-400 mx-2">|</span><span>${inv.customer_mobile}</span>` : ''}
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="font-bold text-green-700">₹${fmt(inv.grand_total)}</span>
+                <button class="btn btn-primary text-xs py-1 px-3">Select</button>
+            </div>`;
+        d.querySelector('button').addEventListener('click', () => loadReturnableItems(inv.invoice_id));
+        el.appendChild(d);
+    });
+    el.style.display = 'block';
+}
+
+// ── STEP 2: load returnable items ──────────────────────────────────────────
+async function loadReturnableItems(invoiceId) {
+    document.getElementById('loading-overlay').classList.remove('hidden');
+    try {
+        const res  = await fetch(`${API}/api/sales-invoices/${invoiceId}/returnable`,
+                                 { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.message || 'Failed to load invoice');
+
+        _selectedInvoice = data.invoice;
+        _returnableItems  = data.items;
+
+        document.getElementById('inv-number').textContent   = data.invoice.invoice_number;
+        document.getElementById('inv-date').textContent     = formatDate(data.invoice.invoice_date);
+        document.getElementById('inv-customer').textContent = data.invoice.customer_name || 'Walk-in';
+        document.getElementById('inv-total').textContent    = '₹' + fmt(data.invoice.grand_total);
+
+        renderReturnItems(data.items);
+        document.getElementById('return-form-section').style.display = 'block';
+        document.getElementById('search-results-list').style.display = 'none';
+        document.getElementById('alert-box').style.display = 'none';
+        document.getElementById('return-form-section').scrollIntoView({ behavior: 'smooth' });
+    } catch { showAlert('Network error'); }
+    finally { document.getElementById('loading-overlay').classList.add('hidden'); }
+}
+
+function renderReturnItems(items) {
+    const tbody = document.getElementById('return-items-body');
+    tbody.innerHTML = '';
+    items.forEach(item => {
+        const canReturn = item.returnable_qty > 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="text-center">
+                <input type="checkbox" class="item-chk" data-id="${item.item_id}"
+                    ${canReturn ? '' : 'disabled'} onchange="recalcTotal()">
+            </td>
+            <td class="font-medium">${item.product_name}</td>
+            <td class="text-gray-500">${item.sku || '-'}</td>
+            <td class="text-gray-500">${item.pack_size || '-'}</td>
+            <td class="text-right">₹${fmt(item.rate_at_sale)}</td>
+            <td class="text-center">${item.original_qty}</td>
+            <td class="text-center ${item.already_returned > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}">${item.already_returned}</td>
+            <td class="text-center ${canReturn ? 'text-green-700 font-medium' : 'text-red-500'}">${item.returnable_qty}</td>
+            <td class="text-center">
+                <input type="number" class="qty-input item-qty" data-id="${item.item_id}"
+                    min="1" max="${item.returnable_qty}" value="1"
+                    ${canReturn ? '' : 'disabled'} onchange="recalcTotal()">
+            </td>
+            <td class="text-right font-medium item-refund-amt" data-id="${item.item_id}">₹0.00</td>`;
+        tbody.appendChild(tr);
+    });
+    recalcTotal();
+}
+
+// ── recalculate total ──────────────────────────────────────────────────────
+function recalcTotal() {
+    let total = 0;
+    document.querySelectorAll('.item-chk:checked').forEach(chk => {
+        const id   = chk.dataset.id;
+        const item = _returnableItems.find(i => String(i.item_id) === String(id));
+        if (!item) return;
+        const qty  = Math.min(
+            parseInt(document.querySelector(`.item-qty[data-id="${id}"]`).value) || 0,
+            item.returnable_qty
+        );
+        const base       = parseFloat(item.rate_at_sale) * qty;
+        const afterDisc  = base * (1 - parseFloat(item.discount_percentage) / 100);
+        const gstAmt     = afterDisc * parseFloat(item.gst_rate_at_sale) / 100;
+        const lineTotal  = afterDisc + gstAmt;
+        total += lineTotal;
+        const amtEl = document.querySelector(`.item-refund-amt[data-id="${id}"]`);
+        if (amtEl) amtEl.textContent = '₹' + fmt(lineTotal);
+    });
+    // clear unchecked
+    document.querySelectorAll('.item-chk:not(:checked)').forEach(chk => {
+        const amtEl = document.querySelector(`.item-refund-amt[data-id="${chk.dataset.id}"]`);
+        if (amtEl) amtEl.textContent = '₹0.00';
+    });
+    document.getElementById('return-total-display').textContent = '₹' + fmt(total);
+}
+
+// ── STEP 3: process return ─────────────────────────────────────────────────
+async function processReturn() {
+    if (!_selectedInvoice) return;
+    const reason = document.getElementById('return-reason').value;
+    const method = document.getElementById('refund-method').value;
+    const notes  = document.getElementById('return-notes').value.trim();
+
+    if (!reason) return showAlert('Please select a return reason');
+
+    const items = [];
+    document.querySelectorAll('.item-chk:checked').forEach(chk => {
+        const id  = chk.dataset.id;
+        const qty = parseInt(document.querySelector(`.item-qty[data-id="${id}"]`).value) || 0;
+        if (qty > 0) items.push({ original_item_id: parseInt(id), quantity: qty });
+    });
+    if (!items.length) return showAlert('Select at least one item to return');
+
+    document.getElementById('loading-overlay').classList.remove('hidden');
+    document.getElementById('process-btn').disabled = true;
+    try {
+        const res  = await fetch(`${API}/api/returns`, {
+            method:  'POST',
+            headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                original_invoice_id: _selectedInvoice.invoice_id,
+                return_reason: reason, refund_method: method,
+                notes: notes || null, items
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) return showAlert(data.message || 'Return failed');
+
+        showAlert(`Return ${data.return_number} processed — Refund ₹${fmt(data.total_amount)}`, 'success');
+        await showReturnReceipt(data.return_id);
+        clearReturnForm();
+    } catch { showAlert('Network error'); }
+    finally {
+        document.getElementById('loading-overlay').classList.add('hidden');
+        document.getElementById('process-btn').disabled = false;
+    }
+}
+
+function clearReturnForm() {
+    _selectedInvoice = null;
+    _returnableItems  = [];
+    document.getElementById('return-form-section').style.display = 'none';
+    document.getElementById('search-q').value = '';
+    document.getElementById('search-results-list').style.display = 'none';
+    document.getElementById('return-reason').value = '';
+    document.getElementById('return-notes').value  = '';
+    document.getElementById('return-total-display').textContent = '₹0.00';
+}
+
+// ── Receipt ────────────────────────────────────────────────────────────────
+function buildReceiptHTML(r, items) {
+    const itemRows = items.map(i => `
+        <tr>
+            <td style="padding:3px 0;font-size:12px;color:#111;word-break:break-word;">${i.product_name}</td>
+            <td style="text-align:center;padding:3px 0;font-size:12px;color:#111;width:36px;">${i.quantity}</td>
+            <td style="text-align:right;padding:3px 0;font-size:12px;color:#111;white-space:nowrap;">&#x20B9;${fmt(i.total_line_amount)}</td>
+        </tr>`).join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Return Receipt</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    background: #fff;
+    color: #111;
+    padding: 20px 24px;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+  .co-name { text-align:center; font-size:20px; font-weight:900; letter-spacing:3px; margin-bottom:2px; }
+  .co-sub  { text-align:center; font-size:11px; color:#666; margin-bottom:8px; }
+  .title-wrap { text-align:center; margin-bottom:4px; }
+  .title { font-size:11px; font-weight:700; border:1.5px solid #111;
+           display:inline-block; padding:3px 14px; letter-spacing:1.5px; }
+  .dash  { color:#bbb; font-size:10px; text-align:center; letter-spacing:2px; margin:8px 0; }
+  .kv    { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:2px; }
+  .kv td { padding:2px 0; vertical-align:top; }
+  .kv td:first-child { color:#555; width:44%; white-space:nowrap; }
+  .kv td:last-child  { font-weight:600; text-align:right; }
+  .items { width:100%; border-collapse:collapse; font-size:12px; margin:4px 0; }
+  .items th { font-size:11px; font-weight:700; padding:4px 0; border-bottom:1px solid #888;
+              background:transparent; color:#111; }
+  .items th:first-child { text-align:left; }
+  .items th:nth-child(2){ text-align:center; width:36px; }
+  .items th:last-child  { text-align:right; }
+  .items td { padding:3px 0; }
+  .totals { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+  .totals td { padding:2px 0; }
+  .totals td:last-child { text-align:right; }
+  .grand td { font-size:15px; font-weight:900; padding-top:6px; border-top:1.5px solid #111; }
+  .footer { text-align:center; font-size:10px; color:#999; margin-top:12px; line-height:1.8; }
+  .refund-method { color:#059669; font-weight:700; }
+  @media print { body { padding:10px 15px; } }
+</style>
+</head>
+<body>
+  <div class="co-name">TRINTZPOS</div>
+  <div class="co-sub">Point of Sale System</div>
+  <div class="title-wrap"><span class="title">RETURN RECEIPT</span></div>
+  <div class="dash">- - - - - - - - - - - - - - - - - -</div>
+
+  <table class="kv">
+    <tr><td>Return No.</td><td>${r.return_number}</td></tr>
+    <tr><td>Date</td><td>${formatDate(r.return_date)}</td></tr>
+    <tr><td>Orig. Invoice</td><td>${r.original_invoice_number}</td></tr>
+    <tr><td>Customer</td><td>${r.customer_name || 'Walk-in'}</td></tr>
+    <tr><td>Reason</td><td>${r.return_reason}</td></tr>
+    <tr><td>Refund Via</td><td class="refund-method">${r.refund_method}</td></tr>
+  </table>
+
+  <div class="dash">- - - - - - - - - - - - - - - - - -</div>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <div class="dash">- - - - - - - - - - - - - - - - - -</div>
+
+  <table class="totals">
+    <tr><td>Subtotal (excl. GST)</td><td>&#x20B9;${fmt(r.subtotal)}</td></tr>
+    <tr><td>GST</td><td>&#x20B9;${fmt(r.total_gst)}</td></tr>
+    <tr class="grand"><td>Total Refund</td><td>&#x20B9;${fmt(r.total_amount)}</td></tr>
+  </table>
+
+  <div class="dash">- - - - - - - - - - - - - - - - - -</div>
+  <div class="footer">
+    Thank you for your patience.<br>
+    Processed by TrintzPOS<br>
+    ${new Date().toLocaleString('en-IN')}
+  </div>
+</body>
+</html>`;
+}
+
+async function showReturnReceipt(returnId) {
+    try {
+        const res  = await fetch(`${API}/api/returns/${returnId}`,
+                                 { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json();
+        if (!res.ok) return;
+        const html = buildReceiptHTML(data.return, data.items);
+        const iframe = document.getElementById('receipt-iframe');
+        iframe.srcdoc = html;
+        document.getElementById('receipt-modal').style.display = 'flex';
+    } catch { /* non-fatal */ }
+}
+
+function closeReceiptModal() {
+    document.getElementById('receipt-modal').style.display = 'none';
+}
+
+function printReceipt() {
+    const iframe = document.getElementById('receipt-iframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+function loadToday() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('hist-from').value = today;
+    document.getElementById('hist-to').value   = today;
+    loadHistory();
+}
+
+async function loadHistory() {
+    const from = document.getElementById('hist-from').value;
+    const to   = document.getElementById('hist-to').value;
+    const tbody = document.getElementById('history-body');
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">Loading…</td></tr>';
+    try {
+        const params = new URLSearchParams();
+        if (from) params.set('from_date', from);
+        if (to)   params.set('to_date', to);
+        const res  = await fetch(`${API}/api/returns?${params}`,
+                                 { headers: { Authorization: 'Bearer ' + token() } });
+        const data = await res.json();
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-red-500">Failed to load</td></tr>'; return; }
+        if (!data.length) { tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No returns found</td></tr>'; document.getElementById('hist-summary').style.display='none'; return; }
+
+        tbody.innerHTML = data.map((r, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td class="font-semibold text-blue-700">${r.return_number}</td>
+                <td>${formatDate(r.return_date)}</td>
+                <td class="text-gray-600">${r.original_invoice_number}</td>
+                <td>${r.customer_name || '-'}</td>
+                <td class="text-xs">${r.return_reason}</td>
+                <td><span class="badge ${r.refund_method === 'Cash' ? 'badge-green' : r.refund_method === 'Store Credit' ? 'badge-yellow' : 'badge-green'}">${r.refund_method}</span></td>
+                <td class="text-right font-semibold text-red-600">₹${fmt(r.total_amount)}</td>
+                <td class="text-xs text-gray-500">${r.processed_by || '-'}</td>
+                <td class="text-center">
+                    <button onclick="viewReturn(${r.return_id})" class="btn btn-secondary text-xs py-1 px-2">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+
+        const totalAmt = data.reduce((s, r) => s + parseFloat(r.total_amount), 0);
+        const summary  = document.getElementById('hist-summary');
+        summary.textContent = `${data.length} return(s) | Total refunded: ₹${fmt(totalAmt)}`;
+        summary.style.display = 'block';
+    } catch { tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-red-500">Network error</td></tr>'; }
+}
+
+async function viewReturn(returnId) {
+    await showReturnReceipt(returnId);
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────
+function fmt(n) { return parseFloat(n || 0).toFixed(2); }
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function toggleMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    if (sidebar.classList.contains('-translate-x-full')) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.style.display = 'block';
+        setTimeout(() => overlay.style.opacity = 1, 10);
+    } else {
+        overlay.style.opacity = 0;
+        setTimeout(() => overlay.style.display = 'none', 300);
+        sidebar.classList.add('-translate-x-full');
+    }
+}
+function closeMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    overlay.style.opacity = 0;
+    setTimeout(() => overlay.style.display = 'none', 300);
+    sidebar.classList.add('-translate-x-full');
+}
+</script>
+<script src="chat-widget.js?v=2"></script>
+</body>
+</html>

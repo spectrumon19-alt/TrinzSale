@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - TrintzPOS</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .no-access-container {
+            max-width: 500px;
+            margin: 100px auto;
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border: 1px solid var(--surface-border);
+        }
+
+        .no-access-container h1 {
+            color: #e74c3c;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+
+        .no-access-container p {
+            color: var(--text-base);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #2573a7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+        }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .no-access-container {
+                margin: 50px auto;
+                padding: 30px;
+                max-width: 90%;
+            }
+            
+            .no-access-container h1 {
+                font-size: 2rem;
+            }
+            
+            .no-access-container p {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .no-access-container {
+                margin: 30px auto;
+                padding: 20px;
+            }
+            
+            .no-access-container h1 {
+                font-size: 1.8rem;
+            }
+            
+            .error-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-access-container">
+            <div class="error-icon">⚠️</div>
+            <h1>Access Denied</h1>
+            <p>You do not have permission to access this page. Please contact your administrator for assistance.</p>
+            <button id="dashboard-link" class="btn-primary">Go to Dashboard</button>
+        </div>
+
+        <!-- Footer Container -->
+            <div id="footer-container"></div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication but allow access to noAccess.html even if not authenticated
+            // This page is specifically for showing access denied messages
+            
+            // Update username display if user is authenticated
+            const user = getCurrentUser();
+            if (user) {
+                const usernameElements = document.querySelectorAll('#username');
+                usernameElements.forEach(element => {
+                    if (element) {
+                        element.textContent = user.username;
+                    }
+                });
+            }
+            
+            // Set up dashboard link
+            const dashboardLink = document.getElementById('dashboard-link');
+            if (dashboardLink) {
+                dashboardLink.addEventListener('click', function() {
+                    // Redirect to dashboard
+                    window.location.href = 'dashboard.html';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

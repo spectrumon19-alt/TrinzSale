@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+keys/private.pem
+keys/public.pem
+data/licenses.db
+*.db
+.venv/
+venv/

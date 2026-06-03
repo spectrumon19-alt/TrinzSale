@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrintzPOS - Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Layout ── */
+        .svc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 860px) { .svc-grid { grid-template-columns: 1fr; } }
+
+        /* ── Cards ── */
+        .svc-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .svc-card-head {
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--surface-alt);
+        }
+        .svc-card-icon {
+            font-size: 1.1rem; width: 2rem; height: 2rem;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+        }
+        .svc-card-title { font-size: 0.875rem; font-weight: 700; color: var(--text-base); }
+        .svc-card-desc  { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+        .svc-card-body  { padding: 1rem; }
+
+        /* ── Status badges ── */
+        .status-row { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 0.5rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dot-ok      { background: #10b981; }
+        .dot-warn    { background: #f59e0b; }
+        .dot-error   { background: #ef4444; }
+        .dot-info    { background: #6366f1; }
+        .status-label { font-size: 0.78rem; color: var(--text-muted); }
+        .status-value { font-size: 0.78rem; font-weight: 600; color: var(--text-base); margin-left: auto; }
+
+        /* ── Record count grid ── */
+        .count-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem;
+        }
+        .count-item {
+            background: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            border-radius: 8px; padding: 0.5rem 0.75rem;
+        }
+        .count-item .ci-val { font-size: 1.125rem; font-weight: 700; color: var(--text-base); }
+        .count-item .ci-lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.375rem;
+            padding: 0.45rem 1rem; border: none; border-radius: 8px;
+            font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+            transition: all 0.15s; min-height: 2.25rem;
+        }
+        .btn:disabled { opacity: 0.55; cursor: default; }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #4f46e5; }
+        .btn-success { background: #10b981; color: #fff; }
+        .btn-success:hover:not(:disabled) { background: #059669; }
+        .btn-danger  { background: #ef4444; color: #fff; }
+        .btn-danger:hover:not(:disabled)  { background: #dc2626; }
+        .btn-neutral { background: var(--surface-alt); color: var(--text-base); border: 1px solid var(--surface-border); }
+        .btn-neutral:hover:not(:disabled) { border-color: #6366f1; color: #6366f1; }
+        .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.75rem; min-height: 1.875rem; }
+
+        /* ── Schema run log ── */
+        #schema-log {
+            display: none;
+            margin-top: 0.875rem;
+            border: 1px solid var(--surface-border);
+            border-radius: 8px; overflow: hidden;
+        }
+        .schema-log-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface-alt);
+            font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .schema-log-body {
+            max-height: 300px; overflow-y: auto;
+            font-size: 0.75rem; font-family: monospace;
+        }
+        .log-line {
+            display: flex; align-items: flex-start; gap: 0.5rem;
+            padding: 0.3rem 0.75rem;
+            border-bottom: 1px solid var(--surface-border);
+        }
+        .log-line:last-child { border-bottom: none; }
+        .log-line.ok   { color: #10b981; }
+        .log-line.skip { color: var(--text-muted); }
+        .log-line.err  { color: #ef4444; }
+        .log-icon { flex-shrink: 0; margin-top: 1px; }
+        .log-stmt { word-break: break-all; }
+
+        /* ── Health check items ── */
+        .hc-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--surface-border);
+            font-size: 0.8125rem;
+        }
+        .hc-item:last-child { border-bottom: none; }
+        .hc-name { color: var(--text-muted); font-weight: 600; min-width: 120px; }
+        .hc-val  { color: var(--text-base); flex: 1; }
+        .hc-badge {
+            padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700;
+            white-space: nowrap;
+        }
+        .hc-ok   { background: rgba(16,185,129,0.12); color: #10b981; }
+        .hc-warn { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+        .hc-err  { background: rgba(239,68,68,0.12);   color: #ef4444; }
+        .hc-info { background: rgba(99,102,241,0.12);  color: #6366f1; }
+
+        /* ── Backup list ── */
+        .backup-row {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--surface-border);
+            font-size: 0.8rem;
+        }
+        .backup-row:last-child { border-bottom: none; }
+        .backup-name { flex: 1; font-weight: 600; color: var(--text-base); word-break: break-all; }
+        .backup-meta { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+
+        /* ── Confirm overlay ── */
+        #confirm-overlay {
+            display: none; position: fixed; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        #confirm-overlay.open { display: flex; }
+        .confirm-box {
+            background: var(--surface); border-radius: 12px;
+            padding: 1.5rem; max-width: 400px; width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .confirm-title { font-size: 1rem; font-weight: 700; color: var(--text-base); margin-bottom: 0.5rem; }
+        .confirm-body  { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5; }
+        .confirm-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 9999;
+            padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+            display: none; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        }
+        #toast.success { background: #10b981; color: #fff; }
+        #toast.error   { background: #ef4444; color: #fff; }
+        #toast.info    { background: #6366f1; color: #fff; }
+
+        /* shared card head (reuse dashboard pattern) */
+        .pos-card { background: var(--surface); border-radius: 12px; border: 1px solid var(--surface-border); overflow: hidden; }
+        .card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--surface-border); background: var(--surface-alt); }
+        .card-head-title { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+    <!-- Sidebar -->
+    <nav id="sidebar"
+         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+         style="width:220px;"></nav>
+
+    <div class="flex-1 flex flex-col md:ml-[220px]">
+        <!-- Header -->
+        <header id="pos-header">
+            <div class="flex items-center gap-3">
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg" style="color:var(--text-muted)">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <div>
+                    <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Service</p>
+                    <p class="hd-sub" id="live-datetime">Loading…</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <p id="headerUserInfo" class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                    Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span>
+                </p>
+                <button id="nav-logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4 flex flex-col gap-4">
+
+            <!-- ══ Row 1: System Status + Health Check ══ -->
+            <div class="svc-grid">
+
+                <!-- System Status -->
+                <div class="svc-card">
+                    <div class="svc-card-head">
+                        <div class="svc-card-icon" style="background:rgba(99,102,241,0.12);">🗄️</div>
+                        <div>
+                            <div class="svc-card-title">System Status</div>
+                            <div class="svc-card-desc">Database connection &amp; record counts</div>
+                        </div>
+                        <button class="btn btn-neutral btn-sm ml-auto" onclick="loadSystemStatus()">Refresh</button>
+                    </div>
+                    <div class="svc-card-body">
+                        <div class="status-row">
+                            <div class="status-dot" id="db-dot" style="background:#6b7280;"></div>
+                            <span class="status-label">Database</span>
+                            <span class="status-value" id="db-status-text">Checking…</span>
+                        </div>
+                        <div class="count-grid" id="count-grid">
+                            <div class="count-item"><div class="ci-val" id="cnt-products">—</div><div class="ci-lbl">Products</div></div>
+                            <div class="count-item"><div class="ci-val" id="cnt-invoices">—</div><div class="ci-lbl">Invoices</div></div>
+                            <div class="count-item"><div class="ci-val" id="cnt-purchase">—</div><div class="ci-lbl">Purchase Orders</div></div>
+                            <div class="count-item"><div class="ci-val" id="cnt-suppliers">—</div><div class="ci-lbl">Suppliers</div></div>
+                            <div class="count-item"><div class="ci-val" id="cnt-inventory">—</div><div class="ci-lbl">Inventory Rows</div></div>
+                            <div class="count-item"><div class="ci-val" id="cnt-users">—</div><div class="ci-lbl">Users</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health Check -->
+                <div class="svc-card">
+                    <div class="svc-card-head">
+                        <div class="svc-card-icon" style="background:rgba(16,185,129,0.12);">❤️</div>
+                        <div>
+                            <div class="svc-card-title">Health Check</div>
+                            <div class="svc-card-desc">Disk, memory, tables, environment</div>
+                        </div>
+                        <button class="btn btn-neutral btn-sm ml-auto" onclick="loadHealthCheck()">Run Check</button>
+                    </div>
+                    <div class="svc-card-body">
+                        <div id="health-items">
+                            <p style="font-size:0.82rem;color:var(--text-muted);">Click "Run Check" to start.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ══ Row 2: Schema Revalidation (full-width, prominent) ══ -->
+            <div class="svc-card">
+                <div class="svc-card-head">
+                    <div class="svc-card-icon" style="background:rgba(245,158,11,0.12);">🔄</div>
+                    <div>
+                        <div class="svc-card-title">Database Schema Revalidation</div>
+                        <div class="svc-card-desc">Run schema.sql to create any missing tables, indexes, triggers, and functions. Safe on a live database — all statements use IF NOT EXISTS.</div>
+                    </div>
+                </div>
+                <div class="svc-card-body">
+                    <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:220px;">
+                            <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin:0 0 0.75rem;">
+                                This runs <code style="background:var(--surface-alt);padding:1px 5px;border-radius:4px;font-family:monospace;">schema.sql</code>
+                                against the live database. Every statement is wrapped in a savepoint — failures are skipped, not rolled back globally.
+                                Use this after a code update to ensure new tables and columns are present.
+                            </p>
+                            <div style="display:flex;gap:0.625rem;flex-wrap:wrap;">
+                                <button class="btn btn-primary" id="run-schema-btn" onclick="confirmRunSchema()">
+                                    Run schema.sql
+                                </button>
+                                <button class="btn btn-neutral" id="toggle-log-btn" onclick="toggleLog()" style="display:none;">
+                                    Show Log
+                                </button>
+                            </div>
+                        </div>
+                        <div id="schema-summary" style="display:none;min-width:180px;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:8px;padding:0.75rem 1rem;">
+                            <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:0.5rem;">Last Run Result</div>
+                            <div style="display:flex;flex-direction:column;gap:0.25rem;">
+                                <div style="font-size:0.82rem;"><span style="color:#10b981;font-weight:700;" id="ss-ok">0</span> <span style="color:var(--text-muted);">applied</span></div>
+                                <div style="font-size:0.82rem;"><span style="color:var(--text-muted);font-weight:700;" id="ss-skip">0</span> <span style="color:var(--text-muted);">already up to date</span></div>
+                                <div style="font-size:0.82rem;"><span style="color:var(--text-base);font-weight:700;" id="ss-total">0</span> <span style="color:var(--text-muted);">total statements</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Log output -->
+                    <div id="schema-log">
+                        <div class="schema-log-head">
+                            <span>Execution Log</span>
+                            <button class="btn btn-neutral btn-sm" onclick="toggleLog()">Hide</button>
+                        </div>
+                        <div class="schema-log-body" id="schema-log-body"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ Row 3: Backup + Clean Data ══ -->
+            <div class="svc-grid">
+
+                <!-- Backup & Restore -->
+                <div class="svc-card">
+                    <div class="svc-card-head">
+                        <div class="svc-card-icon" style="background:rgba(59,130,246,0.12);">💾</div>
+                        <div>
+                            <div class="svc-card-title">Backup &amp; Restore</div>
+                            <div class="svc-card-desc">Create or restore a full data backup</div>
+                        </div>
+                    </div>
+                    <div class="svc-card-body flex flex-col gap-3">
+                        <div style="display:flex;gap:0.625rem;">
+                            <button class="btn btn-success" id="backup-btn" onclick="createBackup()">Create Backup</button>
+                            <button class="btn btn-neutral" onclick="loadBackups()">List Backups</button>
+                        </div>
+                        <div id="backup-status" style="font-size:0.8rem;color:var(--text-muted);display:none;"></div>
+                        <div id="backup-list" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Clean Test Data -->
+                <div class="svc-card">
+                    <div class="svc-card-head">
+                        <div class="svc-card-icon" style="background:rgba(239,68,68,0.12);">🗑️</div>
+                        <div>
+                            <div class="svc-card-title">Clean Test Data</div>
+                            <div class="svc-card-desc">Delete all products, invoices, suppliers — keeps user accounts</div>
+                        </div>
+                    </div>
+                    <div class="svc-card-body">
+                        <p style="font-size:0.82rem;color:var(--text-muted);margin:0 0 0.875rem;line-height:1.5;">
+                            Wipes all transactional data from the database. Use only before going live or resetting a demo environment.
+                        </p>
+                        <button class="btn btn-danger" onclick="confirmCleanData()">Clean All Test Data</button>
+                        <div id="clean-status" style="font-size:0.8rem;margin-top:0.625rem;display:none;"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ══ Confirm Dialog ══ -->
+    <div id="confirm-overlay">
+        <div class="confirm-box">
+            <div class="confirm-title" id="confirm-title">Confirm</div>
+            <div class="confirm-body"  id="confirm-body">Are you sure?</div>
+            <div class="confirm-actions">
+                <button class="btn btn-neutral" onclick="closeConfirm()">Cancel</button>
+                <button class="btn btn-danger"  id="confirm-ok-btn" onclick="">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <script src="auth-utils.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+    /* ═══════════════════════════════════════
+       Boot
+    ═══════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', () => {
+        requireAuth();
+        startClock();
+        loadSystemStatus();
+
+        const mt = document.getElementById('menu-toggle');
+        if (mt) mt.addEventListener('click', toggleSidebar);
+    });
+
+    const API = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL ? window.APP_CONFIG.API_BASE_URL : '') + '/api';
+
+    function authHdr() {
+        return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('pos_token') };
+    }
+
+    function startClock() {
+        function tick() {
+            const el = document.getElementById('live-datetime');
+            if (el) el.textContent = new Date().toLocaleString('en-IN', {
+                weekday:'short', day:'2-digit', month:'short', year:'numeric',
+                hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: true
+            });
+        }
+        tick(); setInterval(tick, 1000);
+    }
+
+    /* ═══════════════════════════════════════
+       System Status
+    ═══════════════════════════════════════ */
+    async function loadSystemStatus() {
+        document.getElementById('db-status-text').textContent = 'Checking…';
+        document.getElementById('db-dot').style.background = '#6b7280';
+        try {
+            const res = await fetch(`${API}/admin/service/status`, { headers: authHdr() });
+            const d = await res.json();
+            const ok = d.status === 'Connected';
+            document.getElementById('db-dot').style.background = ok ? '#10b981' : '#ef4444';
+            document.getElementById('db-status-text').textContent = d.status;
+            if (d.recordCounts) {
+                const rc = d.recordCounts;
+                document.getElementById('cnt-products').textContent  = rc.products   ?? '—';
+                document.getElementById('cnt-invoices').textContent  = rc.sales_invoices ?? '—';
+                document.getElementById('cnt-purchase').textContent  = rc.purchase_orders ?? '—';
+                document.getElementById('cnt-suppliers').textContent = rc.suppliers   ?? '—';
+                document.getElementById('cnt-inventory').textContent = rc.inventory_items ?? '—';
+                document.getElementById('cnt-users').textContent     = rc.users       ?? '—';
+            }
+        } catch (e) {
+            document.getElementById('db-dot').style.background = '#ef4444';
+            document.getElementById('db-status-text').textContent = 'Error: ' + e.message;
+        }
+    }
+
+    /* ═══════════════════════════════════════
+       Health Check
+    ═══════════════════════════════════════ */
+    async function loadHealthCheck() {
+        document.getElementById('health-items').innerHTML =
+            '<p style="font-size:0.82rem;color:var(--text-muted);">Running checks…</p>';
+        try {
+            const res = await fetch(`${API}/admin/service/health-check`, { headers: authHdr() });
+            const d = await res.json();
+
+            const checks = [
+                { name: 'Database',    data: d.database    },
+                { name: 'Tables',      data: d.tables      },
+                { name: 'Disk Space',  data: d.disk        },
+                { name: 'Memory',      data: d.memory      },
+                { name: 'Environment', data: d.environment },
+            ];
+
+            document.getElementById('health-items').innerHTML = checks.map(c => {
+                if (!c.data) return '';
+                const cls = { OK:'hc-ok', WARNING:'hc-warn', ERROR:'hc-err', INFO:'hc-info' }[c.data.status] || 'hc-info';
+                return `<div class="hc-item">
+                    <span class="hc-name">${c.name}</span>
+                    <span class="hc-val">${c.data.message || ''}</span>
+                    <span class="hc-badge ${cls}">${c.data.status}</span>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            document.getElementById('health-items').innerHTML =
+                `<p style="font-size:0.82rem;color:#ef4444;">Failed: ${e.message}</p>`;
+        }
+    }
+
+    /* ═══════════════════════════════════════
+       Schema Revalidation
+    ═══════════════════════════════════════ */
+    function confirmRunSchema() {
+        openConfirm(
+            'Run schema.sql?',
+            'This will execute schema.sql against the live database. All statements use IF NOT EXISTS — existing data is never touched. Missing tables, columns, indexes, and triggers will be created.',
+            'Run Schema',
+            doRunSchema,
+            'btn-primary'
+        );
+    }
+
+    let logVisible = false;
+
+    async function doRunSchema() {
+        closeConfirm();
+        const btn = document.getElementById('run-schema-btn');
+        btn.disabled = true;
+        btn.textContent = 'Running…';
+        document.getElementById('schema-summary').style.display = 'none';
+        document.getElementById('schema-log').style.display = 'none';
+        document.getElementById('toggle-log-btn').style.display = 'none';
+        logVisible = false;
+
+        try {
+            const res = await fetch(`${API}/admin/service/run-schema`, {
+                method: 'POST', headers: authHdr()
+            });
+            const d = await res.json();
+
+            if (!res.ok) throw new Error(d.message || 'Server error');
+
+            // Summary
+            document.getElementById('ss-ok').textContent    = d.ok;
+            document.getElementById('ss-skip').textContent  = d.skipped;
+            document.getElementById('ss-total').textContent = d.total;
+            document.getElementById('schema-summary').style.display = 'block';
+
+            // Log
+            const logEl = document.getElementById('schema-log-body');
+            logEl.innerHTML = (d.results || []).map(r => {
+                if (r.status === 'ok') {
+                    return `<div class="log-line ok"><span class="log-icon">✓</span><span class="log-stmt">${esc(r.stmt)}</span></div>`;
+                } else {
+                    return `<div class="log-line skip"><span class="log-icon">–</span><span class="log-stmt">${esc(r.stmt)}<span style="color:var(--text-muted);"> — ${esc(r.reason || '')}</span></span></div>`;
+                }
+            }).join('');
+            document.getElementById('toggle-log-btn').style.display = '';
+            document.getElementById('toggle-log-btn').textContent = 'Show Log';
+            logVisible = false;
+
+            showToast(`Schema applied: ${d.ok} new, ${d.skipped} already up to date`, 'success');
+            loadSystemStatus();
+        } catch (e) {
+            showToast('Failed: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Run schema.sql';
+        }
+    }
+
+    function toggleLog() {
+        const log = document.getElementById('schema-log');
+        const btn = document.getElementById('toggle-log-btn');
+        logVisible = !logVisible;
+        log.style.display = logVisible ? 'block' : 'none';
+        btn.textContent = logVisible ? 'Hide Log' : 'Show Log';
+    }
+
+    /* ═══════════════════════════════════════
+       Backup
+    ═══════════════════════════════════════ */
+    async function createBackup() {
+        const btn  = document.getElementById('backup-btn');
+        const stat = document.getElementById('backup-status');
+        btn.disabled = true;
+        stat.style.display = 'block';
+        stat.style.color = 'var(--text-muted)';
+        stat.textContent = 'Creating backup…';
+        try {
+            const res = await fetch(`${API}/admin/service/backup`, { method: 'POST', headers: authHdr() });
+            const d = await res.json();
+            if (!res.ok || !d.success) throw new Error(d.message || 'Failed');
+            stat.style.color = '#10b981';
+            stat.textContent = `Backup created: ${d.backup_file} (${Math.round((d.file_size||0) / 1024)} KB)`;
+            loadBackups();
+            showToast('Backup created successfully', 'success');
+        } catch (e) {
+            stat.style.color = '#ef4444';
+            stat.textContent = 'Error: ' + e.message;
+            showToast('Backup failed: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function loadBackups() {
+        const listEl = document.getElementById('backup-list');
+        listEl.style.display = 'block';
+        listEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">Loading…</p>';
+        try {
+            const res = await fetch(`${API}/admin/service/backups`, { headers: authHdr() });
+            const d = await res.json();
+            if (!d.backups || d.backups.length === 0) {
+                listEl.innerHTML = '<p style="font-size:0.8rem;color:var(--text-muted);">No backups found.</p>';
+                return;
+            }
+            listEl.innerHTML = d.backups.map(b => {
+                const kb = b.size ? Math.round(b.size / 1024) + ' KB' : '—';
+                const dt = b.created ? new Date(b.created).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '—';
+                const typeTag = b.type === 'scheduled'
+                    ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:10px;font-weight:600;">⏰ Auto</span>'
+                    : '<span style="font-size:0.65rem;background:rgba(16,185,129,0.1);color:#059669;padding:1px 6px;border-radius:10px;font-weight:600;">▶ Manual</span>';
+                const restoreBtn = b.exists
+                    ? `<button class="btn btn-neutral btn-sm" onclick="restoreBackup(${b.id},'${esc(b.filename)}')">Restore</button>`
+                    : `<span style="font-size:0.7rem;color:var(--text-subtle);">Drive only</span>`;
+                return `<div class="backup-row">
+                    <div style="flex:1;min-width:0;">
+                        <div class="backup-name">${esc(b.filename)}</div>
+                        <div class="backup-meta">${dt} · ${kb} ${typeTag}</div>
+                    </div>
+                    ${restoreBtn}
+                    <button class="btn btn-danger btn-sm" onclick="deleteBackup(${b.id},'${esc(b.filename)}')">Delete</button>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            listEl.innerHTML = `<p style="font-size:0.8rem;color:#ef4444;">Error: ${e.message}</p>`;
+        }
+    }
+
+    function restoreBackup(logId, filename) {
+        openConfirm(
+            'Restore Backup?',
+            `Restore "${filename}" to the database?\n\nExisting data for restored rows will be overwritten. Proceed?`,
+            'Restore',
+            async () => {
+                closeConfirm();
+                showToast('Restoring… this may take a moment', 'info');
+                try {
+                    const res = await fetch(`${API}/admin/service/restore`, {
+                        method: 'POST', headers: authHdr(),
+                        body: JSON.stringify({ log_id: logId })
+                    });
+                    const d = await res.json();
+                    if (!res.ok || !d.success) throw new Error(d.message || 'Failed');
+                    showToast(d.message || 'Restored successfully', 'success');
+                } catch (e) {
+                    showToast('Restore failed: ' + e.message, 'error');
+                }
+            },
+            'btn-danger'
+        );
+    }
+
+    function deleteBackup(logId, filename) {
+        openConfirm(
+            'Delete Backup?',
+            `Delete "${filename}"? This removes the file and log entry. Cannot be undone.`,
+            'Delete',
+            async () => {
+                closeConfirm();
+                try {
+                    const res = await fetch(`${API}/admin/service/backups/${logId}`, {
+                        method: 'DELETE', headers: authHdr()
+                    });
+                    const d = await res.json();
+                    if (!res.ok || !d.success) throw new Error(d.message || 'Failed');
+                    showToast('Backup deleted', 'success');
+                    loadBackups();
+                } catch (e) {
+                    showToast('Delete failed: ' + e.message, 'error');
+                }
+            },
+            'btn-danger'
+        );
+    }
+
+    /* ═══════════════════════════════════════
+       Clean Test Data
+    ═══════════════════════════════════════ */
+    function confirmCleanData() {
+        openConfirm(
+            'Clean All Test Data?',
+            'This will permanently delete all products, invoices, purchase orders, suppliers, and inventory from the database. User accounts will be preserved. This cannot be undone.',
+            'Clean Data',
+            doCleanData,
+            'btn-danger'
+        );
+    }
+
+    async function doCleanData() {
+        closeConfirm();
+        const stat = document.getElementById('clean-status');
+        stat.style.display = 'block';
+        stat.style.color = 'var(--text-muted)';
+        stat.textContent = 'Cleaning…';
+        try {
+            const res = await fetch(`${API}/admin/service/clean-test-data`, { method: 'POST', headers: authHdr() });
+            const d = await res.json();
+            if (!res.ok || !d.success) throw new Error(d.message || 'Failed');
+            stat.style.color = '#10b981';
+            stat.textContent = 'Done. All test data removed.';
+            showToast('Test data cleaned', 'success');
+            loadSystemStatus();
+        } catch (e) {
+            stat.style.color = '#ef4444';
+            stat.textContent = 'Error: ' + e.message;
+            showToast('Clean failed: ' + e.message, 'error');
+        }
+    }
+
+    /* ═══════════════════════════════════════
+       Confirm Dialog
+    ═══════════════════════════════════════ */
+    let _confirmCallback = null;
+
+    function openConfirm(title, body, okLabel, callback, okClass = 'btn-danger') {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-body').textContent  = body;
+        const okBtn = document.getElementById('confirm-ok-btn');
+        okBtn.textContent = okLabel;
+        okBtn.className = 'btn ' + okClass;
+        _confirmCallback = callback;
+        okBtn.onclick = () => { if (_confirmCallback) _confirmCallback(); };
+        document.getElementById('confirm-overlay').classList.add('open');
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('open');
+        _confirmCallback = null;
+    }
+
+    document.getElementById('confirm-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('confirm-overlay')) closeConfirm();
+    });
+
+    /* ═══════════════════════════════════════
+       Toast
+    ═══════════════════════════════════════ */
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = type;
+        t.style.display = 'block';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    function esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    </script>
+</body>
+</html>

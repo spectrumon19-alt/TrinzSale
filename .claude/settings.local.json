@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem \"c:\\\\Users\\\\abhis\\\\OneDrive\\\\Desktop\\\\t\\\\pos\\\\qa\\\\git-main\" -Filter \"*requirements*\" -File)"
+    ]
+  }
+}

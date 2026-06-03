@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function(){
+            function bail(u){document.documentElement.style.display='none';window.location.replace(u);}
+            try{
+                var t=localStorage.getItem('pos_token');
+                if(!t)return bail('login.html');
+                var p=JSON.parse(atob(t.split('.')[1]));
+                if(p.exp<Date.now()/1000){localStorage.removeItem('pos_token');return bail('login.html');}
+                if(!['Admin','Super Admin','Manager'].includes(p.role))return bail('noAccess.html');
+                document.documentElement.style.display='';
+            }catch(e){bail('login.html');}
+        })();
+    </script>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Backup - TrintzPOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .main-col{display:flex;flex-direction:column;min-width:0;flex:1 1 0%;}
+        @media(min-width:768px){.main-col{margin-left:220px;}}
+        @media(min-width:768px){.main-col.sidebar-hidden{margin-left:0;}}
+        main{flex:1;}
+
+        .bk-card{background:var(--surface);border:1px solid var(--surface-border);border-radius:12px;padding:1.25rem;}
+        .bk-label{display:block;font-size:.72rem;font-weight:600;color:var(--text-muted);margin-bottom:.3rem;}
+        .bk-input,.bk-select{width:100%;padding:.45rem .65rem;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:7px;font-size:.82rem;color:var(--text-base);outline:none;transition:border-color .15s;}
+        .bk-input:focus,.bk-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+
+        .bk-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;transition:opacity .15s;}
+        .bk-btn:hover:not(:disabled){opacity:.88;}
+        .bk-btn:disabled{opacity:.5;cursor:not-allowed;}
+        .bk-btn-primary{background:linear-gradient(135deg,#4f46e5,#2563eb);color:#fff;}
+        .bk-btn-success{background:#059669;color:#fff;}
+        .bk-btn-danger{background:rgba(220,38,38,.1);color:#dc2626;border:1px solid rgba(220,38,38,.2);}
+        .bk-btn-ghost{background:var(--surface-alt);color:var(--text-base);border:1px solid var(--surface-border);}
+
+        .toggle-row{display:flex;align-items:center;justify-content:space-between;}
+        .bk-toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+        .bk-toggle input{opacity:0;width:0;height:0;}
+        .bk-slider{position:absolute;inset:0;background:#d1d5db;border-radius:11px;cursor:pointer;transition:.2s;}
+        .bk-slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+        .bk-toggle input:checked+.bk-slider{background:#6366f1;}
+        .bk-toggle input:checked+.bk-slider::before{transform:translateX(18px);}
+
+        .status-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .55rem;border-radius:20px;font-size:.68rem;font-weight:700;}
+        .badge-success{background:rgba(5,150,105,.1);color:#059669;}
+        .badge-partial{background:rgba(245,158,11,.1);color:#b45309;}
+        .badge-failed{background:rgba(220,38,38,.1);color:#dc2626;}
+        .badge-local{background:rgba(99,102,241,.1);color:#6366f1;}
+        .badge-gdrive{background:rgba(16,185,129,.1);color:#059669;}
+
+        .log-row{display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;border-bottom:1px solid var(--surface-border);font-size:.78rem;}
+        .log-row:last-child{border-bottom:none;}
+        .log-row:hover{background:var(--surface-alt);}
+
+        #bk-toast{position:fixed;bottom:1.25rem;right:1.25rem;z-index:9999;padding:.6rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;display:none;box-shadow:0 4px 16px rgba(0,0,0,.18);}
+        #bk-toast.success{background:#059669;color:#fff;}
+        #bk-toast.error{background:#dc2626;color:#fff;}
+        #bk-toast.info{background:#2563eb;color:#fff;}
+
+        .gdrive-info{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:.75rem 1rem;font-size:.75rem;color:var(--text-muted);line-height:1.6;}
+        .gdrive-info strong{color:var(--text-base);}
+        .gdrive-info code{background:rgba(99,102,241,.1);padding:1px 5px;border-radius:4px;font-size:.72rem;}
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+<div id="overlay"></div>
+
+<div class="main-layout flex min-h-screen">
+    <nav id="sidebar" class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50" style="width:220px;">
+        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            </span>
+        </a>
+        <div class="px-4 mt-auto sidebar-pin-area">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                <label class="sidebar-toggle">
+                    <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-col flex-1" style="overflow-x:hidden;">
+        <header id="pos-header">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden p-2 rounded-lg" onclick="toggleMenu()" style="color:var(--text-muted);background:transparent;">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <div>
+                    <p class="hd-title">Auto Backup</p>
+                    <p class="hd-sub">Scheduled database backups — local &amp; Google Drive</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <p class="text-xs hidden sm:block" style="color:var(--text-subtle);">Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span></p>
+                <button id="nav-logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main style="padding:1rem;">
+        <div style="max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:1.25rem;">
+
+            <!-- Manual backup -->
+            <div class="bk-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;">
+                <div>
+                    <p style="font-size:.85rem;font-weight:700;color:var(--text-base);">
+                        <i class="fas fa-database" style="color:#6366f1;margin-right:.4rem;"></i>Manual Backup
+                    </p>
+                    <p style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">
+                        Capture the current database state right now
+                    </p>
+                </div>
+                <button class="bk-btn bk-btn-primary" id="run-btn" onclick="runBackup()">
+                    <i class="fas fa-play"></i> Run Backup Now
+                </button>
+            </div>
+
+            <!-- Schedule settings -->
+            <div class="bk-card">
+                <p style="font-size:.85rem;font-weight:700;color:var(--text-base);margin-bottom:.875rem;">
+                    <i class="fas fa-clock" style="color:#6366f1;margin-right:.4rem;"></i>Scheduled Backup
+                </p>
+                <div style="display:flex;flex-direction:column;gap:.875rem;">
+                    <div class="toggle-row">
+                        <div>
+                            <p style="font-size:.8rem;font-weight:600;color:var(--text-base);">Enable daily automatic backup</p>
+                            <p style="font-size:.7rem;color:var(--text-muted);margin-top:1px;">Runs once every day at the scheduled time</p>
+                        </div>
+                        <label class="bk-toggle">
+                            <input type="checkbox" id="sched-enabled">
+                            <span class="bk-slider"></span>
+                        </label>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+                        <div>
+                            <label class="bk-label">Backup time (24h)</label>
+                            <input type="time" id="sched-time" class="bk-input" value="02:00">
+                        </div>
+                        <div>
+                            <label class="bk-label">Keep backups for (days)</label>
+                            <input type="number" id="retention-days" class="bk-input" value="30" min="1" max="365">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Drive settings -->
+            <div class="bk-card">
+                <p style="font-size:.85rem;font-weight:700;color:var(--text-base);margin-bottom:.875rem;">
+                    <i class="fab fa-google-drive" style="color:#4285F4;margin-right:.4rem;"></i>Google Drive Upload
+                </p>
+
+                <div class="toggle-row" style="margin-bottom:.875rem;">
+                    <div>
+                        <p style="font-size:.8rem;font-weight:600;color:var(--text-base);">Upload backups to Google Drive</p>
+                        <p style="font-size:.7rem;color:var(--text-muted);margin-top:1px;">Requires a Google Service Account JSON key</p>
+                    </div>
+                    <label class="bk-toggle">
+                        <input type="checkbox" id="gdrive-enabled">
+                        <span class="bk-slider"></span>
+                    </label>
+                </div>
+
+                <div id="gdrive-config" style="display:none;flex-direction:column;gap:.75rem;">
+                    <div>
+                        <label class="bk-label">Google Drive Folder ID (leave blank for My Drive root)</label>
+                        <input type="text" id="gdrive-folder" class="bk-input" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                    </div>
+                    <div>
+                        <label class="bk-label">Service Account JSON Key</label>
+                        <div style="display:flex;gap:.5rem;">
+                            <input type="file" id="gdrive-file" accept=".json" onchange="loadJsonFile(this)" style="display:none;">
+                            <button class="bk-btn bk-btn-ghost" onclick="document.getElementById('gdrive-file').click()">
+                                <i class="fas fa-upload"></i> Upload credentials.json
+                            </button>
+                            <span id="gdrive-file-name" style="font-size:.75rem;color:var(--text-muted);align-self:center;"></span>
+                        </div>
+                        <div id="gdrive-configured-badge" style="display:none;margin-top:.4rem;">
+                            <span class="status-badge badge-success"><i class="fas fa-check"></i> Credentials saved</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                        <button class="bk-btn bk-btn-ghost" onclick="testGdrive()">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <span id="gdrive-test-result" style="font-size:.75rem;align-self:center;"></span>
+                    </div>
+
+                    <div class="gdrive-info">
+                        <strong>How to set up Google Drive backup:</strong><br>
+                        1. Go to <strong>console.cloud.google.com</strong> → Create a new project<br>
+                        2. Enable <strong>Google Drive API</strong><br>
+                        3. Create a <strong>Service Account</strong> → Create JSON key → download it<br>
+                        4. In Google Drive, create a folder → Share it with the service account email<br>
+                        5. Copy the <strong>folder ID</strong> from the Drive URL: <code>drive.google.com/drive/folders/<strong>[this part]</strong></code><br>
+                        6. Upload the JSON key file above and paste the folder ID
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save settings -->
+            <div style="display:flex;justify-content:flex-end;">
+                <button class="bk-btn bk-btn-primary" id="save-btn" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+            </div>
+
+            <!-- Backup history -->
+            <div class="bk-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:.5rem;">
+                    <p style="font-size:.85rem;font-weight:700;color:var(--text-base);">
+                        <i class="fas fa-history" style="color:#6366f1;margin-right:.4rem;"></i>Backup History
+                    </p>
+                    <button class="bk-btn bk-btn-ghost" onclick="loadHistory()" style="font-size:.72rem;padding:.3rem .65rem;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="history-list">
+                    <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.8rem;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;margin-bottom:.5rem;display:block;"></i>
+                        Loading…
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        </main>
+        <div id="footer-container"></div>
+    </div>
+</div>
+
+<div id="bk-toast"></div>
+
+<script src="config.js"></script>
+<script src="auth-utils.js"></script>
+<script src="component-utils.js"></script>
+<script src="sidebar-utils.js"></script>
+<script>
+const token = () => localStorage.getItem('pos_token');
+
+// ── Load settings ─────────────────────────────────────────────────────────────
+async function loadSettings() {
+    const res = await fetch('/api/backup/settings', { headers: { Authorization: 'Bearer ' + token() } });
+    if (!res.ok) return;
+    const s = await res.json();
+    document.getElementById('sched-enabled').checked  = !!s.enabled;
+    document.getElementById('sched-time').value        = s.schedule_time || '02:00';
+    document.getElementById('retention-days').value    = s.retention_days || 30;
+    document.getElementById('gdrive-enabled').checked  = !!s.gdrive_enabled;
+    document.getElementById('gdrive-folder').value     = s.gdrive_folder_id || '';
+    if (s.gdrive_configured) {
+        document.getElementById('gdrive-configured-badge').style.display = 'block';
+    }
+    toggleGdrivePanel();
+}
+
+// ── Save settings ─────────────────────────────────────────────────────────────
+async function saveSettings() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+
+    const body = {
+        enabled:        document.getElementById('sched-enabled').checked,
+        schedule_time:  document.getElementById('sched-time').value,
+        retention_days: parseInt(document.getElementById('retention-days').value) || 30,
+        gdrive_enabled: document.getElementById('gdrive-enabled').checked,
+        gdrive_folder_id: document.getElementById('gdrive-folder').value.trim(),
+    };
+    if (_pendingCreds) body.gdrive_credentials = _pendingCreds;
+
+    const res = await fetch('/api/backup/settings', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const d = await res.json();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+    if (d.success) {
+        toast('Settings saved', 'success');
+        _pendingCreds = null;
+        await loadSettings();
+    } else {
+        toast(d.error || 'Save failed', 'error');
+    }
+}
+
+// ── Run backup ────────────────────────────────────────────────────────────────
+async function runBackup() {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…';
+    toast('Backup started…', 'info');
+
+    const res = await fetch('/api/backup/run', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token() }
+    });
+    const d = await res.json();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-play"></i> Run Backup Now';
+
+    if (d.success) {
+        const kb = (d.size_bytes / 1024).toFixed(1);
+        let msg = `Backup saved: ${d.filename} (${kb} KB)`;
+        if (d.gdrive_id) msg += ' · uploaded to Drive ✓';
+        if (d.error)     msg += ` · Drive error: ${d.error}`;
+        toast(msg, 'success');
+        await loadHistory();
+    } else {
+        toast('Backup failed: ' + (d.error || 'unknown error'), 'error');
+    }
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+async function loadHistory() {
+    const res = await fetch('/api/backup/list', { headers: { Authorization: 'Bearer ' + token() } });
+    const list = document.getElementById('history-list');
+    if (!res.ok) { list.innerHTML = '<p style="padding:1rem;color:var(--text-muted);font-size:.8rem;">Failed to load</p>'; return; }
+    const rows = await res.json();
+    if (!rows.length) {
+        list.innerHTML = '<p style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem;">No backups yet</p>';
+        return;
+    }
+    list.innerHTML = rows.map(r => {
+        const dt   = r.created_at ? new Date(r.created_at).toLocaleString() : '—';
+        const kb   = r.file_size_bytes ? (r.file_size_bytes/1024).toFixed(1) + ' KB' : '—';
+        const dest = r.destination === 'gdrive'
+            ? '<span class="status-badge badge-gdrive"><i class="fab fa-google-drive"></i> Drive</span>'
+            : '<span class="status-badge badge-local"><i class="fas fa-hdd"></i> Local</span>';
+        const stat = r.status === 'success'
+            ? '<span class="status-badge badge-success">✓ OK</span>'
+            : r.status === 'partial'
+            ? '<span class="status-badge badge-partial">⚠ Partial</span>'
+            : '<span class="status-badge badge-failed">✗ Failed</span>';
+        const type = r.backup_type === 'scheduled'
+            ? '<i class="fas fa-clock" style="color:var(--text-muted);font-size:.7rem;" title="Scheduled"></i>'
+            : '<i class="fas fa-hand-pointer" style="color:var(--text-muted);font-size:.7rem;" title="Manual"></i>';
+        const dl = r.local_exists
+            ? `<button class="bk-btn bk-btn-ghost" style="font-size:.7rem;padding:.25rem .5rem;" onclick="downloadBackup(${r.id})"><i class="fas fa-download"></i></button>`
+            : '';
+        const del = `<button class="bk-btn bk-btn-danger" style="font-size:.7rem;padding:.25rem .5rem;" onclick="deleteBackup(${r.id},'${r.filename}')"><i class="fas fa-trash"></i></button>`;
+        return `<div class="log-row">
+            <span style="color:var(--text-muted);font-size:.7rem;flex-shrink:0;">${type}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;" title="${r.filename}">${r.filename}</span>
+            <span style="color:var(--text-muted);font-size:.7rem;flex-shrink:0;">${kb}</span>
+            ${dest}${stat}
+            <span style="color:var(--text-subtle);font-size:.68rem;flex-shrink:0;">${dt}</span>
+            <div style="display:flex;gap:.3rem;">${dl}${del}</div>
+        </div>`;
+    }).join('');
+}
+
+async function downloadBackup(id) {
+    window.location = `/api/backup/download/${id}?token=${token()}`;
+    // Note: token in URL is only for file download — all other requests use Authorization header
+    const res = await fetch(`/api/backup/download/${id}`, { headers: { Authorization: 'Bearer ' + token() } });
+    if (!res.ok) { toast('File not available on server', 'error'); return; }
+    const blob = await res.blob();
+    const fn   = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'backup.sql.gz';
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = fn;
+    a.click();
+}
+
+async function deleteBackup(id, filename) {
+    if (!confirm(`Delete backup "${filename}"?\nThis removes the local file and log entry.`)) return;
+    const res = await fetch(`/api/backup/${id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token() } });
+    const d   = await res.json();
+    if (d.success) { toast('Deleted', 'success'); loadHistory(); }
+    else toast(d.error || 'Delete failed', 'error');
+}
+
+// ── Google Drive helpers ──────────────────────────────────────────────────────
+let _pendingCreds = null;
+
+function toggleGdrivePanel() {
+    const show = document.getElementById('gdrive-enabled').checked;
+    document.getElementById('gdrive-config').style.display = show ? 'flex' : 'none';
+}
+document.getElementById('gdrive-enabled').addEventListener('change', toggleGdrivePanel);
+
+function loadJsonFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            JSON.parse(e.target.result); // validate
+            _pendingCreds = e.target.result;
+            document.getElementById('gdrive-file-name').textContent = file.name;
+            document.getElementById('gdrive-configured-badge').style.display = 'block';
+            toast('Credentials loaded — click Save Settings to apply', 'info');
+        } catch { toast('Invalid JSON file', 'error'); }
+    };
+    reader.readAsText(file);
+}
+
+async function testGdrive() {
+    const result = document.getElementById('gdrive-test-result');
+    result.textContent = 'Testing…';
+    result.style.color = 'var(--text-muted)';
+    const body = {};
+    if (_pendingCreds) body.credentials_json = _pendingCreds;
+    const res = await fetch('/api/backup/gdrive/test', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const d = await res.json();
+    if (d.success) {
+        result.textContent = '✓ Connected as ' + (d.account || 'service account');
+        result.style.color = '#059669';
+    } else {
+        result.textContent = '✗ ' + (d.error || 'Connection failed');
+        result.style.color = '#dc2626';
+    }
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+    const t = document.getElementById('bk-toast');
+    t.textContent = msg;
+    t.className   = type;
+    t.style.display = 'block';
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => t.style.display = 'none', 4500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadSettings();
+loadHistory();
+</script>
+</body>
+</html>
