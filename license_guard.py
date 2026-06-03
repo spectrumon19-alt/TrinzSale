@@ -18,7 +18,8 @@ import threading
 from flask import request, jsonify
 
 # Disable entirely when LICENSE_GUARD_ENABLED=false (cloud/SaaS deployments)
-_GUARD_ENABLED = os.environ.get("LICENSE_GUARD_ENABLED", "true").lower() not in ("false", "0", "no")
+# DEFAULT: Disabled (license checking removed per user request)
+_GUARD_ENABLED = os.environ.get("LICENSE_GUARD_ENABLED", "false").lower() not in ("false", "0", "no")
 
 if _GUARD_ENABLED:
     from license_manager import check_license

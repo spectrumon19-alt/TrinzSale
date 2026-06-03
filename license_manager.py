@@ -183,10 +183,8 @@ def activate_license(license_key: str) -> dict:
 
     fingerprint = get_hardware_fingerprint()
 
-    if payload.get("hardware_binding"):
-        bound_id = payload.get("machine_id")
-        if bound_id and bound_id != fingerprint:
-            return {"success": False, "message": "License is bound to a different machine."}
+    # No hardware binding checks - license can be used from any machine
+    # License validation happens on server-side only via API calls
 
     # Validate with license server when configured
     if LICENSE_SERVER_URL:
@@ -231,9 +229,8 @@ def check_license() -> dict:
             "message": f"License expired on {data['expiry_date']}. Please renew.",
         }
 
-    if data.get("hardware_binding") or data.get("machine_id"):
-        if data.get("machine_id") and data["machine_id"] != get_hardware_fingerprint():
-            return {"valid": False, "message": "License is not valid for this machine."}
+    # Hardware binding check removed - license valid on any machine
+    # License validation is server-side only
 
     days = _days_remaining(data)
     return {

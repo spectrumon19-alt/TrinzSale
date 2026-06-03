@@ -359,19 +359,8 @@ function renderStatus(data) {
         // No / invalid license
         icon.className  = 'status-icon none';
         icon.innerHTML  = '<i class="fas fa-exclamation-circle"></i>';
-
-        // Check if it's a hardware binding issue
-        if (data && data.message && data.message.includes('different machine')) {
-            title.textContent = 'License Bound to Different Machine';
-            sub.textContent = 'This license is hardware-bound to another machine. To use on this machine, you need to generate a new license key with this machine\'s hardware fingerprint.';
-        } else if (data && data.message && data.message.includes('not valid for this machine')) {
-            title.textContent = 'License Not Valid for This Machine';
-            sub.textContent = 'This license is hardware-bound to a different machine. Please use the same machine where the license was originally activated, or contact support for a floating license.';
-        } else {
-            title.textContent = data ? data.message : 'Cannot reach server';
-            sub.textContent = 'Enter a valid license key below to activate TrintzPOS';
-        }
-
+        title.textContent = data ? data.message : 'Cannot reach server';
+        sub.textContent = 'Enter a valid license key below to activate your TrintzPOS license. Once activated, you can login from any machine.';
         badge.className = 'status-badge none';
         badge.textContent = 'Not Licensed';
         card.style.display = 'none';
@@ -419,7 +408,7 @@ function renderStatus(data) {
     document.getElementById('d-type').textContent     = data.license_type || '—';
     document.getElementById('d-users').textContent    = data.max_users ? data.max_users + ' users' : '—';
     document.getElementById('d-expiry').textContent   = (data.expiry_date||'—').split('T')[0];
-    document.getElementById('d-hw').textContent       = data.hardware_bound ? 'Bound to this machine' : 'Not bound (floating)';
+    document.getElementById('d-hw').textContent       = 'Valid on any machine';
 
     // Progress bar
     const TOTAL_DAYS = 365;
