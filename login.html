@@ -311,7 +311,10 @@
             <div style="font-size:12px;color:#888;margin-top:4px;">Scan the QR code below with your app to continue</div>
         </div>
         <div id="totp-enroll-qr-wrap" style="text-align:center;margin:12px 0;">
-            <img id="totp-enroll-qr" src="" alt="QR Code" style="width:150px;height:150px;border:1px solid #ddd;border-radius:8px;"/>
+            <div id="totp-enroll-loading" style="width:150px;height:150px;display:flex;align-items:center;justify-content:center;border:1px solid #ddd;border-radius:8px;background:#f9fafb;">
+                <i class="fas fa-spinner fa-spin" style="font-size:24px;color:#999;"></i>
+            </div>
+            <img id="totp-enroll-qr" src="" alt="QR Code" style="width:150px;height:150px;border:1px solid #ddd;border-radius:8px;display:none;"/>
         </div>
         <div style="margin-bottom:10px;font-size:11px;color:#888;text-align:center;">
             Or enter key manually: <code id="totp-enroll-secret" style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all;"></code>
@@ -636,17 +639,44 @@ document.getElementById('login-form').addEventListener('submit', async function(
             document.getElementById('totp-enroll-msg').textContent = 'Loading QR code…';
             document.getElementById('totp-enroll-btn').disabled = true;
             // Fetch QR using setup token
-            fetch('/api/totp/setup', { headers: { 'Authorization': 'Bearer ' + _loginSetupToken } })
-            .then(r => r.json())
+            fetch('/api/totp/setup', {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + _loginSetupToken }
+            })
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(d => { throw new Error(d.message || 'Failed to fetch QR'); });
+                }
+                return r.json();
+            })
             .then(d => {
-                document.getElementById('totp-enroll-qr').src = d.qr_code;
+                if (!d.qr_code || !d.secret) {
+                    throw new Error('Invalid response: missing QR code or secret');
+                }
+                const loading = document.getElementById('totp-enroll-loading');
+                const img = document.getElementById('totp-enroll-qr');
+
+                img.src = d.qr_code;
+                img.onload = () => {
+                    console.log('✓ QR code loaded successfully');
+                    loading.style.display = 'none';
+                    img.style.display = 'block';
+                };
+                img.onerror = () => {
+                    console.error('✗ Failed to load QR image');
+                    loading.style.display = 'none';
+                    document.getElementById('totp-enroll-msg').textContent = 'QR code failed to load. Use the manual key instead.';
+                    document.getElementById('totp-enroll-msg').style.color = '#f59e0b';
+                };
+
                 document.getElementById('totp-enroll-secret').textContent = d.secret;
                 document.getElementById('totp-enroll-msg').textContent = '';
                 document.getElementById('totp-enroll-btn').disabled = false;
                 document.getElementById('totp-enroll-code').focus();
             })
-            .catch(() => {
-                document.getElementById('totp-enroll-msg').textContent = 'Failed to load QR. Please try again.';
+            .catch(e => {
+                console.error('TOTP setup error:', e);
+                document.getElementById('totp-enroll-msg').textContent = 'Error: ' + e.message + '. Use manual key.';
                 document.getElementById('totp-enroll-msg').style.color = '#ef4444';
             });
         } else if (data.requires_totp) {
