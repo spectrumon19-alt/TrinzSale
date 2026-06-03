@@ -327,10 +327,22 @@ function toast(msg, type='success', dur=4000) {
     t._tid = setTimeout(() => { t.style.display = 'none'; }, dur);
 }
 
-// ── Load license status (DISABLED - license checking removed) ─────────────────
+// ── Load license status ───────────────────────────────────────────────────────
 async function loadLicenseStatus() {
-    // License checking removed per user request
-    renderStatus(null);
+    try {
+        // Always fetch license status to display details if valid
+        const r = await fetch('/api/license/status');
+        if (!r.ok && r.status !== 402) {
+            renderStatus(null);
+            return;
+        }
+
+        const data = await r.json();
+        renderStatus(data);
+    } catch (e) {
+        console.error('Error loading license status:', e);
+        renderStatus(null);
+    }
 }
 
 function renderStatus(data) {
