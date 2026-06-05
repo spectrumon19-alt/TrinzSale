@@ -40,9 +40,10 @@ def _escape_val(v):
     return "'" + str(v).replace("'", "''") + "'"
 
 
-def run_backup(backup_type='manual'):
+def run_backup(backup_type='manual', enable_oauth=True):
     """
     Dump all tables to a gzip SQL file in the backups/ folder.
+    Optionally upload to Google Drive using OAuth (user's account).
     Returns dict with filename, path, size_bytes.
     """
     _ensure_backup_dir()
@@ -129,6 +130,43 @@ def upload_to_gdrive(filepath, folder_id, credentials_json_str):
             meta['parents'] = [clean_id]
 
     media  = MediaFileUpload(filepath, mimetype='application/gzip', resumable=True)
+    result = service.files().create(body=meta, media_body=media, fields='id').execute()
+    return result.get('id')
+
+
+def upload_to_gdrive_oauth(filepath, folder_id, oauth_access_token):
+    """
+    Upload a file to Google Drive using OAuth (user's account).
+    oauth_access_token — OAuth access token from user's authorization
+    folder_id          — Google Drive folder ID to upload into
+    Returns the Drive file ID on success.
+    """
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+    except ImportError:
+        raise RuntimeError('Google Drive packages not installed. Run: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib')
+
+    # Create credentials from OAuth token
+    creds = Credentials(token=oauth_access_token)
+    service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+
+    meta = {'name': os.path.basename(filepath)}
+    if folder_id and folder_id.strip():
+        # Clean folder_id: extract just the ID if full URL was provided
+        clean_id = folder_id.strip()
+        # Handle case where user pastes full URL like: https://drive.google.com/drive/u/1/folders/1ABC123
+        if 'drive.google.com' in clean_id and '/folders/' in clean_id:
+            clean_id = clean_id.split('/folders/')[-1].rstrip('/')
+        elif '/' in clean_id:
+            # In case other URL formats
+            clean_id = clean_id.split('/')[-1].rstrip('/')
+
+        if clean_id:
+            meta['parents'] = [clean_id]
+
+    media = MediaFileUpload(filepath, mimetype='application/gzip', resumable=True)
     result = service.files().create(body=meta, media_body=media, fields='id').execute()
     return result.get('id')
 

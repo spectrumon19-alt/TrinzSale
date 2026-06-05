@@ -44,8 +44,36 @@ def run_backup_now(payload):
         error_msg     = None
         destination   = 'local'
 
-        if settings.get('gdrive_enabled') and settings.get('gdrive_credentials'):
+        # Try OAuth first (preferred method)
+        from routes.backup_oauth import get_oauth_tokens, refresh_oauth_token_if_needed, upload_to_gdrive_oauth
+        oauth_tokens = get_oauth_tokens()
+
+        if oauth_tokens and settings.get('gdrive_folder_id'):
             try:
+                # Refresh token if needed
+                access_token = refresh_oauth_token_if_needed()
+                if not access_token:
+                    raise Exception("OAuth token expired and could not be refreshed")
+
+                gdrive_id = upload_to_gdrive_oauth(
+                    result['filepath'],
+                    settings.get('gdrive_folder_id', ''),
+                    access_token
+                )
+                destination = 'oauth'
+            except Exception as e:
+                error_msg = str(e)
+                if '404' in error_msg or 'not found' in error_msg.lower():
+                    error_msg = f"Google Drive folder not found. Check your Folder ID. {error_msg}"
+                elif '403' in error_msg or 'permission' in error_msg.lower():
+                    error_msg = f"Permission denied. Make sure you have access to the folder. {error_msg}"
+                elif '401' in error_msg:
+                    error_msg = f"OAuth token invalid or expired. Please re-authorize. {error_msg}"
+
+        # Fall back to service account if OAuth not available
+        elif settings.get('gdrive_enabled') and settings.get('gdrive_credentials'):
+            try:
+                from backup_engine import upload_to_gdrive
                 gdrive_id   = upload_to_gdrive(
                     result['filepath'],
                     settings.get('gdrive_folder_id', ''),
@@ -61,6 +89,8 @@ def run_backup_now(payload):
                     error_msg = f"Permission denied. Make sure the service account email has 'Editor' access to the Google Drive folder. {error_msg}"
                 elif 'Invalid Credentials' in error_msg or '401' in error_msg:
                     error_msg = f"Invalid credentials. Check that your Google Drive JSON key is valid and not expired. {error_msg}"
+                elif 'Service Accounts do not have storage quota' in error_msg:
+                    error_msg = f"Service accounts can only upload to Google Workspace Shared Drives. Please use OAuth instead (click 'Authorize with Google' button). {error_msg}"
 
         cur.execute("""
             INSERT INTO backup_logs

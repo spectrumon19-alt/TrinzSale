@@ -144,6 +144,7 @@ def create_app():
     from routes.ocr_excel import ocr_excel_bp
     from routes.tally_export import tally_export_bp
     from routes.backup import backup_bp
+    from routes.backup_oauth import backup_oauth_bp
     from routes.email_invoice import email_invoice_bp
     from routes.chat import chat_bp
     from routes.ai_settings import ai_settings_bp
@@ -171,6 +172,7 @@ def create_app():
     app.register_blueprint(ocr_excel_bp, url_prefix='/api')
     app.register_blueprint(tally_export_bp, url_prefix='/api')
     app.register_blueprint(backup_bp, url_prefix='/api')
+    app.register_blueprint(backup_oauth_bp, url_prefix='/api')
     app.register_blueprint(email_invoice_bp, url_prefix='/api')
     app.register_blueprint(chat_bp, url_prefix='/api')
     app.register_blueprint(ai_settings_bp, url_prefix='/api')
