@@ -39,6 +39,11 @@ Desktop.ini
 # Cache
 .cache/
 
+# Backups — runtime-generated files
+backups/*.sql.gz
+backups/*.sql
+backups/.scheduler.lock
+
 # License — NEVER commit these to source control
 private.pem          # Trintz signing key — keep in secrets vault, never ship
 master.key           # Legacy symmetric key — replaced by RSA; keep if you have old deployments
