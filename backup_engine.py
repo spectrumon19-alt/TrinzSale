@@ -116,7 +116,17 @@ def upload_to_gdrive(filepath, folder_id, credentials_json_str):
 
     meta = {'name': os.path.basename(filepath)}
     if folder_id and folder_id.strip():
-        meta['parents'] = [folder_id.strip()]
+        # Clean folder_id: extract just the ID if full URL was provided
+        clean_id = folder_id.strip()
+        # Handle case where user pastes full URL like: https://drive.google.com/drive/u/1/folders/1ABC123
+        if 'drive.google.com' in clean_id and '/folders/' in clean_id:
+            clean_id = clean_id.split('/folders/')[-1].rstrip('/')
+        elif '/' in clean_id:
+            # In case other URL formats
+            clean_id = clean_id.split('/')[-1].rstrip('/')
+
+        if clean_id:
+            meta['parents'] = [clean_id]
 
     media  = MediaFileUpload(filepath, mimetype='application/gzip', resumable=True)
     result = service.files().create(body=meta, media_body=media, fields='id').execute()

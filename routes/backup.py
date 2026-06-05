@@ -54,6 +54,13 @@ def run_backup_now(payload):
                 destination = 'gdrive'
             except Exception as e:
                 error_msg = str(e)
+                # Provide helpful error messages for common Google Drive issues
+                if 'File not found' in error_msg or '404' in error_msg:
+                    error_msg = f"Google Drive folder not found. Check your Folder ID is correct (should be just the ID, not the full URL). {error_msg}"
+                elif 'Permission denied' in error_msg or '403' in error_msg:
+                    error_msg = f"Permission denied. Make sure the service account email has 'Editor' access to the Google Drive folder. {error_msg}"
+                elif 'Invalid Credentials' in error_msg or '401' in error_msg:
+                    error_msg = f"Invalid credentials. Check that your Google Drive JSON key is valid and not expired. {error_msg}"
 
         cur.execute("""
             INSERT INTO backup_logs
@@ -207,8 +214,15 @@ def save_settings(payload):
     schedule_time  = data.get('schedule_time', '02:00')
     retention_days = int(data.get('retention_days', 30))
     gdrive_enabled = bool(data.get('gdrive_enabled', False))
-    gdrive_folder  = data.get('gdrive_folder_id', '')
+    gdrive_folder  = data.get('gdrive_folder_id', '').strip()
     gdrive_creds   = data.get('gdrive_credentials', None)   # only present when re-uploading
+
+    # Clean folder ID if user provided full URL instead of just ID
+    if gdrive_folder and 'drive.google.com' in gdrive_folder:
+        if '/folders/' in gdrive_folder:
+            gdrive_folder = gdrive_folder.split('/folders/')[-1].rstrip('/')
+        else:
+            return jsonify({'error': 'Invalid Google Drive folder URL. Make sure it contains /folders/ in the path.'}), 400
 
     conn = get_db_connection()
     cur  = conn.cursor()
