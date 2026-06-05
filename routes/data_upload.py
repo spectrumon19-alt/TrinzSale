@@ -709,10 +709,14 @@ def process_product_excel(file_path):
                 purchase_rate = safe_float_convert(row[purchase_rate_col]) if purchase_rate_col is not None and len(row) > purchase_rate_col else None
                 selling_rate = safe_float_convert(row[selling_rate_col])
                 initial_stock = safe_int_convert(row[initial_stock_col]) if initial_stock_col is not None and len(row) > initial_stock_col else 0
-                
+
                 # Validate required fields
                 if not all([product_name.strip(), sku.strip()]):
                     raise ValueError(f"Missing required data in row {row_num}")
+
+                # Prevent negative inventory in uploads
+                if initial_stock < 0:
+                    raise ValueError(f"Initial stock cannot be negative. Product '{product_name}' has stock of {initial_stock}. Please use 0 or positive values only.")
                 
                 # Check if product with same SKU already exists
                 cur.execute("SELECT product_id FROM products WHERE sku = %s", (sku,))
