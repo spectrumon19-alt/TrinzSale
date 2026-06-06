@@ -44,6 +44,10 @@ backups/*.sql.gz
 backups/*.sql
 backups/.scheduler.lock
 
+# Distributions — generated packages for customers (not source code)
+license_admin/distributions/
+*.zip
+
 # License — NEVER commit these to source control
 private.pem          # Trintz signing key — keep in secrets vault, never ship
 master.key           # Legacy symmetric key — replaced by RSA; keep if you have old deployments
