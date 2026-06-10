@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        (function(){
+            function bail(u){document.documentElement.style.display='none';window.location.replace(u);}
+            try{
+                var t=localStorage.getItem('pos_token');
+                if(!t)return bail('login.html');
+                var p=JSON.parse(atob(t.split('.')[1]));
+                if(p.exp<Date.now()/1000){localStorage.removeItem('pos_token');return bail('login.html');}
+                if(!['Admin','Super Admin','Manager','Cashier'].includes(p.role))return bail('noAccess.html');
+                document.documentElement.style.display='';
+            }catch(e){bail('login.html');}
+        })();
+    </script>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="theme.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Dashboard - TrintzPOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <style>
+        .main-col{display:flex;flex-direction:column;min-width:0;flex:1 1 0%;}
+        @media(min-width:768px){.main-col{margin-left:220px;}}
+        @media(min-width:768px){.main-col.sidebar-hidden{margin-left:0;}}
+        main{flex:1;}
+        #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;opacity:0;transition:opacity .3s;}
+
+        /* ── KPI cards ─────────────────────────────────────────────── */
+        .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.85rem;margin-bottom:1rem;}
+        .kpi-card{position:relative;border-radius:14px;padding:1rem 1.1rem;color:#fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.12);}
+        .kpi-card .kpi-ico{position:absolute;right:-6px;bottom:-10px;font-size:3.6rem;opacity:.16;}
+        .kpi-card .kpi-label{font-size:.72rem;font-weight:600;letter-spacing:.4px;text-transform:uppercase;opacity:.92;}
+        .kpi-card .kpi-value{font-size:1.55rem;font-weight:800;margin-top:.25rem;line-height:1.1;}
+        .kpi-card .kpi-sub{font-size:.72rem;opacity:.9;margin-top:.3rem;}
+        .kpi-recv{background:linear-gradient(135deg,#059669,#047857);}
+        .kpi-pay {background:linear-gradient(135deg,#dc2626,#b91c1c);}
+        .kpi-net-pos{background:linear-gradient(135deg,#6366f1,#4f46e5);}
+        .kpi-net-neg{background:linear-gradient(135deg,#ea580c,#c2410c);}
+        .kpi-info{background:linear-gradient(135deg,#0891b2,#0e7490);}
+
+        /* ── Reconciliation banner ─────────────────────────────────── */
+        .recon-ok{background:#dcfce7;border:1px solid #86efac;color:#166534;}
+        .recon-warn{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;}
+        .recon-banner{display:flex;align-items:center;gap:.6rem;border-radius:10px;padding:.6rem .9rem;font-size:.82rem;font-weight:600;margin-bottom:.9rem;}
+
+        /* ── Tabs ──────────────────────────────────────────────────── */
+        .seg{display:inline-flex;background:var(--surface-alt);border:1px solid var(--surface-border);border-radius:10px;padding:3px;gap:3px;}
+        .seg button{border:none;background:transparent;color:var(--text-muted);font-size:.82rem;font-weight:600;padding:.4rem .95rem;border-radius:8px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem;}
+        .seg button.active{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;box-shadow:0 2px 6px rgba(79,70,229,.35);}
+
+        /* ── Table ─────────────────────────────────────────────────── */
+        .ct{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);}
+        .ct th{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:600;text-transform:uppercase;font-size:.66rem;letter-spacing:.4px;padding:.55rem .75rem;text-align:left;white-space:nowrap;}
+        .ct th.num,.ct td.num{text-align:right;}
+        .ct td{padding:.5rem .75rem;font-size:.8rem;border-bottom:1px solid var(--surface-border);color:var(--text-base);vertical-align:middle;}
+        .ct tr:last-child td{border-bottom:none;}
+        .ct tbody tr:nth-child(even){background:var(--surface-alt);}
+        .ct tbody tr:hover{background:rgba(99,102,241,.06);}
+        .ct .name-cell{font-weight:600;}
+        .amt-owed{color:#dc2626;font-weight:700;}
+        .amt-credit{color:#059669;font-weight:700;}
+
+        .pill{display:inline-flex;align-items:center;gap:.25rem;font-size:.66rem;font-weight:700;padding:2px 9px;border-radius:20px;}
+        .pill-ok{background:#dcfce7;color:#16a34a;}
+        .pill-bad{background:#fee2e2;color:#dc2626;}
+
+        .avatar{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#6366f1,#4f46e5);flex-shrink:0;}
+
+        .btn-primary{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;padding:.42rem .9rem;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;transition:opacity .15s,transform .15s;display:inline-flex;align-items:center;justify-content:center;gap:.35rem;}
+        .btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+        .btn-secondary{background:var(--secondary,#64748b);color:#fff;border:none;padding:.42rem .9rem;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;display:inline-flex;align-items:center;gap:.35rem;}
+        .btn-secondary:hover{opacity:.9;}
+
+        .page-title{font-size:1.05rem;font-weight:800;color:var(--text-base);}
+        .card-wrap{background:var(--surface);border:1px solid var(--surface-border);border-radius:10px;padding:1rem;box-shadow:var(--surface-shadow,0 2px 8px rgba(0,0,0,.07));}
+        .skel{background:linear-gradient(90deg,var(--surface-alt) 25%,rgba(127,127,127,.12) 37%,var(--surface-alt) 63%);background-size:400% 100%;animation:sk 1.2s ease infinite;border-radius:6px;}
+        @keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
+        /* Aging summary boxes */
+        .age-box{display:flex;flex-direction:column;gap:.15rem;padding:.55rem .75rem;border-radius:10px;border:1px solid var(--surface-border);background:var(--surface-alt);}
+        .age-box .age-label{font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);}
+        .age-box .age-val{font-size:1rem;font-weight:800;color:var(--text-base);}
+        .age-box[data-bucket="d61_90"] .age-val{color:#d97706;}
+        .age-box[data-bucket="d90_plus"]{border-color:#fca5a5;background:#fef2f2;}
+        .age-box[data-bucket="d90_plus"] .age-val{color:#dc2626;}
+        .age-box[data-bucket="d90_plus"] .age-label{color:#dc2626;}
+
+        /* Clickable rows + aging cells */
+        .ct tbody tr.clickable{cursor:pointer;}
+        .age-cell{font-size:.76rem;text-align:right;color:var(--text-muted);}
+        .age-cell.hot{color:#dc2626;font-weight:700;}
+        .age-cell.warn{color:#d97706;font-weight:600;}
+
+        /* Ledger modal */
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:center;justify-content:center;padding:1rem;}
+        .modal-bg.open{display:flex;}
+        .modal-card{background:var(--surface);border-radius:14px;width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+        .modal-head{padding:.9rem 1.1rem;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;display:flex;align-items:center;justify-content:space-between;}
+        .modal-head .mh-title{font-size:.95rem;font-weight:700;}
+        .modal-head .mh-sub{font-size:.72rem;opacity:.9;margin-top:2px;}
+        .modal-body2{padding:.9rem 1.1rem;overflow:auto;}
+        .led-credit{color:#dc2626;font-weight:700;}
+        .led-debit{color:#059669;font-weight:700;}
+    </style>
+</head>
+<body class="font-sans leading-normal tracking-normal">
+    <div id="overlay"></div>
+
+    <div class="main-layout flex min-h-screen">
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+                </span>
+            </a>
+            <div class="px-4 mt-auto sidebar-pin-area">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
+                    <label class="sidebar-toggle">
+                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
+
+        <div id="loading-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.5);">
+            <div style="background:var(--surface);border-radius:10px;padding:1.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2" style="border-color:#6366f1;"></div>
+                <p style="font-size:.85rem;font-weight:600;color:var(--text-base);">Loading…</p>
+            </div>
+        </div>
+
+        <div class="main-col flex-1" style="overflow-x:hidden;">
+            <header id="pos-header">
+                <div class="flex items-center gap-3">
+                    <button id="menu-toggle" class="md:hidden p-2 rounded-lg" onclick="toggleMenu()" style="color:var(--text-muted);background:transparent;">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <div>
+                        <p class="hd-title">Credit Dashboard</p>
+                        <p class="hd-sub">Receivables &amp; payables at a glance</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="text-xs hidden sm:block" style="color:var(--text-subtle);">Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span></p>
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </header>
+
+            <main style="padding:.75rem 1rem;">
+                <div class="card-wrap">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <div>
+                            <h1 class="page-title">Credit Dashboard</h1>
+                            <p style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">Total outstanding credit, broken up by customer and by supplier</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="export-btn" class="btn-primary"><i class="fas fa-file-excel"></i> Export Excel</button>
+                            <button id="refresh-btn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- KPI cards -->
+                    <div class="kpi-grid" id="kpi-grid">
+                        <div class="kpi-card kpi-recv"><div class="kpi-label">Receivables</div><div class="kpi-value skel" style="height:1.5rem;width:60%;">&nbsp;</div><div class="kpi-sub">&nbsp;</div><i class="fas fa-hand-holding-dollar kpi-ico"></i></div>
+                        <div class="kpi-card kpi-pay"><div class="kpi-label">Payables</div><div class="kpi-value skel" style="height:1.5rem;width:60%;">&nbsp;</div><div class="kpi-sub">&nbsp;</div><i class="fas fa-file-invoice-dollar kpi-ico"></i></div>
+                        <div class="kpi-card kpi-net-pos"><div class="kpi-label">Net Position</div><div class="kpi-value skel" style="height:1.5rem;width:60%;">&nbsp;</div><div class="kpi-sub">&nbsp;</div><i class="fas fa-scale-balanced kpi-ico"></i></div>
+                        <div class="kpi-card kpi-info"><div class="kpi-label">Customer Advances</div><div class="kpi-value skel" style="height:1.5rem;width:60%;">&nbsp;</div><div class="kpi-sub">&nbsp;</div><i class="fas fa-piggy-bank kpi-ico"></i></div>
+                    </div>
+
+                    <!-- Reconciliation banner -->
+                    <div id="recon-banner" class="recon-banner recon-ok" style="display:none;">
+                        <i id="recon-icon" class="fas fa-check-circle"></i>
+                        <span id="recon-text">All accounts reconciled.</span>
+                    </div>
+
+                    <!-- Aging summary strip -->
+                    <div id="aging-strip" style="display:none;margin-bottom:.9rem;">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;">
+                            <div class="age-box" data-bucket="current"><span class="age-label">0–30 days</span><span class="age-val" id="age-current">—</span></div>
+                            <div class="age-box" data-bucket="d31_60"><span class="age-label">31–60 days</span><span class="age-val" id="age-d31_60">—</span></div>
+                            <div class="age-box" data-bucket="d61_90"><span class="age-label">61–90 days</span><span class="age-val" id="age-d61_90">—</span></div>
+                            <div class="age-box" data-bucket="d90_plus"><span class="age-label">90+ days</span><span class="age-val" id="age-d90_plus">—</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs + search -->
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                        <div class="seg">
+                            <button id="tab-recv" class="active" onclick="switchTab('recv')"><i class="fas fa-user"></i> By Customer <span id="recv-count" class="opacity-80"></span></button>
+                            <button id="tab-pay" onclick="switchTab('pay')"><i class="fas fa-truck"></i> By Supplier <span id="pay-count" class="opacity-80"></span></button>
+                        </div>
+                        <div style="position:relative;min-width:200px;flex:0 1 280px;">
+                            <i class="fas fa-search" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--text-subtle);pointer-events:none;"></i>
+                            <input type="text" id="search-box" class="form-control" style="width:100%;padding:.42rem .65rem .42rem 1.8rem;border:1px solid var(--input-border,#d1d5db);border-radius:8px;font-size:.82rem;background:var(--input-bg,var(--surface));color:var(--text-base);box-sizing:border-box;" placeholder="Search name, code, mobile…">
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--surface-border);">
+                        <table class="ct">
+                            <thead id="ct-head"></thead>
+                            <tbody id="ct-body">
+                                <tr><td colspan="10" style="text-align:center;padding:1.5rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin mr-2"></i> Loading…</td></tr>
+                            </tbody>
+                            <tfoot id="ct-foot"></tfoot>
+                        </table>
+                    </div>
+                    <p id="empty-note" style="display:none;text-align:center;color:var(--text-muted);font-size:.8rem;padding:1.2rem;"></p>
+                </div>
+            </main>
+
+            <div id="footer-container"></div>
+        </div>
+    </div>
+
+    <!-- Ledger drill-in modal -->
+    <div id="ledger-modal" class="modal-bg">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div>
+                    <div class="mh-title" id="led-name">—</div>
+                    <div class="mh-sub" id="led-sub">—</div>
+                </div>
+                <button onclick="closeLedger()" style="background:transparent;border:none;color:#fff;font-size:1.1rem;cursor:pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body2">
+                <div id="led-balance" style="font-size:1.3rem;font-weight:800;margin-bottom:.75rem;">—</div>
+                <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--surface-border);">
+                    <table class="ct">
+                        <thead><tr><th>Date</th><th>Type</th><th class="num">Amount</th><th>Reference</th><th>Note</th></tr></thead>
+                        <tbody id="led-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth-utils.js"></script>
+    <script src="component-utils.js"></script>
+    <script src="config.js"></script>
+    <script src="sidebar-utils.js"></script>
+    <script>
+        const API_BASE = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL + '/api' : '/api';
+
+        let overviewData = null;
+        let customersData = [];
+        let suppliersData = [];
+        let agingRecv = null;   // receivables aging summary
+        let agingPay  = null;   // payables aging summary
+        let activeTab = 'recv';
+
+        const fmt = n => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const initials = s => (s || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+        const esc = s => (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+        function authHeaders() {
+            return { 'Authorization': `Bearer ${localStorage.getItem('pos_token')}`, 'Content-Type': 'application/json' };
+        }
+        function showLoading(){ const o=document.getElementById('loading-overlay'); if(o) o.classList.remove('hidden'); }
+        function hideLoading(){ const o=document.getElementById('loading-overlay'); if(o) o.classList.add('hidden'); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+            if (user) document.getElementById('nav-username').textContent = user.username;
+
+            const logoutBtn = document.getElementById('nav-logout-btn');
+            if (logoutBtn) logoutBtn.addEventListener('click', () => { localStorage.removeItem('pos_token'); window.location.href = 'login.html'; });
+
+            document.getElementById('refresh-btn').addEventListener('click', loadAll);
+            document.getElementById('export-btn').addEventListener('click', exportExcel);
+            document.getElementById('search-box').addEventListener('input', renderTable);
+            document.getElementById('ledger-modal').addEventListener('click', e => { if (e.target.id === 'ledger-modal') closeLedger(); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLedger(); });
+
+            if (typeof initializeSidebarPin === 'function') initializeSidebarPin();
+            window.sidebarInitialized = true;
+
+            loadAll();
+        });
+
+        async function loadAll() {
+            showLoading();
+            try {
+                const [ov, cu, su] = await Promise.all([
+                    fetch(`${API_BASE}/credit/overview`,  { headers: authHeaders() }),
+                    fetch(`${API_BASE}/credit/customers`, { headers: authHeaders() }),
+                    fetch(`${API_BASE}/credit/suppliers`, { headers: authHeaders() }),
+                ]);
+                if (!ov.ok || !cu.ok || !su.ok) throw new Error(`HTTP ${ov.status}/${cu.status}/${su.status}`);
+                overviewData  = await ov.json();
+                const cuJson  = await cu.json();
+                const suJson  = await su.json();
+                customersData = cuJson.customers || [];
+                suppliersData = suJson.suppliers || [];
+                agingRecv     = cuJson.aging || null;
+                agingPay      = suJson.aging || null;
+
+                renderKPIs();
+                renderRecon(cuJson.reconciliation, suJson.reconciliation);
+                document.getElementById('recv-count').textContent = `(${customersData.length})`;
+                document.getElementById('pay-count').textContent  = `(${suppliersData.length})`;
+                renderAgingStrip();
+                renderTable();
+            } catch (e) {
+                console.error('Credit dashboard load error:', e);
+                document.getElementById('ct-body').innerHTML =
+                    `<tr><td colspan="10" style="text-align:center;padding:1.5rem;color:#dc2626;">Failed to load: ${esc(e.message)}</td></tr>`;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderKPIs() {
+            const r = overviewData.receivables, p = overviewData.payables, net = overviewData.net_position;
+            const netPos = net >= 0;
+            const grid = document.getElementById('kpi-grid');
+            grid.innerHTML = `
+                <div class="kpi-card kpi-recv">
+                    <div class="kpi-label">Receivables (owed to you)</div>
+                    <div class="kpi-value">${fmt(r.total_outstanding)}</div>
+                    <div class="kpi-sub">${r.customer_count} customer${r.customer_count!==1?'s':''} outstanding</div>
+                    <i class="fas fa-hand-holding-dollar kpi-ico"></i>
+                </div>
+                <div class="kpi-card kpi-pay">
+                    <div class="kpi-label">Payables (you owe)</div>
+                    <div class="kpi-value">${fmt(p.total_outstanding)}</div>
+                    <div class="kpi-sub">${p.supplier_count} supplier${p.supplier_count!==1?'s':''} outstanding</div>
+                    <i class="fas fa-file-invoice-dollar kpi-ico"></i>
+                </div>
+                <div class="kpi-card ${netPos ? 'kpi-net-pos' : 'kpi-net-neg'}">
+                    <div class="kpi-label">Net Position</div>
+                    <div class="kpi-value">${fmt(Math.abs(net))}</div>
+                    <div class="kpi-sub">${netPos ? 'Net owed to you' : 'Net you owe'}</div>
+                    <i class="fas fa-scale-balanced kpi-ico"></i>
+                </div>
+                <div class="kpi-card kpi-info">
+                    <div class="kpi-label">Customer Advances</div>
+                    <div class="kpi-value">${fmt(r.advance_total)}</div>
+                    <div class="kpi-sub">${r.advance_count} customer${r.advance_count!==1?'s':''} in credit</div>
+                    <i class="fas fa-piggy-bank kpi-ico"></i>
+                </div>`;
+        }
+
+        function renderRecon(cRec, sRec) {
+            const banner = document.getElementById('recon-banner');
+            const icon = document.getElementById('recon-icon');
+            const text = document.getElementById('recon-text');
+            const bad = (cRec?.mismatched_count || 0) + (sRec?.mismatched_count || 0);
+            banner.style.display = 'flex';
+            if (bad === 0) {
+                banner.className = 'recon-banner recon-ok';
+                icon.className = 'fas fa-check-circle';
+                text.textContent = 'All accounts reconciled — stored balances match their transaction ledgers.';
+            } else {
+                banner.className = 'recon-banner recon-warn';
+                icon.className = 'fas fa-triangle-exclamation';
+                text.textContent = `${bad} account${bad!==1?'s':''} need review — the stored balance differs from the ledger total. Flagged rows are marked below.`;
+            }
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('tab-recv').classList.toggle('active', tab === 'recv');
+            document.getElementById('tab-pay').classList.toggle('active', tab === 'pay');
+            document.getElementById('search-box').value = '';
+            renderAgingStrip();
+            renderTable();
+        }
+
+        function renderAgingStrip() {
+            const aging = activeTab === 'recv' ? agingRecv : agingPay;
+            const strip = document.getElementById('aging-strip');
+            if (!aging) { strip.style.display = 'none'; return; }
+            strip.style.display = 'block';
+            document.getElementById('age-current').textContent  = fmt(aging.current);
+            document.getElementById('age-d31_60').textContent   = fmt(aging.d31_60);
+            document.getElementById('age-d61_90').textContent   = fmt(aging.d61_90);
+            document.getElementById('age-d90_plus').textContent = fmt(aging.d90_plus);
+        }
+
+        function renderTable() {
+            const isRecv = activeTab === 'recv';
+            const rows = isRecv ? customersData : suppliersData;
+            const q = (document.getElementById('search-box').value || '').toLowerCase().trim();
+
+            const head = document.getElementById('ct-head');
+            const body = document.getElementById('ct-body');
+            const foot = document.getElementById('ct-foot');
+            const emptyNote = document.getElementById('empty-note');
+
+            const codeHdr = isRecv ? 'Code' : 'GSTIN';
+            head.innerHTML = `
+                <tr><th>#</th><th>${isRecv ? 'Customer' : 'Supplier'}</th><th>${codeHdr}</th>
+                    <th class="num">Balance</th>
+                    <th class="num">0–30</th><th class="num">31–60</th>
+                    <th class="num">61–90</th><th class="num">90+</th>
+                    <th>Last Activity</th><th>Status</th></tr>`;
+
+            const filtered = rows.filter(r => {
+                if (!q) return true;
+                const hay = isRecv
+                    ? `${r.name} ${r.customer_code} ${r.mobile}`
+                    : `${r.supplier_name} ${r.supplier_gst_number} ${r.mobile}`;
+                return (hay || '').toLowerCase().includes(q);
+            });
+
+            const COLS = 10;
+            if (filtered.length === 0) {
+                body.innerHTML = '';
+                foot.innerHTML = '';
+                emptyNote.style.display = 'block';
+                emptyNote.textContent = q
+                    ? 'No matches for your search.'
+                    : (isRecv ? 'No customers with an outstanding balance.' : 'No suppliers with an outstanding balance.');
+                return;
+            }
+            emptyNote.style.display = 'none';
+
+            let total = 0, tA = 0, tB = 0, tC = 0, tD = 0;
+            body.innerHTML = filtered.map((r, i) => {
+                const name = isRecv ? r.name : r.supplier_name;
+                const sub  = isRecv ? (r.customer_code || '-') : (r.supplier_gst_number || '-');
+                const bal  = Number(r.current_balance) || 0;
+                if (bal > 0) total += bal;
+                const owed = bal > 0;
+                const balCls = owed ? 'amt-owed' : 'amt-credit';
+                const balTxt = fmt(Math.abs(bal)) + (owed ? '' : ' Cr');
+                const ag = r.aging || { current:0, d31_60:0, d61_90:0, d90_plus:0 };
+                tA += ag.current; tB += ag.d31_60; tC += ag.d61_90; tD += ag.d90_plus;
+                const cell = (v, cls) => `<td class="age-cell ${v > 0 ? cls : ''}">${v > 0 ? fmt(v) : '—'}</td>`;
+                const last = r.last_activity
+                    ? new Date(r.last_activity).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+                    : '—';
+                const statusPill = r.reconciled
+                    ? '<span class="pill pill-ok"><i class="fas fa-check"></i> OK</span>'
+                    : `<span class="pill pill-bad" title="Stored ${fmt(r.current_balance)} vs ledger ${fmt(r.expected_balance)} (diff ${fmt(r.discrepancy)})"><i class="fas fa-triangle-exclamation"></i> Review</span>`;
+                const acctId = isRecv ? r.customer_id : r.supplier_id;
+                return `
+                    <tr class="clickable" onclick="openLedger('${isRecv ? 'customers' : 'suppliers'}', ${acctId})" title="Click to view ledger">
+                        <td>${i + 1}</td>
+                        <td class="name-cell"><div style="display:flex;align-items:center;gap:.5rem;">
+                            <span class="avatar">${esc(initials(name))}</span><span>${esc(name)}</span></div></td>
+                        <td>${esc(sub)}</td>
+                        <td class="num ${balCls}">${balTxt}</td>
+                        ${cell(ag.current, '')}
+                        ${cell(ag.d31_60, 'warn')}
+                        ${cell(ag.d61_90, 'warn')}
+                        ${cell(ag.d90_plus, 'hot')}
+                        <td>${last}</td>
+                        <td>${statusPill}</td>
+                    </tr>`;
+            }).join('');
+
+            foot.innerHTML = `
+                <tr style="background:var(--surface-alt);">
+                    <td colspan="3" style="text-align:right;font-weight:700;">Total outstanding</td>
+                    <td class="num amt-owed" style="font-size:.85rem;">${fmt(total)}</td>
+                    <td class="num">${fmt(tA)}</td><td class="num">${fmt(tB)}</td>
+                    <td class="num">${fmt(tC)}</td><td class="num amt-owed">${fmt(tD)}</td>
+                    <td colspan="2"></td>
+                </tr>`;
+        }
+
+        // ── Ledger drill-in ──────────────────────────────────────────────────
+        async function openLedger(kind, id) {
+            const modal = document.getElementById('ledger-modal');
+            document.getElementById('led-name').textContent = 'Loading…';
+            document.getElementById('led-sub').textContent = '';
+            document.getElementById('led-balance').textContent = '';
+            document.getElementById('led-body').innerHTML =
+                `<tr><td colspan="5" style="text-align:center;padding:1.2rem;color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
+            modal.classList.add('open');
+            try {
+                const res = await fetch(`${API_BASE}/credit/${kind}/${id}/ledger`, { headers: authHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const d = await res.json();
+                document.getElementById('led-name').textContent = d.name || '—';
+                document.getElementById('led-sub').textContent =
+                    `${d.mobile || ''}  ·  ${d.txn_count} transaction${d.txn_count !== 1 ? 's' : ''}`;
+                const bal = Number(d.current_balance) || 0;
+                const balEl = document.getElementById('led-balance');
+                balEl.textContent = fmt(Math.abs(bal)) + (bal > 0 ? ' outstanding' : bal < 0 ? ' credit' : '');
+                balEl.style.color = bal > 0 ? '#dc2626' : bal < 0 ? '#059669' : 'var(--text-muted)';
+
+                if (!d.transactions.length) {
+                    document.getElementById('led-body').innerHTML =
+                        `<tr><td colspan="5" style="text-align:center;padding:1.2rem;color:var(--text-muted);">No transactions.</td></tr>`;
+                    return;
+                }
+                document.getElementById('led-body').innerHTML = d.transactions.map(t => {
+                    const dt = t.created_at
+                        ? new Date(t.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+                        : '—';
+                    const isCredit = t.transaction_type === 'credit';
+                    return `
+                        <tr>
+                            <td>${dt}</td>
+                            <td><span class="${isCredit ? 'led-credit' : 'led-debit'}">${isCredit ? 'Credit' : 'Debit'}</span></td>
+                            <td class="num ${isCredit ? 'led-credit' : 'led-debit'}">${isCredit ? '+' : '−'}${fmt(t.amount)}</td>
+                            <td>${esc(t.reference || '—')}</td>
+                            <td>${esc(t.note || '—')}</td>
+                        </tr>`;
+                }).join('');
+            } catch (e) {
+                document.getElementById('led-body').innerHTML =
+                    `<tr><td colspan="5" style="text-align:center;padding:1.2rem;color:#dc2626;">Failed: ${esc(e.message)}</td></tr>`;
+            }
+        }
+        function closeLedger() { document.getElementById('ledger-modal').classList.remove('open'); }
+
+        // ── Excel export ─────────────────────────────────────────────────────
+        async function exportExcel() {
+            const btn = document.getElementById('export-btn');
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting…';
+            try {
+                const res = await fetch(`${API_BASE}/credit/export`, { headers: authHeaders() });
+                if (!res.ok) {
+                    let msg = `HTTP ${res.status}`;
+                    try { const j = await res.json(); msg = j.error || j.message || msg; } catch (_) {}
+                    throw new Error(msg);
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Credit_Report_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`;
+                document.body.appendChild(a); a.click(); a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Export failed: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
+    </script>
+</body>
+</html>

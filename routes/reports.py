@@ -112,16 +112,72 @@ def get_sales_report(payload):
         
         cur.execute(detailed_query, detailed_params)
         detailed_invoices = cur.fetchall()
-        
+
+        # ── Returns for the same period (net them out of sales & GST) ───────────
+        returns_query = """
+            SELECT
+                COALESCE(SUM(sr.total_amount), 0) AS returns_amount,
+                COALESCE(SUM(sr.total_gst), 0)    AS returns_gst,
+                COUNT(*)                          AS returns_count
+            FROM sales_returns sr
+            WHERE sr.status = 'Completed'
+        """
+        returns_params = []
+        if start_date:
+            returns_query += " AND sr.return_date >= %s"
+            returns_params.append(start_date)
+        if end_date:
+            returns_query += " AND sr.return_date <= %s"
+            returns_params.append(end_date)
+
+        cur.execute(returns_query, returns_params)
+        returns_row = cur.fetchone()
+        returns_amount = float(returns_row['returns_amount']) if returns_row and returns_row['returns_amount'] else 0.0
+        returns_gst    = float(returns_row['returns_gst']) if returns_row and returns_row['returns_gst'] else 0.0
+        returns_count  = int(returns_row['returns_count']) if returns_row and returns_row['returns_count'] else 0
+
+        gross_sales = float(total_sales) if total_sales else 0.0
+        gross_gst   = float(total_gst) if total_gst else 0.0
+        net_sales   = round(gross_sales - returns_amount, 2)
+        net_gst     = round(gross_gst - returns_gst, 2)
+
+        # Net returns out of the daily sales trend (match on return_date)
+        returns_by_day = {}
+        if daily_sales:
+            daily_returns_query = """
+                SELECT sr.return_date AS d,
+                       COALESCE(SUM(sr.total_amount), 0) AS returns_amount
+                FROM sales_returns sr
+                WHERE sr.status = 'Completed'
+            """
+            if start_date:
+                daily_returns_query += " AND sr.return_date >= %s"
+            if end_date:
+                daily_returns_query += " AND sr.return_date <= %s"
+            daily_returns_query += " GROUP BY sr.return_date"
+            cur.execute(daily_returns_query, returns_params)
+            for r in cur.fetchall():
+                returns_by_day[str(r['d'])] = float(r['returns_amount'] or 0)
+
         # Format the response to match what the frontend expects
         return jsonify({
-            'total_sales': float(total_sales) if total_sales else 0.0,
-            'total_gst': float(total_gst) if total_gst else 0.0,
+            # Net figures (sales minus returns) — headline numbers
+            'total_sales': net_sales,
+            'total_gst': net_gst,
+            # Gross + returns breakdown (for transparency)
+            'gross_sales': round(gross_sales, 2),
+            'gross_gst': round(gross_gst, 2),
+            'returns_amount': round(returns_amount, 2),
+            'returns_gst': round(returns_gst, 2),
+            'returns_count': returns_count,
+            'net_sales': net_sales,
+            'net_gst': net_gst,
             'total_invoices': int(total_invoices) if total_invoices else 0,
             'sales_trend': [
                 {
                     'date': str(row['sale_date']),
-                    'amount': float(row['total_sales'] if row['total_sales'] else 0),
+                    'amount': round(float(row['total_sales'] if row['total_sales'] else 0)
+                                    - returns_by_day.get(str(row['sale_date']), 0.0), 2),
                     'invoices': int(row['total_invoices'])
                 } for row in daily_sales
             ],

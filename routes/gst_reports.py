@@ -90,6 +90,82 @@ def _fetch_gstr1(cur, period: str) -> dict:
             'total_amount':   float(r['total_amount']),
         })
 
+    # ── Credit notes (sales returns) — reduce outward liability ─────────────
+    # Returns are reported in the period the return occurred (return_date),
+    # which is standard credit-note treatment under GST.
+    cur.execute(f"""
+        SELECT
+            sri.gst_rate                            AS gst_rate,
+            COUNT(DISTINCT sr.return_id)            AS note_count,
+            COALESCE(SUM(sri.exclusive_gst_amount), 0) AS taxable_value,
+            COALESCE(SUM(sri.sgst), 0)              AS sgst,
+            COALESCE(SUM(sri.cgst), 0)              AS cgst
+        FROM sales_return_items sri
+        JOIN sales_returns sr ON sri.return_id = sr.return_id
+        WHERE sr.status = 'Completed'
+          AND DATE_TRUNC('month', sr.return_date) = {trunc_sql}
+        GROUP BY sri.gst_rate
+        ORDER BY sri.gst_rate
+    """, (param,))
+    cn_rows = cur.fetchall()
+
+    credit_notes = []
+    cn_taxable = cn_sgst = cn_cgst = 0
+    for r in cn_rows:
+        tv = float(r['taxable_value'])
+        sg = float(r['sgst'])
+        cg = float(r['cgst'])
+        cn_taxable += tv
+        cn_sgst    += sg
+        cn_cgst    += cg
+        credit_notes.append({
+            'gst_rate':      float(r['gst_rate']),
+            'note_count':    int(r['note_count']),
+            'taxable_value': round(tv, 2),
+            'sgst':          round(sg, 2),
+            'cgst':          round(cg, 2),
+            'total_gst':     round(sg + cg, 2),
+            'gross_value':   round(tv + sg + cg, 2),
+        })
+
+    # ── Credit note (return) invoice-level list ─────────────────────────────
+    cur.execute(f"""
+        SELECT
+            sr.return_number,
+            sr.original_invoice_number,
+            sr.return_date,
+            sr.customer_name,
+            sr.customer_mobile,
+            sr.return_reason,
+            sr.subtotal      AS taxable_value,
+            sr.total_gst,
+            sr.total_amount
+        FROM sales_returns sr
+        WHERE sr.status = 'Completed'
+          AND DATE_TRUNC('month', sr.return_date) = {trunc_sql}
+        ORDER BY sr.return_date, sr.return_id
+    """, (param,))
+    cn_list_rows = cur.fetchall()
+
+    credit_note_list = []
+    for r in cn_list_rows:
+        credit_note_list.append({
+            'return_number':           r['return_number'],
+            'original_invoice_number': r['original_invoice_number'],
+            'return_date':             r['return_date'].strftime('%d-%b-%Y'),
+            'customer_name':           r['customer_name'] or 'Retail',
+            'customer_mobile':         r['customer_mobile'] or '',
+            'return_reason':           r['return_reason'] or '',
+            'taxable_value':           round(float(r['taxable_value']), 2),
+            'total_gst':               float(r['total_gst']),
+            'total_amount':            float(r['total_amount']),
+        })
+
+    # Net figures = outward supplies − credit notes
+    net_taxable = total_taxable - cn_taxable
+    net_sgst    = total_sgst - cn_sgst
+    net_cgst    = total_cgst - cn_cgst
+
     return {
         'period':          period,
         'rate_summary':    rate_summary,
@@ -100,6 +176,20 @@ def _fetch_gstr1(cur, period: str) -> dict:
         'total_cgst':      round(total_cgst, 2),
         'total_gst':       round(total_sgst + total_cgst, 2),
         'grand_total':     round(total_taxable + total_sgst + total_cgst, 2),
+        # Credit notes (sales returns) for the period
+        'credit_notes':       credit_notes,
+        'credit_note_list':   credit_note_list,
+        'credit_note_count':  len(credit_note_list),
+        'cn_total_taxable':   round(cn_taxable, 2),
+        'cn_total_sgst':      round(cn_sgst, 2),
+        'cn_total_cgst':      round(cn_cgst, 2),
+        'cn_total_gst':       round(cn_sgst + cn_cgst, 2),
+        # Net outward liability after credit notes
+        'net_taxable':     round(net_taxable, 2),
+        'net_sgst':        round(net_sgst, 2),
+        'net_cgst':        round(net_cgst, 2),
+        'net_gst':         round(net_sgst + net_cgst, 2),
+        'net_grand_total': round(net_taxable + net_sgst + net_cgst, 2),
     }
 
 
@@ -150,6 +240,29 @@ def _fetch_gstr3b(cur, period: str) -> dict:
         for r in cur.fetchall()
     ]
 
+    # ── Credit notes (sales returns) — reduce outward supplies ──────────────
+    cur.execute(f"""
+        SELECT
+            COALESCE(SUM(sri.exclusive_gst_amount), 0) AS taxable_value,
+            COALESCE(SUM(sri.sgst), 0)                 AS sgst,
+            COALESCE(SUM(sri.cgst), 0)                 AS cgst,
+            COUNT(DISTINCT sr.return_id)               AS note_count
+        FROM sales_return_items sri
+        JOIN sales_returns sr ON sri.return_id = sr.return_id
+        WHERE sr.status = 'Completed'
+          AND DATE_TRUNC('month', sr.return_date) = {trunc_sql}
+    """, (param,))
+    cn = cur.fetchone()
+    cn_taxable    = float(cn['taxable_value'])
+    cn_sgst       = float(cn['sgst'])
+    cn_cgst       = float(cn['cgst'])
+    cn_notes      = int(cn['note_count'])
+
+    # Net outward (after credit notes) — what actually goes on GSTR-3B 3.1
+    net_out_taxable = out_taxable - cn_taxable
+    net_out_sgst    = out_sgst - cn_sgst
+    net_out_cgst    = out_cgst - cn_cgst
+
     # ── 4(A) ITC from purchases ──────────────────────────────────────────────
     cur.execute(f"""
         SELECT
@@ -166,13 +279,13 @@ def _fetch_gstr3b(cur, period: str) -> dict:
     itc_cgst = float(itc['itc_cgst'])
     po_count = int(itc['po_count'])
 
-    # ── Net tax payable = outward tax – ITC ─────────────────────────────────
-    net_sgst = max(0.0, out_sgst - itc_sgst)
-    net_cgst = max(0.0, out_cgst - itc_cgst)
+    # ── Net tax payable = (outward tax − credit notes) – ITC ────────────────
+    net_sgst = max(0.0, net_out_sgst - itc_sgst)
+    net_cgst = max(0.0, net_out_cgst - itc_cgst)
 
     return {
         'period': period,
-        # 3.1 Outward supplies
+        # 3.1 Outward supplies (gross, before credit notes)
         'outward': {
             'invoice_count': out_invoices,
             'taxable_value': round(out_taxable, 2),
@@ -182,6 +295,23 @@ def _fetch_gstr3b(cur, period: str) -> dict:
             'grand_total':   round(out_taxable + out_sgst + out_cgst, 2),
             'by_rate':       out_by_rate,
         },
+        # Credit notes (sales returns) reducing outward supplies
+        'credit_notes': {
+            'note_count':    cn_notes,
+            'taxable_value': round(cn_taxable, 2),
+            'sgst':          round(cn_sgst, 2),
+            'cgst':          round(cn_cgst, 2),
+            'total_gst':     round(cn_sgst + cn_cgst, 2),
+            'grand_total':   round(cn_taxable + cn_sgst + cn_cgst, 2),
+        },
+        # 3.1 Net outward supplies (after credit notes) — the figure to file
+        'net_outward': {
+            'taxable_value': round(net_out_taxable, 2),
+            'sgst':          round(net_out_sgst, 2),
+            'cgst':          round(net_out_cgst, 2),
+            'total_gst':     round(net_out_sgst + net_out_cgst, 2),
+            'grand_total':   round(net_out_taxable + net_out_sgst + net_out_cgst, 2),
+        },
         # 4 ITC available
         'itc': {
             'po_count':  po_count,
@@ -189,7 +319,7 @@ def _fetch_gstr3b(cur, period: str) -> dict:
             'cgst':      round(itc_cgst, 2),
             'total_gst': round(itc_sgst + itc_cgst, 2),
         },
-        # 6.1 Net tax payable
+        # 6.1 Net tax payable = net outward tax − ITC
         'net_payable': {
             'sgst':      round(net_sgst, 2),
             'cgst':      round(net_cgst, 2),
@@ -324,6 +454,41 @@ def export_gst_excel(payload):
     ws1.write(tr, 5, g1['total_gst'],      total_fmt)
     ws1.write(tr, 6, g1['grand_total'],    total_fmt)
 
+    # Credit notes (sales returns) — shown as negative, reducing liability
+    cn_row = tr + 2
+    ws1.write(cn_row, 0, 'Less: Credit Notes (Sales Returns)', sub)
+    cn_row += 1
+    for c, h in enumerate(['GST Rate %', 'Note Count', 'Taxable Value (₹)',
+                           'SGST (₹)', 'CGST (₹)', 'Total GST (₹)', 'Gross Value (₹)']):
+        ws1.write(cn_row, c, h, hdr)
+    cn_row += 1
+    for r in g1['credit_notes']:
+        ws1.write(cn_row, 0, r['gst_rate'],            cell)
+        ws1.write(cn_row, 1, r['note_count'],          cell)
+        ws1.write(cn_row, 2, -r['taxable_value'],      money)
+        ws1.write(cn_row, 3, -r['sgst'],               money)
+        ws1.write(cn_row, 4, -r['cgst'],               money)
+        ws1.write(cn_row, 5, -r['total_gst'],          money)
+        ws1.write(cn_row, 6, -r['gross_value'],        money)
+        cn_row += 1
+    ws1.write(cn_row, 0, 'CREDIT NOTE TOTAL', sub)
+    ws1.write(cn_row, 1, g1['credit_note_count'], total_fmt)
+    ws1.write(cn_row, 2, -g1['cn_total_taxable'], total_fmt)
+    ws1.write(cn_row, 3, -g1['cn_total_sgst'],    total_fmt)
+    ws1.write(cn_row, 4, -g1['cn_total_cgst'],    total_fmt)
+    ws1.write(cn_row, 5, -g1['cn_total_gst'],     total_fmt)
+    ws1.write(cn_row, 6, -(g1['cn_total_taxable'] + g1['cn_total_gst']), total_fmt)
+    cn_row += 1
+
+    # Net outward supplies after credit notes
+    ws1.write(cn_row, 0, 'NET OUTWARD (after credit notes)', sub)
+    ws1.write(cn_row, 1, '',                  total_fmt)
+    ws1.write(cn_row, 2, g1['net_taxable'],   total_fmt)
+    ws1.write(cn_row, 3, g1['net_sgst'],      total_fmt)
+    ws1.write(cn_row, 4, g1['net_cgst'],      total_fmt)
+    ws1.write(cn_row, 5, g1['net_gst'],       total_fmt)
+    ws1.write(cn_row, 6, g1['net_grand_total'], total_fmt)
+
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 2 — GSTR-1 Invoice List
     # ════════════════════════════════════════════════════════════════════════
@@ -352,6 +517,34 @@ def export_gst_excel(payload):
         ws2.write(i, 7, inv['total_gst'],      money)
         ws2.write(i, 8, inv['total_amount'],   money)
         ws2.write(i, 9, inv['discount_amount'],money)
+
+    # ════════════════════════════════════════════════════════════════════════
+    # Sheet 2b — GSTR-1 Credit Notes (Sales Returns)
+    # ════════════════════════════════════════════════════════════════════════
+    ws2b = wb.add_worksheet('GSTR-1 Credit Notes')
+    ws2b.set_column('A:A', 6);  ws2b.set_column('B:B', 20)
+    ws2b.set_column('C:C', 20); ws2b.set_column('D:D', 14)
+    ws2b.set_column('E:E', 22); ws2b.set_column('F:F', 14)
+    ws2b.set_column('G:G', 20); ws2b.set_column('H:J', 16)
+
+    ws2b.write('A1', f'GSTR-1 — Credit Notes (Sales Returns)   Period: {period}', title)
+    ws2b.set_row(2, 18)
+    cn_headers = ['#', 'Credit Note No', 'Orig. Invoice', 'Date', 'Customer',
+                  'Mobile', 'Reason', 'Taxable Value (₹)', 'Total GST (₹)', 'Note Total (₹)']
+    for c, h in enumerate(cn_headers):
+        ws2b.write(2, c, h, hdr)
+
+    for i, cnr in enumerate(g1['credit_note_list'], start=3):
+        ws2b.write(i, 0, i - 2,                       cell)
+        ws2b.write(i, 1, cnr['return_number'],         cell)
+        ws2b.write(i, 2, cnr['original_invoice_number'],cell)
+        ws2b.write(i, 3, cnr['return_date'],           cell)
+        ws2b.write(i, 4, cnr['customer_name'],         cell)
+        ws2b.write(i, 5, cnr['customer_mobile'],       cell)
+        ws2b.write(i, 6, cnr['return_reason'],         cell)
+        ws2b.write(i, 7, -cnr['taxable_value'],        money)
+        ws2b.write(i, 8, -cnr['total_gst'],            money)
+        ws2b.write(i, 9, -cnr['total_amount'],         money)
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 3 — GSTR-3B Summary
@@ -387,11 +580,25 @@ def export_gst_excel(payload):
 
     section('3.1  Details of Outward Supplies and Inward Supplies liable to Reverse Charge')
     out = g3b['outward']
-    ws3.write(row, 0, '(a) Outward taxable supplies (other than zero rated, nil rated and exempted)', cell)
+    cn  = g3b['credit_notes']
+    net_out = g3b['net_outward']
+    ws3.write(row, 0, '(a) Outward taxable supplies (gross, before credit notes)', cell)
     ws3.write(row, 1, out['taxable_value'], money)
     ws3.write(row, 2, out['sgst'],          money)
     ws3.write(row, 3, out['cgst'],          money)
     ws3.write(row, 4, out['total_gst'],     money); row += 1
+
+    ws3.write(row, 0, 'Less: Credit Notes / Sales Returns', cell)
+    ws3.write(row, 1, -cn['taxable_value'], money)
+    ws3.write(row, 2, -cn['sgst'],          money)
+    ws3.write(row, 3, -cn['cgst'],          money)
+    ws3.write(row, 4, -cn['total_gst'],     money); row += 1
+
+    ws3.write(row, 0, '(a) Net outward taxable supplies (to be reported)', sub)
+    ws3.write(row, 1, net_out['taxable_value'], total_fmt)
+    ws3.write(row, 2, net_out['sgst'],          total_fmt)
+    ws3.write(row, 3, net_out['cgst'],          total_fmt)
+    ws3.write(row, 4, net_out['total_gst'],     total_fmt); row += 1
 
     ws3.write(row, 0, '(b) Zero rated supplies',             cell)
     for c in range(1, 5): ws3.write(row, c, 0.00, money); row += 1
@@ -416,7 +623,7 @@ def export_gst_excel(payload):
 
     section('6.1  Payment of Tax')
     net = g3b['net_payable']
-    ws3.write(row, 0, 'Tax payable (Outward GST − ITC)', cell)
+    ws3.write(row, 0, 'Tax payable (Net Outward GST − ITC)', cell)
     ws3.write(row, 1, '',              cell)
     ws3.write(row, 2, net['sgst'],     total_fmt)
     ws3.write(row, 3, net['cgst'],     total_fmt)

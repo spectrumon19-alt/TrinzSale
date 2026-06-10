@@ -134,6 +134,12 @@ CREATE TABLE IF NOT EXISTS sales_invoices (
     status VARCHAR DEFAULT 'Completed' CHECK (status IN ('Completed', 'Cancelled'))
 );
 
+-- Cancellation audit trail (who/when/why) — a cancelled invoice reverses a legal
+-- document, so the action must be traceable. Added via ALTER for existing databases.
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_by   INTEGER REFERENCES users(user_id);
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMP;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancel_reason  TEXT;
+
 -- Sales invoice items table
 CREATE TABLE IF NOT EXISTS sales_invoice_items (
     item_id SERIAL PRIMARY KEY,

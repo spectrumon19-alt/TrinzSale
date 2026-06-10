@@ -411,85 +411,130 @@ def create_sale(payload):
 @sales_bp.route('/sales/<int:invoice_id>/cancel', methods=['PUT'])
 @admin_required
 def cancel_sale(payload, invoice_id):
+    """
+    Cancel a sales invoice professionally and atomically:
+
+      1. Lock the invoice row (FOR UPDATE) so two concurrent cancels cannot
+         both pass the status check and restore stock twice.
+      2. Refuse to cancel if the invoice has returns recorded against it —
+         those returns already restored stock and refunded the customer, so a
+         blind cancel would double-restore inventory and double-refund. The
+         operator must reverse the returns first (or the return already handles it).
+      3. Restore inventory by the full original quantity (safe now that returns
+         are excluded).
+      4. Stamp the cancellation audit trail (who / when / why).
+      5. Set status = 'Cancelled' (rows are kept for history — never deleted).
+      6. Warn — but do not fail — if a credit-ledger entry references this
+         invoice, since that manual ledger must be adjusted separately.
+    """
+    user_id = payload.get('user_id')
+    data = request.get_json(silent=True) or {}
+    cancel_reason = (data.get('reason') or data.get('cancel_reason') or '').strip() or None
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    
+
     try:
-        # Check if invoice exists and is not already cancelled
+        # 1. Lock the invoice row for the duration of the transaction
         cur.execute("""
-            SELECT status FROM sales_invoices WHERE invoice_id = %s
+            SELECT invoice_id, invoice_number, status
+            FROM sales_invoices
+            WHERE invoice_id = %s
+            FOR UPDATE
         """, (invoice_id,))
-        
         invoice = cur.fetchone()
+
         if not invoice:
             return jsonify({'message': 'Invoice not found'}), 404
-            
         if invoice['status'] == 'Cancelled':
             return jsonify({'message': 'Invoice is already cancelled'}), 400
-    
-        # Get all items in the invoice
+
+        # 2. Block if any returns exist against this invoice
         cur.execute("""
-            SELECT product_id, quantity FROM sales_invoice_items WHERE invoice_id = %s
+            SELECT COUNT(*) AS return_count
+            FROM sales_returns
+            WHERE original_invoice_id = %s AND status = 'Completed'
         """, (invoice_id,))
-        
-        items = cur.fetchall()
-        
-        # Update inventory (increment stock for each item)
-        for item in items:
-            cur.execute("""
-                UPDATE inventory 
-                SET stock_quantity = stock_quantity + %s 
-                WHERE product_id = %s
-            """, (item['quantity'], item['product_id']))
-            
-            # Check if update was successful
-            if cur.rowcount == 0:
-                # If no rows were updated, it means there's no inventory record for this product
-                # Let's check if the product exists
-                cur.execute("SELECT 1 FROM products WHERE product_id = %s", (item['product_id'],))
-                product_exists = cur.fetchone()
-                
-                if not product_exists:
-                    raise Exception(f"Product with ID {item['product_id']} does not exist")
-                
-                # If product exists but no inventory record, create one with 0 stock and then update
-                try:
-                    cur.execute("""
-                        INSERT INTO inventory (product_id, stock_quantity) 
-                        VALUES (%s, %s)
-                    """, (item['product_id'], 0))  # Start with 0 stock
-                    
-                    # Now update the inventory
-                    cur.execute("""
-                        UPDATE inventory 
-                        SET stock_quantity = stock_quantity + %s 
-                        WHERE product_id = %s
-                    """, (item['quantity'], item['product_id']))
-                except Exception as insert_error:
-                    # If insert fails due to constraint, try update again
-                    cur.execute("""
-                        UPDATE inventory 
-                        SET stock_quantity = stock_quantity + %s 
-                        WHERE product_id = %s
-                    """, (item['quantity'], item['product_id']))
-                    
-                    if cur.rowcount == 0:
-                        raise Exception(f"Failed to update inventory for product {item['product_id']}. No inventory record found and unable to create one.")
-        
-        # Update invoice status to cancelled
+        return_count = int((cur.fetchone() or {}).get('return_count', 0))
+        if return_count > 0:
+            return jsonify({
+                'message': 'Cannot cancel an invoice that has returns recorded against it. '
+                           'Reverse the return(s) first, then cancel.',
+                'return_count': return_count
+            }), 409
+
+        # 3. Restore inventory for each line (original quantity)
         cur.execute("""
-            UPDATE sales_invoices 
-            SET status = 'Cancelled' 
+            SELECT product_id, quantity
+            FROM sales_invoice_items
             WHERE invoice_id = %s
         """, (invoice_id,))
-        
-        # Commit transaction
+        items = cur.fetchall()
+
+        for item in items:
+            cur.execute("""
+                UPDATE inventory
+                SET stock_quantity = stock_quantity + %s
+                WHERE product_id = %s
+            """, (item['quantity'], item['product_id']))
+
+            if cur.rowcount == 0:
+                # A sold product must already have an inventory row. If it does not,
+                # the product was deleted or data is inconsistent — surface it rather
+                # than silently papering over it.
+                cur.execute("SELECT 1 FROM products WHERE product_id = %s", (item['product_id'],))
+                if not cur.fetchone():
+                    raise Exception(f"Product {item['product_id']} no longer exists; "
+                                    f"cannot restore inventory. Cancellation aborted.")
+                # Product exists but had no inventory row — create it with the restored qty.
+                cur.execute("""
+                    INSERT INTO inventory (product_id, stock_quantity)
+                    VALUES (%s, %s)
+                """, (item['product_id'], item['quantity']))
+
+        # 4 + 5. Mark cancelled with audit trail
+        cur.execute("""
+            UPDATE sales_invoices
+            SET status        = 'Cancelled',
+                cancelled_by  = %s,
+                cancelled_at  = CURRENT_TIMESTAMP,
+                cancel_reason = %s
+            WHERE invoice_id = %s
+        """, (user_id, cancel_reason, invoice_id))
+
+        # 6. Detect (don't block on) any credit-ledger entries for this invoice
+        credit_warning = None
+        try:
+            cur.execute("""
+                SELECT COUNT(*) AS credit_count
+                FROM credit_transactions
+                WHERE invoice_no = %s
+            """, (invoice['invoice_number'],))
+            credit_count = int((cur.fetchone() or {}).get('credit_count', 0))
+            if credit_count > 0:
+                credit_warning = (f"This invoice has {credit_count} linked credit-ledger "
+                                  f"entry(ies). Adjust the customer's credit balance manually.")
+        except Exception:
+            # credit_transactions may not exist in every deployment — ignore.
+            credit_warning = None
+
         conn.commit()
-        
-        return jsonify({'message': 'Invoice cancelled successfully'}), 200
+        logger.info("Invoice %s (id=%s) cancelled by user %s. Reason: %s",
+                    invoice['invoice_number'], invoice_id, user_id, cancel_reason or '(none)')
+
+        resp = {
+            'message': 'Invoice cancelled successfully',
+            'invoice_number': invoice['invoice_number'],
+            'items_restored': len(items),
+        }
+        if credit_warning:
+            resp['warning'] = credit_warning
+        return jsonify(resp), 200
+
     except Exception as e:
         if conn:
             conn.rollback()
+        logger.exception("Cancel sale error (invoice_id=%s)", invoice_id)
         return jsonify({'message': 'Failed to cancel sale', 'error': str(e)}), 500
     finally:
         if cur:

@@ -14,12 +14,16 @@ def get_dashboard_kpis(payload):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
+        # Sales amounts shown to users are GST-INCLUSIVE (what the customer
+        # actually paid = total_amount + total_gst), consistent with the
+        # revenue charts, invoices and receipts. total_amount alone is ex-GST.
+
         # ── Today's sales ────────────────────────────────────────────────────
         cur.execute("""
             SELECT
-                COUNT(*)                          AS invoice_count,
-                COALESCE(SUM(total_amount), 0)    AS total_amount,
-                COALESCE(SUM(total_gst), 0)       AS total_gst
+                COUNT(*)                                    AS invoice_count,
+                COALESCE(SUM(total_amount + total_gst), 0)  AS total_amount,
+                COALESCE(SUM(total_gst), 0)                 AS total_gst
             FROM sales_invoices
             WHERE status = 'Completed'
               AND DATE(invoice_date) = CURRENT_DATE
@@ -29,8 +33,8 @@ def get_dashboard_kpis(payload):
         # ── Yesterday (for % change) ─────────────────────────────────────────
         cur.execute("""
             SELECT
-                COALESCE(SUM(total_amount), 0) AS total_amount,
-                COUNT(*)                        AS invoice_count
+                COALESCE(SUM(total_amount + total_gst), 0) AS total_amount,
+                COUNT(*)                                    AS invoice_count
             FROM sales_invoices
             WHERE status = 'Completed'
               AND DATE(invoice_date) = CURRENT_DATE - INTERVAL '1 day'
@@ -40,13 +44,36 @@ def get_dashboard_kpis(payload):
         # ── This month's sales ───────────────────────────────────────────────
         cur.execute("""
             SELECT
-                COALESCE(SUM(total_amount), 0) AS total_amount,
-                COUNT(*)                        AS invoice_count
+                COALESCE(SUM(total_amount + total_gst), 0) AS total_amount,
+                COUNT(*)                                    AS invoice_count
             FROM sales_invoices
             WHERE status = 'Completed'
               AND DATE_TRUNC('month', invoice_date) = DATE_TRUNC('month', CURRENT_DATE)
         """)
         month = cur.fetchone()
+
+        # ── Returns (net out of sales figures, GST-inclusive) ────────────────
+        cur.execute("""
+            SELECT
+                COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE
+                                  THEN total_amount + total_gst ELSE 0 END), 0) AS today_returns,
+                COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE
+                                  THEN total_gst ELSE 0 END), 0)                AS today_returns_gst,
+                COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE - INTERVAL '1 day'
+                                  THEN total_amount + total_gst ELSE 0 END), 0) AS yest_returns,
+                COALESCE(SUM(CASE WHEN DATE_TRUNC('month', return_date)
+                                       = DATE_TRUNC('month', CURRENT_DATE)
+                                  THEN total_amount + total_gst ELSE 0 END), 0) AS month_returns
+            FROM sales_returns
+            WHERE status = 'Completed'
+        """)
+        ret = cur.fetchone()
+
+        # Net = gross sales − returns (never below 0)
+        today_amount   = max(0.0, float(today['total_amount'])    - float(ret['today_returns']))
+        today_gst      = max(0.0, float(today['total_gst'])       - float(ret['today_returns_gst']))
+        yest_amount    = max(0.0, float(yesterday['total_amount'])- float(ret['yest_returns']))
+        month_amount   = max(0.0, float(month['total_amount'])    - float(ret['month_returns']))
 
         # ── Low-stock items (qty <= 10) ──────────────────────────────────────
         cur.execute("""
@@ -84,12 +111,12 @@ def get_dashboard_kpis(payload):
         """)
         top_products = cur.fetchall()
 
-        # ── Recent 8 transactions ────────────────────────────────────────────
+        # ── Recent 8 transactions (GST-inclusive grand total) ─────────────────
         cur.execute("""
             SELECT
                 si.invoice_number,
                 si.customer_name,
-                si.total_amount,
+                (si.total_amount + si.total_gst) AS total_amount,
                 si.invoice_date,
                 si.mode_of_payment
             FROM sales_invoices si
@@ -123,20 +150,20 @@ def get_dashboard_kpis(payload):
 
         return jsonify({
             'today': {
-                'amount':        float(today['total_amount']),
+                'amount':        round(today_amount, 2),
                 'invoice_count': int(today['invoice_count']),
-                'gst':           float(today['total_gst']),
+                'gst':           round(today_gst, 2),
             },
             'yesterday': {
-                'amount':        float(yesterday['total_amount']),
+                'amount':        round(yest_amount, 2),
                 'invoice_count': int(yesterday['invoice_count']),
             },
             'month': {
-                'amount':        float(month['total_amount']),
+                'amount':        round(month_amount, 2),
                 'invoice_count': int(month['invoice_count']),
             },
             'changes': {
-                'amount_pct':  pct_change(today['total_amount'], yesterday['total_amount']),
+                'amount_pct':  pct_change(today_amount, yest_amount),
                 'invoice_pct': pct_change(today['invoice_count'], yesterday['invoice_count']),
             },
             'low_stock': {
@@ -217,9 +244,11 @@ def get_dashboard_trends(payload):
     cur_day = start_day
     while cur_day <= today:
         row = db_map.get(cur_day)
+        # amount is GST-inclusive (total_amount + total_gst) for consistency
+        # with the KPI cards, revenue charts and receipts; gst is shown separately.
         result.append({
             'date':          cur_day.isoformat(),
-            'amount':        float(row['total_amount'])  if row else 0.0,
+            'amount':        round(float(row['total_amount']) + float(row['total_gst']), 2) if row else 0.0,
             'invoice_count': int(row['invoice_count'])   if row else 0,
             'gst':           float(row['total_gst'])     if row else 0.0,
         })
