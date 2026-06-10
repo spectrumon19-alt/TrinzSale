@@ -417,14 +417,22 @@ INSERT INTO products (name, pack_size, sku, gst_rate, purchase_rate, selling_rat
 SELECT 'Product C', '1 piece', 'PROD-C-003', 5.00, 25.00, 30.00
 WHERE NOT EXISTS (SELECT 1 FROM products WHERE sku = 'PROD-C-003');
 
+-- Seed inventory by SKU (not hardcoded IDs) so this stays idempotent even when
+-- products were created with different serial IDs on an existing database.
 INSERT INTO inventory (product_id, stock_quantity)
-SELECT 1, 100 WHERE NOT EXISTS (SELECT 1 FROM inventory WHERE product_id = 1);
+SELECT p.product_id, 100 FROM products p
+WHERE p.sku = 'PROD-A-001'
+  AND NOT EXISTS (SELECT 1 FROM inventory i WHERE i.product_id = p.product_id);
 
 INSERT INTO inventory (product_id, stock_quantity)
-SELECT 2, 200 WHERE NOT EXISTS (SELECT 1 FROM inventory WHERE product_id = 2);
+SELECT p.product_id, 200 FROM products p
+WHERE p.sku = 'PROD-B-002'
+  AND NOT EXISTS (SELECT 1 FROM inventory i WHERE i.product_id = p.product_id);
 
 INSERT INTO inventory (product_id, stock_quantity)
-SELECT 3, 150 WHERE NOT EXISTS (SELECT 1 FROM inventory WHERE product_id = 3);
+SELECT p.product_id, 150 FROM products p
+WHERE p.sku = 'PROD-C-003'
+  AND NOT EXISTS (SELECT 1 FROM inventory i WHERE i.product_id = p.product_id);
 
 -- Sample suppliers (remove in production if not needed)
 INSERT INTO suppliers (supplier_name, supplier_gst_number, mobile, bank_name, bank_account_number, ifsc_code)
@@ -451,6 +459,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_required BOOLEAN DEFAULT FALSE;
 
 -- Returns status column (in case table was created before this column was added)
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS status VARCHAR NOT NULL DEFAULT 'Completed';
+
+-- Invoice cancellation audit trail (who/when/why). A cancelled invoice reverses
+-- a legally-issued document, so the action must be traceable. Without these the
+-- cancel endpoint fails on existing databases.
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_by   INTEGER REFERENCES users(user_id);
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMP;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancel_reason  TEXT;
 
 
 -- ============================================================
