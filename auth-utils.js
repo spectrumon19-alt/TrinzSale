@@ -124,6 +124,7 @@ const SIDEBAR_NAV_LINKS = [
     { href: 'inventory.html', icon: '📦', label: 'Inventory', permission: 'inventory' },
 
     { group: 'Customers' },
+    { href: 'creditDashboard.html',    icon: '📒', label: 'Credit Dashboard', permission: 'credit' },
     { href: 'creditManagement.html',   icon: '💳', label: 'Credit',    permission: 'credit' },
     { href: 'customerManagement.html', icon: '👤', label: 'Customers', permission: 'credit' },
 
@@ -252,6 +253,7 @@ const PAGE_TO_PERMISSION = {
     'reports.html': 'reports',
     'admin.html': 'admin',
     'service.html': 'service',
+    'creditDashboard.html': 'credit',
     'creditManagement.html': 'credit',
     'Data Upload.html': 'data-upload',
     'ocrExcel.html': 'ocr-excel',
@@ -367,6 +369,7 @@ const SIDEBAR_HREF_TO_PERMISSION = {
     'returns.html':            'returns',
     'purchase.html':           'purchase',
     'inventory.html':          'inventory',
+    'creditDashboard.html':    'credit',
     'creditManagement.html':   'credit',
     'customerManagement.html': 'credit',
     'reports.html':            'reports',

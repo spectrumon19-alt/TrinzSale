@@ -38,20 +38,21 @@ def get_crm_stats(payload):
         """)
         active_this_month = cur.fetchone()['active']
 
-        # Total revenue from identified customers
+        # Total revenue from identified customers (GST-inclusive — what the
+        # customer actually paid = total_amount + total_gst).
         cur.execute("""
-            SELECT COALESCE(SUM(total_amount), 0) AS revenue
+            SELECT COALESCE(SUM(total_amount + total_gst), 0) AS revenue
             FROM sales_invoices
             WHERE customer_mobile IS NOT NULL AND customer_mobile != ''
               AND status != 'Cancelled'
         """)
         total_revenue = float(cur.fetchone()['revenue'])
 
-        # Top customer by total spent
+        # Top customer by total spent (GST-inclusive)
         cur.execute("""
             SELECT customer_mobile AS mobile,
                    MAX(customer_name) AS name,
-                   SUM(total_amount) AS total_spent
+                   SUM(total_amount + total_gst) AS total_spent
             FROM sales_invoices
             WHERE customer_mobile IS NOT NULL AND customer_mobile != ''
               AND status != 'Cancelled'
@@ -126,9 +127,9 @@ def list_crm_customers(payload):
                     customer_mobile                    AS mobile,
                     MAX(customer_name)                 AS inv_name,
                     COUNT(invoice_id)                  AS total_invoices,
-                    SUM(total_amount)                  AS total_spent,
+                    SUM(total_amount + total_gst)      AS total_spent,
                     MAX(invoice_date)                  AS last_purchase,
-                    AVG(total_amount)                  AS avg_order
+                    AVG(total_amount + total_gst)      AS avg_order
                 FROM sales_invoices
                 WHERE customer_mobile IS NOT NULL AND customer_mobile != ''
                   AND status != 'Cancelled'
@@ -294,13 +295,16 @@ def get_customer_history(payload, mobile):
 
         invoices_out = []
         for inv in invoices:
+            taxable = float(inv['total_amount'])
+            gst     = float(inv['total_gst'])
             invoices_out.append({
                 'invoice_id':     inv['invoice_id'],
                 'invoice_number': inv['invoice_number'],
                 'invoice_date':   inv['invoice_date'].isoformat(),
                 'customer_name':  inv['customer_name'],
-                'total_amount':   float(inv['total_amount']),
-                'total_gst':      float(inv['total_gst']),
+                'total_amount':   taxable,                    # ex-GST (taxable value)
+                'total_gst':      gst,
+                'grand_total':    round(taxable + gst, 2),    # GST-inclusive (amount paid)
                 'discount_amount':float(inv['discount_amount'] or 0),
                 'payment_mode':   inv['mode_of_payment'],
                 'status':         inv['status'],
@@ -328,9 +332,9 @@ def get_customer_history(payload, mobile):
                     'created_at':       tx['created_at'].isoformat(),
                 })
 
-        # Aggregate stats from invoices
+        # Aggregate stats from invoices (GST-inclusive — what the customer paid)
         completed = [i for i in invoices_out if i['status'] != 'Cancelled']
-        total_spent  = sum(i['total_amount'] for i in completed)
+        total_spent  = sum(i['grand_total'] for i in completed)
         avg_order    = total_spent / len(completed) if completed else 0
         first_purchase = min((i['invoice_date'] for i in completed), default=None)
         last_purchase  = max((i['invoice_date'] for i in completed), default=None)

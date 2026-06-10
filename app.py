@@ -136,6 +136,7 @@ def create_app():
     from routes.data_upload import data_upload_bp
     from routes.service import service_bp
     from routes.credit import credit_bp
+    from routes.credit_management import credit_management_bp
     from routes.totp import totp_bp
     from routes.returns import returns_bp
     from routes.dashboard import dashboard_bp
@@ -164,6 +165,7 @@ def create_app():
     app.register_blueprint(data_upload_bp, url_prefix='/api')
     app.register_blueprint(service_bp, url_prefix='/api')
     app.register_blueprint(credit_bp, url_prefix='/api')
+    app.register_blueprint(credit_management_bp, url_prefix='/api')
     app.register_blueprint(totp_bp,    url_prefix='/api')
     app.register_blueprint(returns_bp, url_prefix='/api')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
