@@ -159,12 +159,16 @@ def create_sale(payload):
 
             invoice_date = data.get('invoice_date') or None
 
+            # COALESCE so an explicit date is honoured, but when none is provided
+            # the invoice gets the current timestamp. Inserting a bare NULL would
+            # override the column DEFAULT and leave invoice_date NULL, which makes
+            # the sale vanish from every date-filtered report and the dashboard.
             cur.execute("""
                 INSERT INTO sales_invoices (
                     invoice_number, receipt_number, invoice_date, customer_name, customer_contact,
                     user_id, mode_of_payment, upi_transaction_id, customer_mobile,
                     total_amount, total_gst, discount_percentage, status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 0, 0, %s, 'Completed')
+                ) VALUES (%s, %s, COALESCE(%s, CURRENT_TIMESTAMP), %s, %s, %s, %s, %s, %s, 0, 0, %s, 'Completed')
                 RETURNING invoice_id, invoice_number, receipt_number, invoice_date
             """, (
                 invoice_number, receipt_number, invoice_date,

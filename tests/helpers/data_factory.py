@@ -42,10 +42,15 @@ def product_update_payload(**overrides) -> dict:
 # ── Suppliers ────────────────────────────────────────────────────────────────
 
 def gst_number() -> str:
-    """Generate a structurally valid (but fictional) 15-char GST number."""
-    h = uuid.uuid4().hex[:4].upper()
-    # Format: 2 digits + 5 uppercase letters + 4 digits + 1 upper + 1 alphanum + Z + 1 digit
-    return f"29ABCDE{h}A1Z5"
+    """Generate a structurally valid (but fictional) 15-char GST number.
+
+    Format (validate_gst_number): 2 digits + 5 upper + 4 DIGITS + 1 upper +
+    1[1-9A-Z] + Z + 1[0-9A-Z]. The 4-char block must be digits, so derive it
+    from a random number rather than hex (which may contain letters).
+    """
+    import random
+    digits = f"{random.randint(0, 9999):04d}"
+    return f"29ABCDE{digits}A1Z5"
 
 
 def supplier_payload(**overrides) -> dict:

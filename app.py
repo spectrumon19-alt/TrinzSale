@@ -53,6 +53,10 @@ def create_app():
     # Rate limiting (BUG-009 fix)
     from limiter import limiter
     limiter.init_app(app)
+    # Allow disabling the limiter in test/CI runs (the suite makes far more than
+    # 10 logins/min, which would otherwise return 429 and mask real assertions).
+    if os.environ.get("DISABLE_RATE_LIMIT") == "1":
+        limiter.enabled = False
     
     # Gzip compression for JSON API responses (big win for slow connections)
     @app.after_request

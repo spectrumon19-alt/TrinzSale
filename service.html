@@ -316,9 +316,11 @@
                         </div>
                     </div>
                     <div class="svc-card-body flex flex-col gap-3">
-                        <div style="display:flex;gap:0.625rem;">
+                        <div style="display:flex;gap:0.625rem;flex-wrap:wrap;">
                             <button class="btn btn-success" id="backup-btn" onclick="createBackup()">Create Backup</button>
                             <button class="btn btn-neutral" onclick="loadBackups()">List Backups</button>
+                            <button class="btn btn-neutral" onclick="document.getElementById('restore-file-input').click()" title="Restore from a .sql or .sql.gz file on your computer">⤴ Browse &amp; Restore…</button>
+                            <input type="file" id="restore-file-input" accept=".sql,.gz,.sql.gz" style="display:none;" onchange="restoreFromFile(this)">
                         </div>
                         <div id="backup-status" style="font-size:0.8rem;color:var(--text-muted);display:none;"></div>
                         <div id="backup-list" style="display:none;"></div>
@@ -569,6 +571,9 @@
                 const typeTag = b.type === 'scheduled'
                     ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:10px;font-weight:600;">⏰ Auto</span>'
                     : '<span style="font-size:0.65rem;background:rgba(16,185,129,0.1);color:#059669;padding:1px 6px;border-radius:10px;font-weight:600;">▶ Manual</span>';
+                const downloadBtn = b.exists
+                    ? `<button class="btn btn-neutral btn-sm" onclick="downloadBackup(${b.id},'${esc(b.filename)}')" title="Download backup file">⬇ Download</button>`
+                    : '';
                 const restoreBtn = b.exists
                     ? `<button class="btn btn-neutral btn-sm" onclick="restoreBackup(${b.id},'${esc(b.filename)}')">Restore</button>`
                     : `<span style="font-size:0.7rem;color:var(--text-subtle);">Drive only</span>`;
@@ -577,6 +582,7 @@
                         <div class="backup-name">${esc(b.filename)}</div>
                         <div class="backup-meta">${dt} · ${kb} ${typeTag}</div>
                     </div>
+                    ${downloadBtn}
                     ${restoreBtn}
                     <button class="btn btn-danger btn-sm" onclick="deleteBackup(${b.id},'${esc(b.filename)}')">Delete</button>
                 </div>`;
@@ -584,6 +590,79 @@
         } catch (e) {
             listEl.innerHTML = `<p style="font-size:0.8rem;color:#ef4444;">Error: ${e.message}</p>`;
         }
+    }
+
+    async function downloadBackup(logId, filename) {
+        // Stream the file via fetch + blob (sends the Authorization header and
+        // does not navigate the page away). Uses the shared /api/backup/download
+        // endpoint — backup.html and service.html share the same backup_logs id.
+        showToast('Preparing download…', 'info');
+        let res;
+        try {
+            res = await fetch(`/api/backup/download/${logId}`, { headers: authHdr() });
+        } catch (e) {
+            showToast('Download failed: ' + e.message, 'error');
+            return;
+        }
+        if (!res.ok) {
+            let msg = 'File not available on server';
+            try { const j = await res.json(); msg = j.message || j.error || msg; } catch (_) {}
+            showToast(msg, 'error');
+            return;
+        }
+        const blob = await res.blob();
+        const fn = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || filename || 'backup.sql.gz';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        showToast('Download started', 'success');
+    }
+
+    function restoreFromFile(input) {
+        const file = input.files && input.files[0];
+        input.value = '';  // reset so the same file can be re-picked later
+        if (!file) return;
+        openConfirm(
+            'Restore from File?',
+            `Restore the database from "${file.name}"?\n\nThis applies the SQL dump and overwrites existing data for restored rows. Make sure the file is a trusted TrintzPOS backup. Proceed?`,
+            'Restore',
+            async () => {
+                closeConfirm();
+                showToast('Uploading & restoring… this may take a moment', 'info');
+                try {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const res = await fetch(`${API}/admin/service/restore-upload`, {
+                        method: 'POST',
+                        // NOTE: no Content-Type header — the browser sets the multipart boundary.
+                        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('pos_token') },
+                        body: fd
+                    });
+                    // Guard against non-JSON (HTML error page) responses so the user
+                    // sees a clear message instead of "Unexpected token '<'".
+                    const ct = res.headers.get('content-type') || '';
+                    if (!ct.includes('application/json')) {
+                        const txt = await res.text();
+                        throw new Error(res.status === 404
+                            ? 'Restore endpoint not found — the server may need a restart to load the new feature.'
+                            : res.status === 413
+                                ? 'Backup file is too large to upload.'
+                                : `Server error (${res.status}). ${txt.slice(0,120)}`);
+                    }
+                    const d = await res.json();
+                    if (!res.ok || !d.success) throw new Error(d.message || 'Restore failed');
+                    showToast(d.message || 'Restored successfully', 'success');
+                    loadBackups();
+                } catch (e) {
+                    showToast('Restore failed: ' + e.message, 'error');
+                }
+            },
+            'btn-danger'
+        );
     }
 
     function restoreBackup(logId, filename) {

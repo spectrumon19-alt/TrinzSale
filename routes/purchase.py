@@ -11,19 +11,43 @@ purchase_bp = Blueprint('purchase', __name__)
 @purchase_bp.route('/purchase', methods=['POST'])
 @admin_required
 def create_purchase(payload):
-    data = request.get_json()
+    data = request.get_json(silent=True)
     user_id = payload.get('user_id')
-    
-    # Log the incoming data for debugging
-    print(f"Received purchase data: {data}")
-    
+
+    # ── Input validation (BUG-013) ───────────────────────────────────────────
+    # A purchase order must have a body, at least one line item, and a supplier
+    # reference that resolves to a real supplier. Without these the PO is
+    # meaningless and silently corrupts inventory/payables data.
+    if not data:
+        return jsonify({'message': 'Request body is required'}), 400
+
+    items = data.get('items')
+    if not items or not isinstance(items, list) or len(items) == 0:
+        return jsonify({'message': 'At least one item is required'}), 400
+
     conn = None
     cur = None
-    
+
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        
+
+        # Resolve and validate the supplier. The order may reference a supplier
+        # by supplier_id or by supplier_gst_number; either way it must exist.
+        supplier_id_in = data.get('supplier_id')
+        supplier_gst = data.get('supplier_gst_number')
+        if supplier_id_in is None and not supplier_gst:
+            return jsonify({'message': 'A supplier (supplier_id or supplier_gst_number) is required'}), 400
+
+        if supplier_id_in is not None:
+            cur.execute("SELECT supplier_id FROM suppliers WHERE supplier_id = %s", (supplier_id_in,))
+            if not cur.fetchone():
+                return jsonify({'message': f'Supplier {supplier_id_in} does not exist'}), 404
+        elif supplier_gst:
+            cur.execute("SELECT supplier_id FROM suppliers WHERE supplier_gst_number = %s", (supplier_gst,))
+            if not cur.fetchone():
+                return jsonify({'message': f'Supplier with GST {supplier_gst} does not exist'}), 404
+
         # Check if purchase order number already exists
         purchase_order_number = data.get('purchase_order_number')
         if purchase_order_number and purchase_order_number.strip():
@@ -49,20 +73,21 @@ def create_purchase(payload):
             next_num = (result['max_num'] or 0) + 1 if result else 1
             purchase_order_number = f"{date_prefix}{next_num:04d}"
         
-        # Get supplier_id from suppliers table
-        supplier_id = None
-        if data.get('supplier_gst_number'):
+        # Resolve supplier_id (validated above to exist). Prefer an explicit
+        # supplier_id, else look up by GST number.
+        supplier_id = supplier_id_in
+        if supplier_id is None and supplier_gst:
             cur.execute("""
                 SELECT supplier_id FROM suppliers WHERE supplier_gst_number = %s
-            """, (data.get('supplier_gst_number'),))
+            """, (supplier_gst,))
             supplier_result = cur.fetchone()
             if supplier_result:
                 supplier_id = supplier_result['supplier_id']
-        
+
         # Create purchase order
         cur.execute("""
             INSERT INTO purchase_orders (
-                supplier_id, supplier_name, supplier_gst_number, purchase_order_number, purchase_date, 
+                supplier_id, supplier_name, supplier_gst_number, purchase_order_number, purchase_date,
                 user_id, total_amount, status
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING purchase_order_id

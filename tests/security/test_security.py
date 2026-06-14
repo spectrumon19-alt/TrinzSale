@@ -26,6 +26,20 @@ from tests.helpers.auth_helpers import make_token
 pytestmark = pytest.mark.security
 
 
+def body_text(resp) -> str:
+    """Return the response body as text, transparently decompressing gzip.
+
+    Reading resp.data.decode() directly fails on gzipped responses
+    (UnicodeDecodeError on the 0x8b gzip magic byte), so route raw-body
+    inspection through this helper.
+    """
+    import gzip
+    data = resp.data
+    if resp.headers.get("Content-Encoding") == "gzip":
+        data = gzip.decompress(data)
+    return data.decode(errors="replace")
+
+
 # ── SQL Injection ─────────────────────────────────────────────────────────────
 
 class TestSQLInjection:
@@ -167,19 +181,19 @@ class TestSensitiveDataExposure:
 
     def test_login_response_never_contains_password(self, client):
         resp = client.post("/api/login", json={"username": "test_admin", "password": "adminpass"})
-        body = resp.data.decode()
+        body = body_text(resp)
         assert "adminpass" not in body
         assert "password_hash" not in body
 
     def test_user_list_response_never_contains_password(self, client, admin_headers):
         resp = client.get("/api/admin/users", headers=admin_headers)
-        body = resp.data.decode()
+        body = body_text(resp)
         assert "password_hash" not in body
 
     def test_product_list_does_not_leak_internal_ids_unexpectedly(self, client, admin_headers, test_product):
         resp = client.get("/api/products", headers=admin_headers)
         # product_id is intentionally public; password_hash must not appear
-        assert "password_hash" not in resp.data.decode()
+        assert "password_hash" not in body_text(resp)
 
 
 # ── Oversized & Malformed Payloads ────────────────────────────────────────────

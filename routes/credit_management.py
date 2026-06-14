@@ -22,7 +22,7 @@ import io
 import logging
 from datetime import date, datetime
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, send_file
 from psycopg2.extras import RealDictCursor
 
 from auth import token_required
@@ -31,8 +31,10 @@ from db import get_db_connection, release_db_connection
 logger = logging.getLogger(__name__)
 credit_management_bp = Blueprint('credit_management', __name__)
 
-# Balances within this tolerance are treated as reconciled (float/rounding noise)
-RECON_TOLERANCE = 0.01
+# Balances within this tolerance are treated as reconciled (float/rounding noise).
+# Slightly above 0.01 so a genuine 1-paisa rounding difference reconciles despite
+# binary-float representation error (e.g. 100.01 - 100.00 == 0.0100000000000005).
+RECON_TOLERANCE = 0.011
 
 # Aging bucket boundaries (days). A balance is bucketed by the age of the
 # oldest unpaid charge once payments are applied oldest-first (FIFO).
@@ -68,7 +70,7 @@ def _bucket_for(age):
     return 'd90_plus'
 
 
-def _age_ledger(rows):
+def _age_ledger(rows, authoritative_balance=None):
     """
     FIFO aging for one account.
 
@@ -78,7 +80,12 @@ def _age_ledger(rows):
     in an aging bucket by the charge's age. Only positive net balances age
     (a net advance/credit balance has nothing outstanding to age).
 
-    Returns {bucket: amount, ...} that sums to max(net_balance, 0).
+    `authoritative_balance` is the stored current_balance. When the ledger does
+    not perfectly reconcile to it (drift), the bucket amounts are scaled so the
+    buckets still sum to max(authoritative_balance, 0). This keeps the aging
+    breakup consistent with the outstanding total shown to the user.
+
+    Returns {bucket: amount, ...} that sums to max(balance, 0).
     """
     charges = []          # list of [age_days, remaining_amount], oldest first
     payment_pool = 0.0
@@ -102,6 +109,26 @@ def _age_ledger(rows):
     for age, remaining in charges:
         if remaining > 0.005:
             buckets[_bucket_for(age)] += remaining
+
+    # Reconcile the bucket total to the authoritative balance so the aging
+    # breakup always sums to the outstanding figure the user sees.
+    if authoritative_balance is not None:
+        target = max(_f(authoritative_balance), 0.0)
+        ledger_total = sum(buckets.values())
+        if target <= 0.005:
+            # Net advance / settled: nothing outstanding to age.
+            buckets = {b: 0.0 for b in AGING_BUCKETS}
+        elif ledger_total <= 0.005:
+            # Stored balance is positive but ledger shows nothing outstanding
+            # (drift) — attribute the whole balance to the most-overdue bucket
+            # so it is visible rather than silently dropped.
+            buckets = {b: 0.0 for b in AGING_BUCKETS}
+            buckets['d90_plus'] = target
+        elif abs(ledger_total - target) > 0.01:
+            # Proportionally scale buckets to match the stored balance.
+            factor = target / ledger_total
+            buckets = {b: v * factor for b, v in buckets.items()}
+
     return {b: round(v, 2) for b, v in buckets.items()}
 
 
@@ -116,10 +143,8 @@ def credit_overview(payload):
         # Receivables — customers owe us (only positive balances count as outstanding)
         cur.execute("""
             SELECT
-                COALESCE(SUM(current_balance), 0)                     AS total_outstanding,
-                COUNT(*) FILTER (WHERE current_balance > 0)           AS customer_count,
-                COALESCE(SUM(CASE WHEN current_balance < 0
-                                  THEN current_balance ELSE 0 END), 0) AS advance_credit
+                COALESCE(SUM(current_balance), 0) AS total_outstanding,
+                COUNT(*)                          AS customer_count
             FROM credit_customers
             WHERE current_balance > 0
         """)
@@ -137,8 +162,8 @@ def credit_overview(payload):
         # Payables — we owe suppliers
         cur.execute("""
             SELECT
-                COALESCE(SUM(current_balance), 0)           AS total_outstanding,
-                COUNT(*) FILTER (WHERE current_balance > 0) AS supplier_count
+                COALESCE(SUM(current_balance), 0) AS total_outstanding,
+                COUNT(*)                          AS supplier_count
             FROM suppliers
             WHERE current_balance > 0
         """)
@@ -236,7 +261,7 @@ def _build_account_list(cur, side):
                        else -_f(x['amount']) for x in led)
         reconciled = abs(balance - expected) <= RECON_TOLERANCE
         last_activity = max((x['created_at'] for x in led), default=None)
-        aging = _age_ledger(led)
+        aging = _age_ledger(led, authoritative_balance=balance)
 
         if not reconciled:
             summary['mismatched_count'] += 1
@@ -457,7 +482,7 @@ def export_credit(payload):
     wb = xlsxwriter.Workbook(output, {'in_memory': True})
 
     title = wb.add_format({'bold': True, 'font_size': 13, 'font_color': '#4f46e5'})
-    hdr   = wb.add_format({'bold': True, 'bg_color': '#4f46e5', 'font_color': '#fff',
+    hdr   = wb.add_format({'bold': True, 'bg_color': '#4f46e5', 'font_color': '#FFFFFF',
                            'border': 1, 'font_size': 9, 'align': 'center', 'valign': 'vcenter'})
     cell  = wb.add_format({'border': 1, 'font_size': 9, 'valign': 'vcenter'})
     money = wb.add_format({'border': 1, 'font_size': 9, 'num_format': '₹#,##0.00', 'align': 'right'})

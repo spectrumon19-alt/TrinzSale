@@ -71,6 +71,10 @@ def _get_pool():
                 "or provide a DATABASE_URL."
             )
         try:
+            # Use SSL when connecting to a remote host (Render/Aiven/Supabase).
+            # Local/dev connections (localhost / 127.0.0.1) skip SSL.
+            _is_remote = DB_HOST not in ('localhost', '127.0.0.1', None)
+            _ssl_args  = {'sslmode': 'require'} if _is_remote else {}
             _connection_pool = pool.ThreadedConnectionPool(
                 minconn=2,
                 maxconn=10,
@@ -78,7 +82,8 @@ def _get_pool():
                 database=DB_NAME,
                 user=DB_USER,
                 password=DB_PASSWORD,
-                port=DB_PORT or '5432'
+                port=DB_PORT or '5432',
+                **_ssl_args
             )
         except Exception as e:
             print(f"Connection pool creation failed: {e}", file=sys.stderr)
@@ -100,9 +105,20 @@ def get_db_connection():
         raise
 
 def release_db_connection(conn):
-    """Return a connection back to the pool. Always call this instead of conn.close()."""
+    """Return a connection back to the pool. Always call this instead of conn.close().
+
+    Roll back any open transaction first so the connection is returned clean: a
+    pooled connection that still holds an open transaction would carry a stale
+    MVCC snapshot (or an aborted-transaction state) into the next request,
+    causing stale reads or "current transaction is aborted" errors.
+    """
     global _connection_pool
     if conn and _connection_pool:
+        try:
+            if not getattr(conn, 'autocommit', False):
+                conn.rollback()
+        except Exception:
+            pass
         try:
             _connection_pool.putconn(conn)
         except Exception:

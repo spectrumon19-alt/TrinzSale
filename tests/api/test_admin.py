@@ -42,8 +42,10 @@ class TestGetUsers:
 
     def test_users_list_excludes_password_hash(self, client, admin_headers):
         resp = client.get("/api/admin/users", headers=admin_headers)
-        body = resp.data.decode()
-        assert "password_hash" not in body
+        # parse_json is gzip-aware; assert no user object exposes password_hash.
+        data = parse_json(resp)
+        users = data if isinstance(data, list) else data.get("users", data)
+        assert "password_hash" not in str(users)
 
 
 # ── GET /api/admin/users/<id> ────────────────────────────────────────────────
@@ -231,8 +233,12 @@ class TestResetPassword:
             headers=admin_headers,
         )
         assert resp.status_code == 200
-        # Restore original plain-text password
-        execute("UPDATE users SET password_hash='cashierpass' WHERE user_id=%s", (cashier_id,))
+        # Restore the original password as a VALID pbkdf2 hash (not plain text,
+        # which verify_password rejects and would break later login tests that
+        # share this seeded test_cashier user).
+        from passlib.hash import pbkdf2_sha256
+        execute("UPDATE users SET password_hash=%s WHERE user_id=%s",
+                (pbkdf2_sha256.hash("cashierpass"), cashier_id))
 
     def test_missing_new_password_returns_400(self, client, admin_headers, setup_test_database):
         cashier_id = setup_test_database["cashier_id"]

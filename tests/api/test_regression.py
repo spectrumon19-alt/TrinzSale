@@ -69,19 +69,40 @@ class TestGSTCalculationRegression:
         expected_excl = total / (1 + gst_rate / 100)
         expected_gst = total - expected_excl
 
+        # create_sale prices from the product's selling_rate/gst_rate (the item
+        # 'rate'/'gst_rate' keys are not honoured), so set the product to match
+        # this parametrised case before selling.
+        from tests.helpers.db_helpers import execute
+        execute("UPDATE products SET selling_rate=%s, gst_rate=%s WHERE product_id=%s",
+                (rate, gst_rate, pid))
+
         payload = {
             "customer_name": "GST Test",
             "mode_of_payment": "Cash",
-            "items": [{"product_id": pid, "quantity": qty, "rate": rate, "gst_rate": gst_rate}],
+            "items": [{"product_id": pid, "quantity": qty, "selling_rate": rate, "gst_rate": gst_rate}],
         }
         resp = client.post("/api/sales", json=payload, headers=cashier_headers)
         assert resp.status_code == 201, f"Sale failed: {resp.data}"
         data = parse_json(resp)
+        invoice_id = data["invoice_id"]
 
-        assert float(data.get("total_amount", 0)) == pytest.approx(total, rel=0.01), \
-            f"total_amount mismatch for qty={qty} rate={rate} gst_rate={gst_rate}"
-        assert float(data.get("total_gst", 0)) == pytest.approx(expected_gst, rel=0.01), \
+        # BUG-006: total_amount stores the EX-GST (taxable) base, and
+        # grand_total = total_amount + total_gst equals the gross paid.
+        # Read the persisted invoice to assert the stored semantics precisely.
+        from tests.helpers.db_helpers import fetch_one
+        inv = fetch_one(
+            "SELECT total_amount, total_gst FROM sales_invoices WHERE invoice_id=%s",
+            (invoice_id,),
+        )
+        stored_amount = float(inv["total_amount"])
+        stored_gst = float(inv["total_gst"])
+
+        assert stored_amount == pytest.approx(expected_excl, rel=0.01), \
+            f"total_amount (ex-GST base) mismatch for qty={qty} rate={rate} gst_rate={gst_rate}"
+        assert stored_gst == pytest.approx(expected_gst, rel=0.01), \
             f"total_gst mismatch for gst_rate={gst_rate}"
+        assert (stored_amount + stored_gst) == pytest.approx(total, rel=0.01), \
+            f"grand total mismatch for qty={qty} rate={rate} gst_rate={gst_rate}"
 
 
 class TestInvoiceNumberSequencing:

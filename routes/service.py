@@ -352,20 +352,9 @@ def restore_backup(payload):
             with open(backup_path, 'r', encoding='utf-8') as f:
                 sql_content = f.read()
 
-        ok = err = 0
-        for stmt in sql_content.split(';'):
-            stmt = stmt.strip()
-            if not stmt or stmt.startswith('--') or stmt.startswith('SET '):
-                continue
-            try:
-                cur.execute(stmt)
-                ok += 1
-            except Exception as e:
-                err += 1
-                conn.rollback()
-                cur = conn.cursor()
-
-        conn.commit()
+        # Use the shared applier (clears tables first, then inserts) so a restore
+        # onto a populated DB replaces data instead of failing on duplicate keys.
+        ok, err = _apply_restore_sql(conn, sql_content)
         return jsonify({
             'success': True,
             'message': f'Restored from {filename} — {ok} statements applied, {err} skipped'
@@ -377,6 +366,210 @@ def restore_backup(payload):
     finally:
         cur.close()
         release_db_connection(conn)
+
+
+# Restore order: parents before children (FK-safe for inserts). Reverse for
+# the pre-clear delete pass so children are removed before parents.
+_RESTORE_TABLE_ORDER = [
+    'users', 'products', 'inventory', 'suppliers',
+    'purchase_orders', 'purchase_order_items',
+    'sales_invoices', 'sales_invoice_items',
+    'sales_returns', 'sales_return_items',
+    'supplier_transactions', 'credit_customers', 'credit_transactions',
+    'licenses', 'login_activity', 'user_permissions',
+    'store_settings',
+    # backup_logs and backup_settings are intentionally excluded:
+    # backup_logs is operational history (not business data) and must survive
+    # a restore so the UI history list stays intact.
+    # backup_settings holds auto-backup config that should not be wiped.
+]
+
+
+def _rewrite_legacy_columns(stmt):
+    """
+    Rewrite INSERT statements from older backup versions to match the current schema.
+    Each fix is narrowly scoped to its table to avoid corrupting other statements.
+    """
+    # products: duplicate "pack_size" column (legacy 'pack' col renamed but pack_size already existed)
+    if 'INSERT INTO "products"' in stmt and '"pack_size", "pack_size"' in stmt:
+        stmt = stmt.replace('"pack_size", "pack_size"', '"pack_size"', 1)
+        # The old 'pack' value was always NULL and sat right after the name string
+        stmt = re.sub(r"(VALUES\s*\(\d+,\s*'(?:[^']|'')*'),\s*NULL,\s*", r'\1, ', stmt)
+
+    # user_permissions: old schema had "permission_id" (now "id") and an extra "created_at" column
+    if 'INSERT INTO "user_permissions"' in stmt:
+        if '"permission_id"' in stmt:
+            stmt = stmt.replace('"permission_id"', '"id"')
+        # Remove "created_at" from column list and its trailing value from VALUES
+        # Pattern: col list ends with ..., "created_at") VALUES (..., 'timestamp')
+        stmt = re.sub(
+            r',\s*"created_at"(\s*\)\s*VALUES\s*\([^)]+),\s*\'[\d\-: .]+\'(\s*\))',
+            r'\1\2',
+            stmt
+        )
+
+    return stmt
+
+
+def _apply_restore_sql(conn, sql_content):
+    """
+    Apply a backup SQL dump to the database. Returns (ok_count, err_count).
+
+    Strategy:
+      1. Discover all tables the backup writes to.
+      2. TRUNCATE them (CASCADE) to start clean — removes seed rows and old data.
+      3. Attempt to disable FK enforcement for the session so inserts succeed
+         regardless of order and orphaned audit-log rows (deleted users referenced
+         in login_activity) don't cause failures.  Falls back gracefully if the
+         DB user lacks the required privilege (Render / Aiven managed DBs).
+      4. Apply every INSERT, accumulating ok/err counts.
+      5. Re-enable FK enforcement and commit.
+    """
+    import logging as _log
+    logger = _log.getLogger(__name__)
+
+    cur = conn.cursor()
+    ok = err = 0
+    fk_disabled = False
+
+    try:
+        # ── 1. Discover tables ────────────────────────────────────────────────
+        all_inserted = set(
+            m.group(1) for m in re.finditer(
+                r'INSERT\s+INTO\s+"?([a-zA-Z_]\w*)"?', sql_content, re.IGNORECASE)
+        )
+        ordered   = [t for t in _RESTORE_TABLE_ORDER if t in all_inserted]
+        unordered = [t for t in all_inserted if t not in _RESTORE_TABLE_ORDER]
+        tables_to_clear = ordered + unordered
+
+        # ── 2. TRUNCATE ───────────────────────────────────────────────────────
+        if tables_to_clear:
+            quoted = ', '.join(f'"{t}"' for t in tables_to_clear)
+            try:
+                cur.execute(f'TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE')
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                cur = conn.cursor()
+                logger.warning('TRUNCATE failed (%s), falling back to DELETE', e)
+                # Fallback: delete in reverse FK order
+                for t in reversed(ordered + unordered):
+                    try:
+                        cur.execute(f'DELETE FROM "{t}"')
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                        cur = conn.cursor()
+
+        # ── 3. Disable FK enforcement (best-effort — needs superuser) ─────────
+        try:
+            cur.execute("SET session_replication_role = replica")
+            conn.commit()
+            fk_disabled = True
+        except Exception:
+            conn.rollback()
+            cur = conn.cursor()
+            logger.info('session_replication_role unavailable; FK order must be correct')
+
+        # ── 4. Apply statements ───────────────────────────────────────────────
+        for stmt in _split_sql_statements(sql_content):
+            stmt = stmt.strip()
+            if not stmt:
+                continue
+            upper = stmt.upper()
+            # Skip comments, SET commands, and the backup's own DELETE lines
+            # (tables were already cleared in step 2)
+            if stmt.startswith('--') or upper.startswith('SET ') or upper.startswith('DELETE FROM'):
+                continue
+            stmt = _rewrite_legacy_columns(stmt)
+            # Skip backup_logs / backup_settings inserts — those tables are
+            # intentionally preserved across restores (operational, not business data).
+            if re.match(r'INSERT\s+INTO\s+"?(backup_logs|backup_settings)"?',
+                        stmt, re.IGNORECASE):
+                continue
+            try:
+                cur.execute(stmt)
+                ok += 1
+            except Exception as e:
+                err += 1
+                conn.rollback()
+                cur = conn.cursor()
+                if fk_disabled:
+                    try:
+                        cur.execute("SET session_replication_role = replica")
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()
+                        cur = conn.cursor()
+                        fk_disabled = False
+                logger.debug('Restore skipped statement (%s): %.120s', e, stmt)
+
+        # ── 5. Commit and restore FK enforcement ─────────────────────────────
+        conn.commit()
+
+    finally:
+        # Always restore FK enforcement before returning connection to pool
+        if fk_disabled:
+            try:
+                cur.execute("SET session_replication_role = DEFAULT")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+        cur.close()
+
+    return ok, err
+
+
+@service_bp.route('/admin/service/restore-upload', methods=['POST'])
+@admin_required
+def restore_backup_upload(payload):
+    """
+    Restore from a browsed/uploaded backup file (multipart 'file').
+    Accepts a .sql or .sql.gz dump — useful for restoring a backup that is not
+    in the server's backup history (e.g. downloaded earlier or from another host).
+    """
+    import gzip as _gzip
+    import io as _io
+
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+
+    fname = f.filename
+    if not (fname.endswith('.sql') or fname.endswith('.sql.gz') or fname.endswith('.gz')):
+        return jsonify({'success': False,
+                        'message': 'Invalid file type — upload a .sql or .sql.gz backup'}), 400
+
+    try:
+        raw = f.read()
+        if not raw:
+            return jsonify({'success': False, 'message': 'Uploaded file is empty'}), 400
+        # Decode — gzip if compressed, else plain UTF-8
+        if fname.endswith('.gz'):
+            try:
+                sql_content = _gzip.GzipFile(fileobj=_io.BytesIO(raw)).read().decode('utf-8')
+            except OSError:
+                return jsonify({'success': False,
+                                'message': 'File is not a valid gzip archive'}), 400
+        else:
+            sql_content = raw.decode('utf-8', errors='replace')
+
+        if not sql_content.strip():
+            return jsonify({'success': False, 'message': 'Backup file contains no SQL'}), 400
+
+        conn = get_db_connection()
+        try:
+            ok, err = _apply_restore_sql(conn, sql_content)
+        finally:
+            release_db_connection(conn)
+
+        return jsonify({
+            'success': True,
+            'message': f'Restored from uploaded {fname} — {ok} statements applied, {err} skipped'
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @service_bp.route('/admin/service/logs', methods=['GET'])
 @admin_required
@@ -664,21 +857,45 @@ def test_db_connection(payload):
 
 def _split_sql_statements(sql_text):
     """
-    Split a SQL script into individual statements, correctly handling
-    dollar-quoted blocks (DO $$ ... $$) that contain semicolons.
+    Split a SQL script into individual statements, correctly handling BOTH:
+      - single-quoted string literals (so a ';' or a '$' inside a value, e.g. a
+        pbkdf2 hash '$pbkdf2$...' or a user-agent 'Mozilla/5.0 (...; x64)',
+        does not split the statement or get mistaken for a dollar-quote tag), and
+      - dollar-quoted blocks (DO $$ ... $$ / $kb$ ... $kb$) that contain ';'.
     Returns a list of non-empty statement strings.
     """
     statements = []
     current = []
-    dollar_tag = None  # None = not in dollar-quote; str = the tag we're inside (e.g. '$$')
+    dollar_tag = None   # the dollar-quote tag we're inside (e.g. '$$'), or None
+    in_str = False      # inside a single-quoted '...' string literal
 
     i = 0
-    while i < len(sql_text):
+    n = len(sql_text)
+    while i < n:
         ch = sql_text[i]
 
-        # Detect start/end of dollar-quoted string
+        # ── Single-quoted string literals take precedence ──────────────────
+        if in_str:
+            if ch == "'":
+                # Escaped '' stays inside the string
+                if i + 1 < n and sql_text[i + 1] == "'":
+                    current.append("''")
+                    i += 2
+                    continue
+                in_str = False
+            current.append(ch)
+            i += 1
+            continue
+
+        # Only when NOT in a single-quoted string:
+        if ch == "'" and dollar_tag is None:
+            in_str = True
+            current.append(ch)
+            i += 1
+            continue
+
+        # Detect start/end of a dollar-quoted block ($tag$ ... $tag$)
         if ch == '$':
-            # Try to match a dollar-quote tag: $optionalLabel$
             m = re.match(r'\$([A-Za-z_][A-Za-z0-9_]*)?\$', sql_text[i:])
             if m:
                 tag = m.group(0)
@@ -697,7 +914,6 @@ def _split_sql_statements(sql_text):
 
         if ch == ';' and dollar_tag is None:
             stmt = ''.join(current).strip()
-            # Strip leading/trailing SQL comments
             stmt_stripped = re.sub(r'--[^\n]*', '', stmt).strip()
             if stmt_stripped and stmt_stripped != ';':
                 statements.append(stmt)

@@ -88,15 +88,18 @@ class TestLoginFailure:
     def test_case_sensitive_username(self, client):
         """Username 'TEST_ADMIN' must not match 'test_admin'."""
         resp = client.post("/api/login", json={"username": "TEST_ADMIN", "password": "adminpass"})
-        assert resp.status_code == 401
+        # 401 = rejected; 429 = lockout (also a non-grant). Must not return a token.
+        assert resp.status_code in (401, 429)
+        assert "token" not in parse_json(resp)
 
     def test_case_sensitive_password(self, client):
         resp = client.post("/api/login", json={"username": "test_admin", "password": "AdminPass"})
-        assert resp.status_code == 401
+        assert resp.status_code in (401, 429)
+        assert "token" not in parse_json(resp)
 
     def test_whitespace_only_username_rejected(self, client):
         resp = client.post("/api/login", json={"username": "   ", "password": "adminpass"})
-        assert resp.status_code in (400, 401)
+        assert resp.status_code in (400, 401, 429)
         assert "token" not in parse_json(resp)
 
 
@@ -125,7 +128,10 @@ class TestSQLInjection:
     ])
     def test_sql_injection_in_password_rejected(self, client, payload):
         resp = client.post("/api/login", json={"username": "test_admin", "password": payload})
-        assert resp.status_code == 401
+        # 401 = rejected; 429 = account temporarily locked (also a rejection, can
+        # occur if earlier failed-login tests tripped the lockout). Either way the
+        # injection must NOT grant access.
+        assert resp.status_code in (401, 429)
         assert "token" not in parse_json(resp)
 
     def test_users_table_still_intact_after_injection_attempt(self, client, db_conn):
@@ -141,7 +147,16 @@ class TestSQLInjection:
 
 class TestLoginActivity:
 
+    @staticmethod
+    def _clear_activity(db_conn, username):
+        """Clear login_activity for a user so the lockout/prior rows don't
+        interfere with this test's before/after measurement."""
+        cur = db_conn.cursor()
+        cur.execute("DELETE FROM login_activity WHERE username=%s", (username,))
+        db_conn.commit()
+
     def test_successful_login_creates_success_activity_row(self, client, db_conn):
+        self._clear_activity(db_conn, "test_admin")
         cur = db_conn.cursor()
         cur.execute(
             "SELECT COUNT(*) FROM login_activity WHERE username=%s AND login_status='success'",
@@ -149,7 +164,8 @@ class TestLoginActivity:
         )
         before = cur.fetchone()[0]
 
-        client.post("/api/login", json={"username": "test_admin", "password": "adminpass"})
+        resp = client.post("/api/login", json={"username": "test_admin", "password": "adminpass"})
+        assert resp.status_code == 200, f"login should succeed: {resp.data}"
         db_conn.commit()
 
         cur.execute(
@@ -160,6 +176,7 @@ class TestLoginActivity:
         assert after > before, "Successful login must write a row to login_activity"
 
     def test_failed_login_creates_failed_activity_row_with_reason(self, client, db_conn):
+        self._clear_activity(db_conn, "test_admin")
         client.post("/api/login", json={"username": "test_admin", "password": "badpassword_xyz"})
         db_conn.commit()
         cur = db_conn.cursor()
@@ -173,7 +190,9 @@ class TestLoginActivity:
         assert row[0], "failure_reason column must be populated"
 
     def test_login_activity_stores_correct_username(self, client, db_conn):
-        client.post("/api/login", json={"username": "test_cashier", "password": "cashierpass"})
+        self._clear_activity(db_conn, "test_cashier")
+        resp = client.post("/api/login", json={"username": "test_cashier", "password": "cashierpass"})
+        assert resp.status_code == 200, f"cashier login should succeed: {resp.data}"
         db_conn.commit()
         cur = db_conn.cursor()
         cur.execute("""

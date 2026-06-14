@@ -229,9 +229,15 @@
                     <p style="font-size:.85rem;font-weight:700;color:var(--text-base);">
                         <i class="fas fa-history" style="color:#6366f1;margin-right:.4rem;"></i>Backup History
                     </p>
-                    <button class="bk-btn bk-btn-ghost" onclick="loadHistory()" style="font-size:.72rem;padding:.3rem .65rem;">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
+                    <div style="display:flex;gap:.4rem;">
+                        <button class="bk-btn bk-btn-ghost" onclick="document.getElementById('restore-file-input').click()" style="font-size:.72rem;padding:.3rem .65rem;" title="Restore from a .sql or .sql.gz file on your computer">
+                            <i class="fas fa-upload"></i> Browse &amp; Restore…
+                        </button>
+                        <input type="file" id="restore-file-input" accept=".sql,.gz,.sql.gz" style="display:none;" onchange="restoreFromFile(this)">
+                        <button class="bk-btn bk-btn-ghost" onclick="loadHistory()" style="font-size:.72rem;padding:.3rem .65rem;">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
                 </div>
                 <div id="history-list">
                     <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.8rem;">
@@ -356,31 +362,103 @@ async function loadHistory() {
             ? '<i class="fas fa-clock" style="color:var(--text-muted);font-size:.7rem;" title="Scheduled"></i>'
             : '<i class="fas fa-hand-pointer" style="color:var(--text-muted);font-size:.7rem;" title="Manual"></i>';
         const dl = r.local_exists
-            ? `<button class="bk-btn bk-btn-ghost" style="font-size:.7rem;padding:.25rem .5rem;" onclick="downloadBackup(${r.id})"><i class="fas fa-download"></i></button>`
+            ? `<button class="bk-btn bk-btn-ghost" style="font-size:.7rem;padding:.25rem .5rem;" onclick="downloadBackup(${r.id})" title="Download"><i class="fas fa-download"></i></button>`
             : '';
-        const del = `<button class="bk-btn bk-btn-danger" style="font-size:.7rem;padding:.25rem .5rem;" onclick="deleteBackup(${r.id},'${r.filename}')"><i class="fas fa-trash"></i></button>`;
+        const rest = r.local_exists
+            ? `<button class="bk-btn bk-btn-ghost" style="font-size:.7rem;padding:.25rem .5rem;" onclick="restoreBackup(${r.id},'${r.filename}')" title="Restore"><i class="fas fa-undo"></i></button>`
+            : '';
+        const del = `<button class="bk-btn bk-btn-danger" style="font-size:.7rem;padding:.25rem .5rem;" onclick="deleteBackup(${r.id},'${r.filename}')" title="Delete"><i class="fas fa-trash"></i></button>`;
         return `<div class="log-row">
             <span style="color:var(--text-muted);font-size:.7rem;flex-shrink:0;">${type}</span>
             <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;" title="${r.filename}">${r.filename}</span>
             <span style="color:var(--text-muted);font-size:.7rem;flex-shrink:0;">${kb}</span>
             ${dest}${stat}
             <span style="color:var(--text-subtle);font-size:.68rem;flex-shrink:0;">${dt}</span>
-            <div style="display:flex;gap:.3rem;">${dl}${del}</div>
+            <div style="display:flex;gap:.3rem;">${dl}${rest}${del}</div>
         </div>`;
     }).join('');
 }
 
 async function downloadBackup(id) {
-    window.location = `/api/backup/download/${id}?token=${token()}`;
-    // Note: token in URL is only for file download — all other requests use Authorization header
-    const res = await fetch(`/api/backup/download/${id}`, { headers: { Authorization: 'Bearer ' + token() } });
-    if (!res.ok) { toast('File not available on server', 'error'); return; }
+    // Fetch with the Authorization header (do NOT navigate via window.location,
+    // which would leave the page and cannot send the header). Stream to a blob
+    // and trigger a download link.
+    let res;
+    try {
+        res = await fetch(`/api/backup/download/${id}`, { headers: { Authorization: 'Bearer ' + token() } });
+    } catch (e) {
+        toast('Download failed: ' + e.message, 'error');
+        return;
+    }
+    if (!res.ok) {
+        let msg = 'File not available on server';
+        try { const j = await res.json(); msg = j.message || j.error || msg; } catch (_) {}
+        toast(msg, 'error');
+        return;
+    }
     const blob = await res.blob();
     const fn   = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'backup.sql.gz';
     const a    = document.createElement('a');
     a.href     = URL.createObjectURL(blob);
     a.download = fn;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+}
+
+async function restoreFromFile(input) {
+    const file = input.files && input.files[0];
+    input.value = '';  // reset so the same file can be re-picked
+    if (!file) return;
+    if (!confirm(`Restore the database from "${file.name}"?\n\nThis applies the SQL dump and overwrites existing data for restored rows. Only restore a trusted TrintzPOS backup. Proceed?`)) return;
+    toast('Uploading & restoring… this may take a moment', 'info');
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/admin/service/restore-upload', {
+            method: 'POST',
+            // No Content-Type — the browser sets the multipart boundary.
+            headers: { Authorization: 'Bearer ' + token() },
+            body: fd
+        });
+        // Guard against non-JSON (HTML error page) responses so the user sees a
+        // clear message instead of "Unexpected token '<'".
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+            const txt = await res.text();
+            throw new Error(res.status === 404
+                ? 'Restore endpoint not found — the server may need a restart to load the new feature.'
+                : res.status === 413
+                    ? 'Backup file is too large to upload.'
+                    : `Server error (${res.status}). ${txt.slice(0,120)}`);
+        }
+        const d = await res.json();
+        if (!res.ok || !d.success) throw new Error(d.message || d.error || 'Restore failed');
+        toast(d.message || 'Restored successfully', 'success');
+        loadHistory();
+    } catch (e) {
+        toast('Restore failed: ' + e.message, 'error');
+    }
+}
+
+async function restoreBackup(id, filename) {
+    if (!confirm(`Restore "${filename}" to the database?\n\nExisting data for restored rows will be overwritten. Proceed?`)) return;
+    toast('Restoring… this may take a moment', 'info');
+    try {
+        // Shared restore endpoint — backup.html and service.html use the same
+        // backup_logs id, so both restore via /api/admin/service/restore.
+        const res = await fetch('/api/admin/service/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+            body: JSON.stringify({ log_id: id })
+        });
+        const d = await res.json();
+        if (!res.ok || !d.success) throw new Error(d.message || d.error || 'Restore failed');
+        toast(d.message || 'Restored successfully', 'success');
+    } catch (e) {
+        toast('Restore failed: ' + e.message, 'error');
+    }
 }
 
 async function deleteBackup(id, filename) {

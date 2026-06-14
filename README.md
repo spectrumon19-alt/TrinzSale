@@ -85,8 +85,8 @@ A complete web-based Point of Sale system with Python backend, PostgreSQL databa
 
 2. Open your browser and navigate to `http://localhost:5000`
 
-3. Login with the default credentials:
-   - Admin: username `admin`, password `admin123`
+3. Login with the default credentials (change immediately after first login):
+   - Admin: username `admin`, password `admin123` (Super Admin — full access)
    - Cashier: username `cashier`, password `cashier123`
 
 ## Running as Executable

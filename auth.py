@@ -60,6 +60,12 @@ def token_required(f):
             except IndexError:
                 return jsonify({'message': 'Token is missing!'}), 401
 
+        # Fall back to a ?token= query param. Browser-initiated file downloads
+        # (e.g. backup download via window.location) cannot set an Authorization
+        # header, so the token is passed in the URL for those GET requests.
+        if not token:
+            token = request.args.get('token')
+
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
 

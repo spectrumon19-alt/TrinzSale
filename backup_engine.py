@@ -20,7 +20,9 @@ BACKUP_TABLES = [
     'sales_returns', 'sales_return_items',
     'supplier_transactions', 'credit_customers', 'credit_transactions',
     'licenses', 'login_activity', 'user_permissions',
-    'store_settings', 'backup_settings', 'backup_logs',
+    'store_settings',
+    # backup_logs / backup_settings excluded: operational config, not business data.
+    # Restoring them would wipe history and reset auto-backup schedule.
 ]
 
 
@@ -71,9 +73,19 @@ def run_backup(backup_type='manual', enable_oauth=True):
             """)
             existing = {r[0] for r in cur.fetchall()}
 
-            for table in BACKUP_TABLES:
-                if table not in existing:
-                    continue
+            # Tables we will actually dump (present in DB), in dependency order.
+            dump_tables = [t for t in BACKUP_TABLES if t in existing]
+
+            # Clear existing data first so a restore REPLACES current contents
+            # instead of failing on duplicate primary keys. Delete children
+            # before parents (reverse dependency order) to respect foreign keys.
+            # Wrapped in a single transaction by the restore applier.
+            f.write('-- Clear current data (restore replaces existing rows)\n')
+            for table in reversed(dump_tables):
+                f.write(f'DELETE FROM "{table}";\n')
+            f.write('\n')
+
+            for table in dump_tables:
                 cur.execute(f'SELECT * FROM "{table}"')
                 rows = cur.fetchall()
                 if not rows:

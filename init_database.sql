@@ -34,14 +34,16 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Products
 CREATE TABLE IF NOT EXISTS products (
-    product_id   SERIAL PRIMARY KEY,
-    name         VARCHAR NOT NULL,
-    pack_size    VARCHAR,
-    sku          VARCHAR UNIQUE,
-    gst_rate     DECIMAL(5,2)  NOT NULL,
+    product_id    SERIAL PRIMARY KEY,
+    name          VARCHAR NOT NULL,
+    pack_size     VARCHAR,
+    sku           VARCHAR UNIQUE,
+    gst_rate      DECIMAL(5,2)  NOT NULL,
     purchase_rate DECIMAL(10,2),
     selling_rate  DECIMAL(10,2) NOT NULL,
-    status       VARCHAR(10) DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive'))
+    status        VARCHAR(10) DEFAULT 'Active' CHECK (status IN ('Active', 'Inactive')),
+    barcode       VARCHAR UNIQUE,
+    hsn_code      VARCHAR(8)
 );
 
 -- Inventory
@@ -126,7 +128,14 @@ CREATE TABLE IF NOT EXISTS sales_invoices (
     total_gst           DECIMAL(10,2) NOT NULL,
     discount_percentage DECIMAL(5,2)  DEFAULT 0.00,
     discount_amount     DECIMAL(10,2) DEFAULT 0.00,
-    status              VARCHAR(20) DEFAULT 'Completed' CHECK (status IN ('Completed', 'Cancelled'))
+    status              VARCHAR(20) DEFAULT 'Completed' CHECK (status IN ('Completed', 'Cancelled')),
+    cancelled_by        INTEGER REFERENCES users(user_id),
+    cancelled_at        TIMESTAMP,
+    cancel_reason       TEXT,
+    irn                 VARCHAR(64),
+    irn_generated_at    TIMESTAMP,
+    qr_data             TEXT,
+    einvoice_status     VARCHAR(20) DEFAULT 'pending'
 );
 
 -- Invoice line items
@@ -292,6 +301,7 @@ CREATE TABLE IF NOT EXISTS trusted_devices (
     browser            VARCHAR(100),
     os                 VARCHAR(100),
     device_type        VARCHAR(50),
+    last_ip            VARCHAR(64),
     expires_at         TIMESTAMP NOT NULL,
     last_seen          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -386,22 +396,36 @@ CREATE TRIGGER update_credit_customers_updated_at
 -- ============================================================
 -- DEFAULT SEED DATA
 -- ============================================================
--- Passwords below are hashed with pbkdf2-sha256.
--- ⚠️  CHANGE THESE PASSWORDS immediately after first login.
---     admin   → admin123   (change via User Management)
---     cashier → cashier123 (change via User Management)
+-- DEFAULT LOGIN  (created on a fresh database)
+--   Username : admin
+--   Password : admin123
+--   Role     : Super Admin  → has ALL permissions (the Super Admin /
+--              Admin / Manager roles bypass the per-page permission table,
+--              see permission_required() in auth.py).
+--
+-- Passwords are hashed with pbkdf2-sha256 (the same scheme verify_password
+-- uses). The hashes below are verified to authenticate the plaintext shown.
+-- ⚠️  CHANGE THESE PASSWORDS immediately after first login (User Management).
+--     admin   → admin123    (Super Admin)
+--     cashier → cashier123  (Cashier)
 -- ============================================================
 
+-- Default Super Admin: admin / admin123
 INSERT INTO users (username, password_hash, role, full_name, email, mobile)
 SELECT 'admin',
-       '$pbkdf2-sha256$29000$An9fa62V0jrH2Juzdu4dQw$YRM/hx.M61SD81C3CNVn5ZqaL2yx7B8F9n6VDT6MLiM',
-       'Admin', 'System Administrator', 'admin@trintzpos.com', '9876543210'
+       '$pbkdf2-sha256$29000$GmOsde6dEwLgfI9R6r03xg$KKvsCErFShayM8D3gtNfNDQeSrMeFKpl1qvbQg0Zf5o',
+       'Super Admin', 'System Administrator', '', '9876543210'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
+-- Promote an existing 'admin' row to Super Admin (for databases seeded before
+-- this change, where admin may still be a plain 'Admin').
+UPDATE users SET role = 'Super Admin' WHERE username = 'admin' AND role <> 'Super Admin';
+
+-- Default Cashier: cashier / cashier123
 INSERT INTO users (username, password_hash, role, full_name, email, mobile)
 SELECT 'cashier',
-       '$pbkdf2-sha256$29000$pVQq5bx3LkXIGaOUMkZIiQ$9GH4k0gq0vJTxmx7sP2h8YqFlBAbp7qj2/3GyhL9ZYY',
-       'Cashier', 'Default Cashier', 'cashier@trintzpos.com', '8765432109'
+       '$pbkdf2-sha256$29000$8d5bS2lt7R3j3BvDWOt9rw$XLfECjzY7JkOzcRF4oZaQMTHelxsfP8AuN8fWN9AtbE',
+       'Cashier', 'Default Cashier', '', '8765432109'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'cashier');
 
 -- Sample products (remove in production if not needed)
@@ -466,6 +490,130 @@ ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS status VARCHAR NOT NULL DEFAU
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_by   INTEGER REFERENCES users(user_id);
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMP;
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancel_reason  TEXT;
+
+
+-- ============================================================
+-- SETTINGS / BACKUP / AI / KNOWLEDGE-BASE TABLES
+-- (kept in sync with schema.sql so a fresh init is complete and the backup,
+--  store-settings, AI and knowledge-base features work out of the box)
+-- ============================================================
+
+-- Store settings — key/value config (UPI ID, business info, etc.)
+CREATE TABLE IF NOT EXISTS store_settings (
+    key        VARCHAR(100) PRIMARY KEY,
+    value      TEXT         NOT NULL DEFAULT '',
+    updated_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO store_settings (key, value) VALUES
+    ('store_name',        'Nandi Agro'),
+    ('store_address',     '#2454, Agasi Main Road, Kolhar - 586210'),
+    ('store_phone',       '8660180378'),
+    ('store_gst',         '29AASFN9214H1ZP'),
+    ('upi_id',            ''),
+    ('upi_display_name',  'Nandi Agro')
+ON CONFLICT (key) DO NOTHING;
+
+-- Backup logs — history of every backup run (fixes 500 on /admin/service/backups)
+CREATE TABLE IF NOT EXISTS backup_logs (
+    id              SERIAL PRIMARY KEY,
+    filename        VARCHAR NOT NULL,
+    file_size_bytes BIGINT  DEFAULT 0,
+    backup_type     VARCHAR DEFAULT 'manual',
+    destination     VARCHAR DEFAULT 'local',
+    status          VARCHAR DEFAULT 'success',
+    error_message   TEXT,
+    gdrive_file_id  VARCHAR,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Backup settings — single-row config (+ OAuth columns)
+CREATE TABLE IF NOT EXISTS backup_settings (
+    id                  SERIAL PRIMARY KEY,
+    enabled             BOOLEAN DEFAULT FALSE,
+    schedule_time       VARCHAR DEFAULT '02:00',
+    retention_days      INTEGER DEFAULT 30,
+    gdrive_enabled      BOOLEAN DEFAULT FALSE,
+    gdrive_folder_id    VARCHAR DEFAULT '',
+    gdrive_credentials  TEXT    DEFAULT '',
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE backup_settings ADD COLUMN IF NOT EXISTS oauth_enabled    BOOLEAN DEFAULT FALSE;
+ALTER TABLE backup_settings ADD COLUMN IF NOT EXISTS oauth_tokens     TEXT;
+ALTER TABLE backup_settings ADD COLUMN IF NOT EXISTS oauth_user_email VARCHAR(255);
+
+-- AI settings — provider/model config (created at runtime by routes/ai_settings.py;
+-- defined here so a standalone schema run / restore is complete)
+CREATE TABLE IF NOT EXISTS ai_settings (
+    id           SERIAL PRIMARY KEY,
+    provider     VARCHAR(32) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    api_key      TEXT DEFAULT '',
+    api_base_url VARCHAR(500) DEFAULT '',
+    model        VARCHAR(150) NOT NULL,
+    is_active    BOOLEAN DEFAULT FALSE,
+    extra_config JSONB DEFAULT '{}',
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE ai_settings ADD COLUMN IF NOT EXISTS embed_model VARCHAR(150) DEFAULT '';
+
+-- E-Invoice / IRN indexes (columns already in CREATE TABLE above)
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_irn ON sales_invoices(irn);
+
+-- Safe migrations for existing databases
+ALTER TABLE products       ADD COLUMN IF NOT EXISTS barcode          VARCHAR UNIQUE;
+ALTER TABLE products       ADD COLUMN IF NOT EXISTS hsn_code         VARCHAR(8);
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_by     INTEGER REFERENCES users(user_id);
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_at     TIMESTAMP;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancel_reason    TEXT;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS irn              VARCHAR(64);
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS irn_generated_at TIMESTAMP;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS qr_data          TEXT;
+ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS einvoice_status  VARCHAR(20) DEFAULT 'pending';
+ALTER TABLE trusted_devices ADD COLUMN IF NOT EXISTS last_ip         VARCHAR(64);
+
+-- ── Knowledge Base (RAG) ──────────────────────────────────────────────────
+-- Requires the pgvector extension. Wrapped so init does not hard-fail if the
+-- extension is unavailable on the server (the KB feature is optional).
+DO $kb$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS vector;
+
+    CREATE TABLE IF NOT EXISTS kb_documents (
+        id          SERIAL        PRIMARY KEY,
+        title       VARCHAR(255)  NOT NULL,
+        description TEXT          NOT NULL DEFAULT '',
+        source_type VARCHAR(20)   NOT NULL DEFAULT 'text',
+        file_name   VARCHAR(255),
+        char_count  INTEGER       NOT NULL DEFAULT 0,
+        chunk_count INTEGER       NOT NULL DEFAULT 0,
+        status      VARCHAR(20)   NOT NULL DEFAULT 'ready',
+        error_msg   TEXT,
+        is_active   BOOLEAN       NOT NULL DEFAULT TRUE,
+        created_by  INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+        created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_chunks (
+        id          SERIAL  PRIMARY KEY,
+        document_id INTEGER NOT NULL REFERENCES kb_documents(id) ON DELETE CASCADE,
+        chunk_index INTEGER NOT NULL,
+        content     TEXT    NOT NULL,
+        content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
+        embedding   vector,
+        created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_kb_chunks_document ON kb_chunks(document_id);
+    CREATE INDEX IF NOT EXISTS idx_kb_chunks_fts      ON kb_chunks USING gin(content_tsv);
+
+    ALTER TABLE kb_chunks ADD COLUMN IF NOT EXISTS content_tsv
+        tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Knowledge-base (pgvector) setup skipped: %', SQLERRM;
+END
+$kb$;
 
 
 -- ============================================================

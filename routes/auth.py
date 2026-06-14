@@ -83,10 +83,12 @@ def mask_email(email: str) -> str:
 @auth_bp.route('/login', methods=['POST'])
 @limiter.limit("10 per minute; 50 per hour")
 def login():
-    data = request.get_json() or {}
-    username          = data.get('username', '').strip()
-    password          = data.get('password', '')
-    device_fingerprint = str(data.get('device_fingerprint', '')).strip()
+    data = request.get_json(silent=True) or {}
+    # Coalesce None to '' — a JSON null value (e.g. {"username": null}) makes
+    # data.get('username', '') return None, and None.strip() would 500.
+    username          = (data.get('username') or '').strip()
+    password          = data.get('password') or ''
+    device_fingerprint = str(data.get('device_fingerprint') or '').strip()
 
     if not username or not password:
         return jsonify({'message': 'Username and password are required'}), 400
