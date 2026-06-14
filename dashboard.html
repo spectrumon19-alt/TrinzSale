@@ -108,39 +108,6 @@
             color: var(--text-muted); font-size: 0.875rem;
         }
 
-        /* ── Quick-access nav cards ── */
-        .nav-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
-            gap: 1rem;
-        }
-        .nav-card {
-            background: var(--surface);
-            border-radius: 0.375rem;
-            padding: 1.25rem;
-            text-align: center;
-            transition: all 0.25s ease;
-            border: 1px solid var(--surface-border);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            min-height: 11rem;
-            display: flex; flex-direction: column; justify-content: center;
-        }
-        .nav-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-color: #6366f1;
-        }
-        .nav-card h3 { margin-bottom: 0.6rem; color: var(--text-base); font-weight: 600; font-size: 1.05rem; }
-        .nav-card p  { margin-bottom: 0.9rem; color: var(--text-muted); flex-grow: 1; font-size: 0.85rem; }
-        .nav-btn {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
-            color: white; border: none; padding: 0.45rem 1rem;
-            border-radius: 0.25rem; cursor: pointer; font-size: 0.8125rem;
-            font-weight: 600; transition: all 0.25s ease;
-            display: inline-flex; align-items: center; justify-content: center;
-            min-height: 2.125rem;
-        }
-        .nav-btn:hover { background: linear-gradient(135deg, #4f46e5, #4338ca); transform: translateY(-1px); }
 
         /* ── Footer ── */
         .main-footer { background: linear-gradient(135deg,#2c3e50,#1a2530); color: white; margin-top: 1.5rem; width: 100%; }
@@ -162,8 +129,6 @@
         @media (max-width: 640px) {
             .kpi-grid { grid-template-columns: 1fr 1fr; }
             .kpi-value { font-size: 1.25rem; }
-            .nav-grid { grid-template-columns: 1fr; }
-            .nav-card { min-height: auto; }
         }
         @media (max-width: 380px) {
             .kpi-grid { grid-template-columns: 1fr; }
@@ -621,18 +586,6 @@
                     </div>
                 </div>
 
-                <!-- ── Quick Access Nav Cards ── -->
-                <div class="pos-card" style="overflow:visible;">
-                    <div class="card-head">
-                        <span class="card-head-title">Quick Access</span>
-                        <span id="kpi-last-updated" class="text-xs" style="color:var(--text-muted);">Auto-refreshes every 5 min</span>
-                    </div>
-                    <div class="p-4">
-                        <div class="nav-grid" id="nav-grid" data-testid="nav-grid">
-                            <!-- Populated by JS based on role -->
-                        </div>
-                    </div>
-                </div><!-- /nav quick-access card -->
 
                 </div><!-- /tab-overview -->
 
@@ -1017,38 +970,11 @@
 
             // ── Last updated timestamp ──
             const now = new Date();
-            document.getElementById('kpi-last-updated').textContent =
+            const _kpiTs = document.getElementById('kpi-last-updated');
+            if (_kpiTs) _kpiTs.textContent =
                 'Updated ' + now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // ── Nav Grid (role-based quick-access cards) ─────────────────────────
-        function buildNavGrid() {
-            const user = getCurrentUser();
-            if (!user) return;
-            const navGrid = document.getElementById('nav-grid');
-            if (!navGrid) return;
-
-            const cards = user.role === 'Admin'
-                ? [
-                    { title: 'Sales',      desc: 'Process sales transactions and generate invoices',      href: 'index.html',             tid: 'sales' },
-                    { title: 'Purchase',   desc: 'Manage purchase orders and supplier transactions',      href: 'purchase.html',          tid: 'purchase' },
-                    { title: 'Inventory',  desc: 'Track stock levels and manage inventory',               href: 'inventory.html',         tid: 'inventory' },
-                    { title: 'Reports',    desc: 'View sales reports and analytics',                      href: 'reports.html',           tid: 'reports' },
-                    { title: 'Admin',      desc: 'Manage users, products, and system settings',           href: 'admin.html',             tid: 'admin' },
-                ]
-                : [
-                    { title: 'Sales',      desc: 'Process sales transactions and generate invoices',      href: 'index.html',             tid: 'sales' },
-                    { title: 'Inventory',  desc: 'View stock levels and product information',             href: 'inventory.html',         tid: 'inventory' },
-                ];
-
-            navGrid.innerHTML = cards.map(c => `
-                <div class="nav-card" data-testid="card-${c.tid}">
-                    <h3>${c.title}</h3>
-                    <p>${c.desc}</p>
-                    <button class="nav-btn" data-testid="card-btn-${c.tid}"
-                            onclick="window.location.href='${c.href}'">Go to ${c.title}</button>
-                </div>`).join('');
-        }
 
         // ── Sales Trend Chart ──────────────────────────────────────────────────
         let _trendChart = null;
@@ -1610,8 +1536,6 @@
             const menuToggle = document.getElementById('menu-toggle');
             if (menuToggle) menuToggle.addEventListener('click', toggleMenu);
 
-            // Populate nav grid
-            buildNavGrid();
 
             // Fetch KPIs immediately then every 5 minutes
             fetchDashboardKPIs();

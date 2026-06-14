@@ -493,6 +493,11 @@ CREATE INDEX IF NOT EXISTS idx_sales_invoices_irn ON sales_invoices(irn);
 -- last_ip on trusted_devices
 ALTER TABLE trusted_devices ADD COLUMN IF NOT EXISTS last_ip VARCHAR(64);
 
+-- EULA acceptance tracking
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at  TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_ip  VARCHAR(45);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version      VARCHAR(10) DEFAULT '1.0';
+
 
 -- ============================================================
 -- SETTINGS / BACKUP / AI TABLES

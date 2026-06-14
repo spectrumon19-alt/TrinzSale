@@ -698,7 +698,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
             _loginResendTimer = startResendCooldown('login-resend-btn', 'login-resend-timer', 60);
         } else {
             localStorage.setItem('pos_token', data.token);
-            window.location.href = 'dashboard.html';
+            await redirectAfterLogin();
         }
     } catch(err) {
         showAlert('Network error. Please check your connection.');
@@ -732,9 +732,7 @@ async function submitLoginOTP() {
         localStorage.setItem('pos_token', data.token);
         clearInterval(_loginOtpTimer); clearInterval(_loginResendTimer);
 
-        // Login successful - go to dashboard
-        // License guard will handle license check via API
-        window.location.href = 'dashboard.html';
+        await redirectAfterLogin();
     } catch(err) {
         showAlert('Network error. Please try again.');
     } finally {
@@ -831,7 +829,7 @@ async function submitTOTP() {
             return showAlert(data.message || 'Incorrect code. Try again.');
         }
         localStorage.setItem('pos_token', data.token);
-        window.location.href = 'dashboard.html';
+        await redirectAfterLogin();
     } catch(err) {
         showAlert('Network error. Please try again.');
     } finally {
@@ -864,7 +862,7 @@ async function submitTotpEnroll() {
         }
         // On success, server returns a full session token
         localStorage.setItem('pos_token', data.token);
-        window.location.href = 'dashboard.html';
+        await redirectAfterLogin();
     } catch(err) {
         document.getElementById('totp-enroll-msg').textContent = 'Network error. Please try again.';
         document.getElementById('totp-enroll-msg').style.color = '#ef4444';
@@ -1057,6 +1055,29 @@ document.getElementById('reset-otp-input').addEventListener('input', function() 
 document.getElementById('reset-otp-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') goToNewPassword();
 });
+
+// ── Post-login routing ────────────────────────────────────────────────────────
+// After every successful login, check EULA acceptance before going to dashboard.
+async function redirectAfterLogin() {
+    var token = localStorage.getItem('pos_token');
+    try {
+        var res = await fetch('/api/auth/terms-status', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+            var d = await res.json();
+            if (d.accepted) {
+                localStorage.setItem('pos_eula_accepted', '1');
+                window.location.href = 'dashboard.html';
+            } else {
+                window.location.href = 'eula.html';
+            }
+            return;
+        }
+    } catch(_) {}
+    // On network/server error fall through to dashboard (fail-open)
+    window.location.href = 'dashboard.html';
+}
 
 // Template download buttons (preserved from original)
 ['download-sales-template','download-purchase-template','download-product-template'].forEach(function(id) {

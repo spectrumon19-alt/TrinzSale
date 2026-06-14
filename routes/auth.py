@@ -780,3 +780,77 @@ def get_current_user():
         'username': payload.get('username'),
         'role': payload.get('role')
     }), 200
+
+
+# ── EULA / Terms of Service ───────────────────────────────────────────────────
+
+def _get_token_payload():
+    """Extract and verify JWT from Authorization header. Returns payload or None."""
+    auth_header = request.headers.get('Authorization', '')
+    try:
+        token = auth_header.split(' ')[1]
+    except IndexError:
+        return None
+    from auth import verify_token
+    return verify_token(token)
+
+
+@auth_bp.route('/auth/terms-status', methods=['GET'])
+def terms_status():
+    """Return whether the current user has accepted the EULA."""
+    payload = _get_token_payload()
+    if not payload:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    conn = get_db_connection()
+    cur  = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT terms_accepted_at, terms_version FROM users WHERE user_id = %s",
+            (payload['user_id'],)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'message': 'User not found'}), 404
+        accepted = row['terms_accepted_at'] is not None
+        return jsonify({
+            'accepted': accepted,
+            'terms_version': row['terms_version'],
+            'accepted_at': row['terms_accepted_at'].isoformat() if accepted else None
+        }), 200
+    finally:
+        cur.close()
+        release_db_connection(conn)
+
+
+@auth_bp.route('/auth/accept-terms', methods=['POST'])
+def accept_terms():
+    """Record EULA acceptance for the current user."""
+    payload = _get_token_payload()
+    if not payload:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    client_ip = (
+        request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+        or request.remote_addr
+    )
+
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE users
+               SET terms_accepted_at = NOW(),
+                   terms_accepted_ip = %s,
+                   terms_version     = '1.0'
+             WHERE user_id = %s
+        """, (client_ip, payload['user_id']))
+        conn.commit()
+        return jsonify({'message': 'Terms accepted', 'redirect': 'dashboard.html'}), 200
+    except Exception:
+        conn.rollback()
+        logger.exception("accept-terms error")
+        return jsonify({'message': 'Could not record acceptance'}), 500
+    finally:
+        cur.close()
+        release_db_connection(conn)

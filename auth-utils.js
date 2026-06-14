@@ -510,7 +510,7 @@ function logout() {
     sessionStorage.clear();
     if (_theme) localStorage.setItem('pos_theme', _theme);
     if (_salt)  localStorage.setItem('pos_device_salt', _salt);
-    // replace() removes this entry from history; user cannot back-navigate to app pages
+    // pos_eula_accepted is intentionally NOT preserved — next login must re-verify
     window.location.replace('login.html');
 }
 
@@ -577,6 +577,7 @@ function inactivityLogout() {
     sessionStorage.clear();
     if (_theme) localStorage.setItem('pos_theme', _theme);
     if (_salt)  localStorage.setItem('pos_device_salt', _salt);
+    // pos_eula_accepted cleared with localStorage.clear() above — next login re-verifies
     window.location.replace('login.html?timeout=1');
 }
 
@@ -643,28 +644,47 @@ function hideLoading() {
     }
 }
 
-// ── Page guard: license check then auth check ─────────────────────────────────
+// ── Page guard: auth → EULA → page ───────────────────────────────────────────
 // Runs on every page load and bfcache restore.
-// Order: license first → auth second.
-// Making it async allows the license API call while keeping everything sequential.
 window.addEventListener('pageshow', async function () {
     const page = window.location.pathname.split('/').pop() || '';
 
-    // License check removed per user request
-
-    // ── Auth check ────────────────────────────────────────────────────────
-    const publicPages = ['login.html', 'register.html', ''];
+    // ── Public pages (no auth needed) ────────────────────────────────────
+    const publicPages = ['login.html', 'register.html', 'eula.html', ''];
     if (publicPages.includes(page)) {
         if (page === 'login.html' && isAuthenticated()) {
             window.location.replace('dashboard.html');
-            return;
         }
         return;
     }
 
+    // ── Auth check ────────────────────────────────────────────────────────
     if (!isAuthenticated()) {
         window.location.replace('login.html');
         return;
+    }
+
+    // ── EULA check (skip for pages that don't need it) ────────────────────
+    const eulaExempt = ['noAccess.html', 'logout.html', 'license_activation.html'];
+    if (!eulaExempt.includes(page)) {
+        // Fast path: cache flag set after acceptance
+        if (localStorage.getItem('pos_eula_accepted') !== '1') {
+            try {
+                const token = localStorage.getItem('pos_token');
+                const res = await fetch('/api/auth/terms-status', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    if (d.accepted) {
+                        localStorage.setItem('pos_eula_accepted', '1');
+                    } else {
+                        window.location.replace('eula.html');
+                        return;
+                    }
+                }
+            } catch (_) { /* network error — fail-open */ }
+        }
     }
 });
 
@@ -827,8 +847,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentPage = window.location.pathname.split('/').pop();
     if (currentPage === 'login.html') {
         _injectThemeToggle();
+        // Authenticated users who navigate back to login → check EULA then go to dashboard
         if (isAuthenticated()) {
-            window.location.replace('dashboard.html');
+            (async function() {
+                try {
+                    const token = localStorage.getItem('pos_token');
+                    const res = await fetch('/api/auth/terms-status', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        window.location.replace(d.accepted ? 'dashboard.html' : 'eula.html');
+                        return;
+                    }
+                } catch (_) {}
+                window.location.replace('dashboard.html');
+            })();
         }
         return;
     }

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>License Agreement — TrintzPOS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --surface: #ffffff;
+    --bg: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #64748b;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --shadow: 0 4px 24px rgba(0,0,0,.10);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    color: var(--text);
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 820px;
+    display: flex;
+    flex-direction: column;
+    max-height: 92vh;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .card-header {
+    padding: 28px 36px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .brand-logo {
+    height: 44px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  .brand-name { font-size: 1.15rem; font-weight: 700; color: var(--brand); }
+  .card-header h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-top: 10px;
+    letter-spacing: -.02em;
+  }
+  .card-header p {
+    font-size: .875rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Progress bar — scroll indicator */
+  .progress-bar { height: 3px; background: var(--border); flex-shrink: 0; }
+  .progress-fill {
+    height: 100%;
+    background: var(--brand);
+    width: 0%;
+    transition: width .15s ease;
+  }
+
+  /* Scrollable agreement body */
+  .agreement-body {
+    overflow-y: auto;
+    padding: 28px 36px;
+    flex: 1;
+    scroll-behavior: smooth;
+  }
+  .agreement-body::-webkit-scrollbar { width: 6px; }
+  .agreement-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+  .section { margin-bottom: 24px; }
+  .section h2 {
+    font-size: .95rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--brand);
+    margin-bottom: 8px;
+  }
+  .section p, .section li {
+    font-size: .9rem;
+    line-height: 1.7;
+    color: #334155;
+  }
+  .section ul { padding-left: 20px; }
+  .section li { margin-bottom: 4px; }
+  .highlight-box {
+    background: #eff6ff;
+    border-left: 4px solid var(--brand);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: .875rem;
+    line-height: 1.6;
+    margin-top: 8px;
+    color: #1e3a8a;
+  }
+  .warning-box {
+    background: #fff7ed;
+    border-left: 4px solid #f97316;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: .875rem;
+    line-height: 1.6;
+    margin-top: 8px;
+    color: #7c2d12;
+  }
+
+  /* Read-all nudge */
+  .read-nudge {
+    text-align: center;
+    font-size: .8rem;
+    color: var(--muted);
+    padding: 8px 0 4px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    transition: opacity .3s;
+  }
+  .read-nudge.hidden { opacity: 0; pointer-events: none; }
+
+  /* Footer / action bar */
+  .card-footer {
+    padding: 20px 36px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: .875rem;
+    color: #334155;
+    cursor: pointer;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px; height: 18px; margin-top: 1px;
+    accent-color: var(--brand);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .btn {
+    padding: 11px 28px;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background .15s, opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-outline:hover { border-color: #94a3b8; color: #475569; }
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Disagree modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px 28px;
+    max-width: 420px;
+    width: 92%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    text-align: center;
+  }
+  .modal-icon {
+    width: 56px; height: 56px;
+    background: var(--danger-bg);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-icon svg { width: 28px; height: 28px; stroke: var(--danger); }
+  .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+  .modal p { font-size: .875rem; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+  .modal-btn-row { display: flex; gap: 10px; justify-content: center; }
+
+  .effective-date { font-size: .78rem; color: var(--muted); text-align: right; margin-top: 12px; }
+
+  @media (max-width: 600px) {
+    .card-header, .agreement-body, .card-footer { padding-left: 20px; padding-right: 20px; }
+    .btn-row { flex-direction: column-reverse; }
+    .btn { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="brand-row">
+      <img src="assets/logo.png" alt="TrintzPOS" class="brand-logo" onerror="this.style.display='none'; document.getElementById('brand-fallback').style.display='inline'"/>
+      <span class="brand-name" id="brand-fallback" style="display:none">TrintzPOS</span>
+    </div>
+    <h1>End-User License Agreement</h1>
+    <p>Please read this agreement carefully before using TrintzPOS. Scroll to the bottom to accept.</p>
+  </div>
+
+  <!-- Scroll progress bar -->
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- Agreement body -->
+  <div class="agreement-body" id="agreementBody">
+
+    <div class="section">
+      <h2>1. Parties to This Agreement</h2>
+      <p>This End-User License Agreement ("<strong>Agreement</strong>") is a legally binding contract between you ("<strong>Licensee</strong>", "<strong>you</strong>", or "<strong>your</strong>") and <strong>Trintz Data Labs</strong>, a software technology company ("<strong>Trintz Data Labs</strong>", "<strong>we</strong>", "<strong>our</strong>", or "<strong>us</strong>"). By accessing or using TrintzPOS ("<strong>Software</strong>"), you acknowledge that you have read, understood, and agree to be legally bound by the terms of this Agreement.</p>
+      <div class="highlight-box">If you are accepting this Agreement on behalf of an organisation, you represent and warrant that you have full authority to legally bind that organisation to these terms.</div>
+    </div>
+
+    <div class="section">
+      <h2>2. Grant of License</h2>
+      <p>Subject to your continuous compliance with this Agreement and timely payment of any applicable license fees, Trintz Data Labs grants you a limited, non-exclusive, non-transferable, revocable license to:</p>
+      <ul>
+        <li>Install and use the Software solely for your internal business operations.</li>
+        <li>Make a single archival copy of the Software for backup purposes only.</li>
+        <li>Access Software updates and patches released during your active subscription period.</li>
+      </ul>
+      <p>No other rights are granted. All rights not expressly granted herein are reserved by Trintz Data Labs.</p>
+    </div>
+
+    <div class="section">
+      <h2>3. Restrictions</h2>
+      <p>You may <strong>not</strong>, without prior written consent from Trintz Data Labs:</p>
+      <ul>
+        <li>Copy, redistribute, sublicense, lease, rent, sell, or transfer the Software to any third party.</li>
+        <li>Reverse-engineer, disassemble, decompile, or attempt to derive the source code of the Software.</li>
+        <li>Modify, adapt, translate, or create derivative works based on the Software.</li>
+        <li>Remove, alter, or obscure any proprietary notices, branding, or watermarks.</li>
+        <li>Use the Software to provide managed services, time-sharing, or bureau services to third parties.</li>
+        <li>Use the Software in any manner that violates applicable laws or regulations.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>4. Ownership and Intellectual Property</h2>
+      <p>The Software, including all copies, modifications, enhancements, and documentation, is and shall remain the exclusive intellectual property of Trintz Data Labs and its licensors. This Agreement does not transfer any ownership rights to you. All trademarks, service marks, logos, and trade names associated with TrintzPOS are the exclusive property of Trintz Data Labs.</p>
+    </div>
+
+    <div class="section">
+      <h2>5. Data and Privacy</h2>
+      <p>You are solely responsible for all business data entered, stored, or processed through the Software, including but not limited to customer information, financial records, inventory data, and transaction logs ("<strong>Your Data</strong>").</p>
+      <ul>
+        <li>Trintz Data Labs does not access, share, or sell Your Data without your explicit consent, except as required by law.</li>
+        <li>You are responsible for maintaining adequate backups of Your Data.</li>
+        <li>Trintz Data Labs shall not be liable for any loss, corruption, or unauthorised access to Your Data arising from your failure to implement appropriate security measures.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>6. Disclaimer of Warranties</h2>
+      <div class="warning-box">
+        <strong>THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND.</strong><br/><br/>
+        TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, TRINTZ DATA LABS EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING WITHOUT LIMITATION ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. TRINTZ DATA LABS DOES NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR FREE OF HARMFUL COMPONENTS.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>7. Limitation of Liability</h2>
+      <div class="warning-box">
+        <strong>TRINTZ DATA LABS, ITS DIRECTORS, EMPLOYEES, AGENTS, AND AFFILIATES SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES</strong> arising from or in connection with your use of or inability to use the Software, including but not limited to:<br/><br/>
+        <ul style="padding-left:18px; margin-top:8px;">
+          <li>Loss of revenue, profits, data, or business opportunities.</li>
+          <li>Financial loss resulting from billing errors, incorrect tax calculations, or GST/e-invoice processing failures.</li>
+          <li>Business interruption caused by software downtime, glitches, or technical failures.</li>
+          <li>Loss or corruption of data due to hardware failure, power outage, network issues, or software bugs.</li>
+          <li>Losses resulting from any cyber-attack, data breach, or unauthorised access to your systems.</li>
+          <li>Regulatory penalties arising from inaccurate reports generated by the Software.</li>
+          <li>Any loss arising from reliance on AI-generated content, summaries, or recommendations produced by the Software's knowledge-base or assistant features.</li>
+        </ul>
+        <br/>
+        IN NO EVENT SHALL TRINTZ DATA LABS'S AGGREGATE LIABILITY EXCEED THE TOTAL LICENSE FEES PAID BY YOU IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM. SOME JURISDICTIONS DO NOT ALLOW EXCLUSION OF CERTAIN WARRANTIES OR LIMITATIONS OF LIABILITY; IN SUCH CASES, THE FOREGOING LIMITATIONS SHALL APPLY TO THE MAXIMUM EXTENT PERMITTED BY LAW.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>8. Indemnification</h2>
+      <p>You agree to indemnify, defend, and hold harmless Trintz Data Labs and its officers, directors, employees, and agents from any claims, liabilities, damages, costs, and expenses (including reasonable legal fees) arising from: (a) your use or misuse of the Software; (b) your violation of this Agreement; (c) your violation of any applicable law or third-party rights; or (d) any data or content you submit through the Software.</p>
+    </div>
+
+    <div class="section">
+      <h2>9. Uptime, Maintenance, and Updates</h2>
+      <p>Trintz Data Labs will make reasonable efforts to maintain Software availability. However, we reserve the right to perform scheduled or emergency maintenance without prior notice. We may release updates, patches, or new versions at our discretion. Continued use after an update constitutes acceptance of any modified terms accompanying that update.</p>
+    </div>
+
+    <div class="section">
+      <h2>10. Term and Termination</h2>
+      <p>This Agreement is effective from the date you first accept it and continues until terminated. Trintz Data Labs may terminate this Agreement immediately and without notice if you breach any term herein. Upon termination:</p>
+      <ul>
+        <li>Your license to use the Software ceases immediately.</li>
+        <li>You must delete all copies of the Software in your possession.</li>
+        <li>Sections 4 (Ownership), 6 (Warranties), 7 (Liability), 8 (Indemnification), and 13 (Governing Law) survive termination.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>11. Support and Service</h2>
+      <p>Technical support, if included in your license plan, is provided as described in your subscription agreement. Trintz Data Labs makes no guarantee regarding response times or resolution of any particular issue. Support may be modified or discontinued at any time.</p>
+    </div>
+
+    <div class="section">
+      <h2>12. Third-Party Services</h2>
+      <p>The Software may integrate with third-party services (e.g., GST e-invoice portals, payment gateways, cloud storage). Trintz Data Labs is not responsible for the availability, accuracy, or terms of those third-party services. Your use of such services is governed by their respective terms and policies.</p>
+    </div>
+
+    <div class="section">
+      <h2>13. Governing Law and Dispute Resolution</h2>
+      <p>This Agreement shall be governed by and construed in accordance with the laws of India. Any dispute arising under this Agreement shall first be subject to good-faith negotiation. If unresolved, disputes shall be submitted to binding arbitration in accordance with the Arbitration and Conciliation Act, 1996, conducted in English. The seat of arbitration shall be India. Notwithstanding the foregoing, Trintz Data Labs reserves the right to seek injunctive relief in any court of competent jurisdiction.</p>
+    </div>
+
+    <div class="section">
+      <h2>14. Compliance with Laws</h2>
+      <p>You are solely responsible for ensuring your use of the Software complies with all applicable local, state, national, and international laws and regulations, including but not limited to the Income Tax Act, Goods and Services Tax (GST) regulations, and data protection laws applicable in your jurisdiction.</p>
+    </div>
+
+    <div class="section">
+      <h2>15. Entire Agreement and Amendments</h2>
+      <p>This Agreement constitutes the entire agreement between you and Trintz Data Labs with respect to the Software and supersedes all prior agreements, negotiations, and understandings. Trintz Data Labs reserves the right to amend this Agreement at any time. Continued use of the Software following notice of amendments constitutes your acceptance of the revised terms. The version number and effective date of the current Agreement is recorded at acceptance.</p>
+    </div>
+
+    <div class="section">
+      <h2>16. Contact Information</h2>
+      <p>For licensing inquiries, legal notices, or support:</p>
+      <ul>
+        <li><strong>Trintz Data Labs</strong></li>
+        <li>Email: <a href="mailto:info@trintzdatalabs.com" style="color:var(--brand)">legal@trintz.in</a></li>
+        <li>Support: <a href="mailto:sales@trintzdatalabs.com" style="color:var(--brand)">support@trintz.in</a></li>
+
+      </ul>
+    </div>
+
+    <p class="effective-date">Agreement Version 1.0 &nbsp;·&nbsp; Effective Date: 1 June 2026 &nbsp;·&nbsp; © 2026 Trintz Data Labs. All rights reserved.</p>
+
+  </div><!-- /agreement-body -->
+
+  <!-- Read-all nudge -->
+  <div class="read-nudge" id="readNudge">Scroll down to read the full agreement before accepting.</div>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <label class="checkbox-row" id="checkLabel">
+      <input type="checkbox" id="acceptCheck" disabled/>
+      I have read and understood this End-User License Agreement and agree to be legally bound by its terms.
+    </label>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="showDisagreeModal()">Disagree &amp; Exit</button>
+      <button class="btn btn-primary" id="agreeBtn" disabled onclick="handleAgree()">Agree &amp; Continue</button>
+    </div>
+  </div>
+
+</div><!-- /card -->
+
+<!-- Disagree confirmation modal -->
+<div class="modal-overlay" id="disagreeModal">
+  <div class="modal">
+    <div class="modal-icon">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+      </svg>
+    </div>
+    <h3>You must accept to continue</h3>
+    <p>TrintzPOS cannot be used without accepting the License Agreement. If you disagree, you will be signed out and the application will not be accessible.</p>
+    <div class="modal-btn-row">
+      <button class="btn btn-outline" style="padding:10px 22px" onclick="closeDisagreeModal()">Go Back</button>
+      <button class="btn btn-primary" style="background:var(--danger); padding:10px 22px" onclick="handleDisagree()">Sign Out &amp; Exit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Guard: must be logged in
+  var token = localStorage.getItem('pos_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+
+  // Fast path: already accepted this session
+  if (localStorage.getItem('pos_eula_accepted') === '1') {
+    window.location.href = 'dashboard.html'; return;
+  }
+  // Check if already accepted (in case user navigates back)
+  fetch('/api/auth/terms-status', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.accepted) { localStorage.setItem('pos_eula_accepted','1'); window.location.href = 'dashboard.html'; } })
+    .catch(function() {});
+
+  var body       = document.getElementById('agreementBody');
+  var fill       = document.getElementById('progressFill');
+  var nudge      = document.getElementById('readNudge');
+  var check      = document.getElementById('acceptCheck');
+  var agreeBtn   = document.getElementById('agreeBtn');
+  var hasScrolled = false;
+
+  function onScroll() {
+    var scrolled = body.scrollTop;
+    var max      = body.scrollHeight - body.clientHeight;
+    var pct      = max > 0 ? Math.min(100, (scrolled / max) * 100) : 100;
+    fill.style.width = pct + '%';
+
+    if (pct >= 98 && !hasScrolled) {
+      hasScrolled = true;
+      nudge.classList.add('hidden');
+      check.disabled  = false;
+    }
+  }
+  body.addEventListener('scroll', onScroll, { passive: true });
+
+  check.addEventListener('change', function() {
+    agreeBtn.disabled = !this.checked;
+  });
+
+  window.showDisagreeModal = function() {
+    document.getElementById('disagreeModal').classList.add('open');
+  };
+  window.closeDisagreeModal = function() {
+    document.getElementById('disagreeModal').classList.remove('open');
+  };
+
+  window.handleDisagree = function() {
+    localStorage.removeItem('pos_token');
+    window.location.href = 'login.html';
+  };
+
+  window.handleAgree = async function() {
+    agreeBtn.disabled = true;
+    agreeBtn.textContent = 'Saving…';
+    try {
+      var res = await fetch('/api/auth/accept-terms', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      if (res.ok) {
+        localStorage.setItem('pos_eula_accepted', '1');
+        window.location.href = 'dashboard.html';
+      } else {
+        agreeBtn.disabled = false;
+        agreeBtn.textContent = 'Agree & Continue';
+        alert('Could not save your acceptance. Please try again.');
+      }
+    } catch(e) {
+      agreeBtn.disabled = false;
+      agreeBtn.textContent = 'Agree & Continue';
+      alert('Network error. Please check your connection and try again.');
+    }
+  };
+}());
+</script>
+</body>
+</html>
