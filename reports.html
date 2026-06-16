@@ -1233,7 +1233,7 @@
                             
                             <div class="summary-cards mb-6">
                                 <div class="card">
-                                    <h4>Total Sales</h4>
+                                    <h4>Total Sales (excl. GST)</h4>
                                     <div class="value sale-amount">₹0.00</div>
                                 </div>
                                 <div class="card">
@@ -1243,6 +1243,10 @@
                                 <div class="card">
                                     <h4>Total GST</h4>
                                     <div class="value gst-amount">₹0.00</div>
+                                </div>
+                                <div class="card">
+                                    <h4 style="color:#e1e2fc;font-weight:700;">Grand Total (incl. GST)</h4>
+                                    <div class="value grand-total-amount";>₹0.00</div>
                                 </div>
                             </div>
                             
@@ -1654,20 +1658,17 @@
         // Display sales report
         function displaySalesReport(data) {
             // Update summary cards
-            const totalSalesElement = document.querySelector('#sales-tab .card:nth-child(1) .value');
+            const totalSalesElement       = document.querySelector('#sales-tab .card:nth-child(1) .value');
             const totalTransactionsElement = document.querySelector('#sales-tab .card:nth-child(2) .value');
-            const totalGstElement = document.querySelector('#sales-tab .card:nth-child(3) .value');
-            
-            if (totalSalesElement) {
-                totalSalesElement.textContent = formatCurrency(data.total_sales || 0);
-            }
-            
-            if (totalTransactionsElement) {
-                totalTransactionsElement.textContent = data.total_invoices || 0;
-            }
-            
-            if (totalGstElement) {
-                totalGstElement.textContent = formatCurrency(data.total_gst || 0);
+            const totalGstElement         = document.querySelector('#sales-tab .card:nth-child(3) .value');
+            const grandTotalElement       = document.querySelector('#sales-tab .grand-total-amount');
+
+            if (totalSalesElement)        totalSalesElement.textContent        = formatCurrency(data.total_sales || 0);
+            if (totalTransactionsElement) totalTransactionsElement.textContent = data.total_invoices || 0;
+            if (totalGstElement)          totalGstElement.textContent          = formatCurrency(data.total_gst || 0);
+            if (grandTotalElement) {
+                const grand = (parseFloat(data.total_sales || 0) + parseFloat(data.total_gst || 0));
+                grandTotalElement.textContent = formatCurrency(grand);
             }
             
             // Update top selling products

@@ -7,7 +7,7 @@ import qrcode
 from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
-from auth import token_required, admin_required, verify_password, setup_or_token_required, generate_token
+from auth import token_required, admin_required, verify_password, setup_or_token_required, generate_token, set_session_cookie
 from db import get_db_connection, release_db_connection
 from limiter import limiter
 
@@ -103,11 +103,12 @@ def totp_enable(payload):
 
         if is_forced:
             token = generate_token(user_id, row['role'], row['username'])
-            return jsonify({
+            resp = jsonify({
                 'message': 'Authenticator app enabled! Signing you in...',
                 'token':   token,
                 'user':    {'user_id': user_id, 'username': row['username'], 'role': row['role']}
-            }), 200
+            })
+            return set_session_cookie(resp, token), 200
 
         return jsonify({'message': 'Authenticator app enabled successfully!'}), 200
     except Exception:

@@ -1642,7 +1642,7 @@ function loadRecentInvoices() {
             row.className = isCancelled ? 'border-b bg-red-50' : 'border-b hover:bg-gray-50';
             const dateStr = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString() : '-';
             const customer = inv.customer_name || '-';
-            const amount = inv.total_amount ? parseFloat(inv.total_amount).toFixed(2) : '0.00';
+            const amount = parseFloat(inv.grand_total || (parseFloat(inv.total_amount || 0) + parseFloat(inv.total_gst || 0))).toFixed(2);
             const payment = inv.mode_of_payment || '-';
             const statusBadge = isCancelled 
                 ? '<span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium">Cancelled</span>' 

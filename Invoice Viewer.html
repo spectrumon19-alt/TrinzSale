@@ -689,7 +689,7 @@
                                         <th style="color: white !important;">Invoice Number</th>
                                         <th style="color: white !important;">Date</th>
                                         <th style="color: white !important;">Customer</th>
-                                        <th style="color: white !important;">Total Amount</th>
+                                        <th style="color: white !important;">Total Amount (incl. GST)</th>
                                         <th style="color: white !important;">Status</th>
                                         <th style="color: white !important;">Actions</th>
                                     </tr>
@@ -964,10 +964,13 @@
                 const invoiceNumberCell = invoice.invoice_number || invoice.invoiceNumber || invoice.invoice_id || invoice.id || 'N/A';
                 const dateCell = invoice.invoice_date || invoice.date || invoice.createdAt || 'N/A';
                 const customerCell = invoice.customer_name || invoice.customerName || invoice.customer || '-';
-                const totalAmountCell = invoice.total_amount || invoice.totalAmount || invoice.amount || 0;
+                // Grand total = taxable value (total_amount) + GST
+                const exGst   = parseFloat(invoice.total_amount || invoice.totalAmount || invoice.amount || 0);
+                const gstAmt  = parseFloat(invoice.total_gst   || invoice.totalGst    || 0);
+                const totalAmountCell = exGst + gstAmt;
                 const statusCell = invoice.status || invoice.invoiceStatus || 'N/A';
                 const isCancelled = statusCell.toLowerCase() === 'cancelled';
-                
+
                 // Format date if it's a timestamp
                 let formattedDate = dateCell;
                 if (dateCell && typeof dateCell === 'string' && dateCell.includes('T')) {
@@ -977,14 +980,9 @@
                         formattedDate = dateCell;
                     }
                 }
-                
+
                 // Format amount as currency
-                let formattedAmount = '₹0.00';
-                if (typeof totalAmountCell === 'number') {
-                    formattedAmount = '₹' + totalAmountCell.toFixed(2);
-                } else if (typeof totalAmountCell === 'string') {
-                    formattedAmount = '₹' + parseFloat(totalAmountCell).toFixed(2);
-                }
+                const formattedAmount = '₹' + totalAmountCell.toFixed(2);
                 
                 // Ensure we're accessing the correct field names
                 const invoiceId = invoice.invoice_id || invoice.id || invoice.invoiceId || index;

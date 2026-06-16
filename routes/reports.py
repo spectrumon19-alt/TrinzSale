@@ -188,7 +188,22 @@ def get_sales_report(payload):
                     'total_value': float(row['total_value_sold'] if row['total_value_sold'] else 0)
                 } for row in top_products
             ],
-            'detailed_invoices': detailed_invoices
+            'detailed_invoices': [
+                {
+                    'invoice_id':      row['invoice_id'],
+                    'invoice_number':  row['invoice_number'],
+                    'invoice_date':    str(row['invoice_date']) if row['invoice_date'] else None,
+                    'customer_name':   row['customer_name'],
+                    'customer_contact':row['customer_contact'],
+                    'total_amount':    float(row['total_amount'] or 0),
+                    'total_gst':       float(row['total_gst']    or 0),
+                    'grand_total':     float(row['total_amount'] or 0) + float(row['total_gst'] or 0),
+                    'mode_of_payment': row['mode_of_payment'],
+                    'item_count':      int(row['item_count'] or 0),
+                    'status':          row.get('status', 'Completed'),
+                }
+                for row in detailed_invoices
+            ]
         }), 200
     except Exception as e:
         print(f"Error generating sales report: {str(e)}")  # Log the error for debugging

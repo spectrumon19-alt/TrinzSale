@@ -745,6 +745,25 @@ body {
   window.toggleTheme = toggleTheme;
   syncThemeIcon();
 
+  /* ── View-only mode (opened from footer link with ?view=1) ── */
+  var isViewMode = new URLSearchParams(window.location.search).get('view') === '1';
+  if (isViewMode) {
+    // Show a close button instead of Agree/Disagree, skip all auth/redirect logic
+    document.querySelector('.card-footer').innerHTML = [
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">',
+        '<span style="font-size:.8rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;">',
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+          'TrintzPOS &mdash; End-User License Agreement v1.0 &mdash; &copy; 2026 Trintz Data Labs',
+        '</span>',
+        '<button class="btn btn-ghost" onclick="window.close()" style="padding:9px 22px;">',
+          'Close',
+        '</button>',
+      '</div>'
+    ].join('');
+    document.getElementById('readNudge').style.display = 'none';
+    return; // skip all auth/EULA logic below
+  }
+
   /* ── Auth guard ── */
   var token = localStorage.getItem('pos_token');
   if (!token) { window.location.replace('login.html'); return; }

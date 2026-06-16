@@ -303,7 +303,8 @@ function cacheUserPermissions() {
     const apiUrl = `${apiBase}/api/admin/permissions/${user.user_id}`;
 
     return fetch(apiUrl, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
     })
     .then(r => {
         if (!r.ok) {
@@ -501,17 +502,22 @@ function _updateHeaderClock() {
     el.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()} · ${hh}:${mm}`;
 }
 
-// Logout function — clears all storage and replaces history so back button
-// cannot return to any protected page
+// Logout function — clears all storage, expires httpOnly cookie, replaces history
 function logout() {
     var _theme = localStorage.getItem('pos_theme');
     var _salt  = localStorage.getItem('pos_device_salt');
+    var token  = localStorage.getItem('pos_token');
     localStorage.clear();
     sessionStorage.clear();
     if (_theme) localStorage.setItem('pos_theme', _theme);
     if (_salt)  localStorage.setItem('pos_device_salt', _salt);
-    // pos_eula_accepted is intentionally NOT preserved — next login must re-verify
-    window.location.replace('login.html');
+    // pos_eula_accepted cleared with localStorage.clear() — next login re-verifies
+    // Tell server to expire the httpOnly session cookie
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    fetch('/api/logout', { method: 'POST', credentials: 'include', headers: headers })
+        .catch(function() {})
+        .finally(function() { window.location.replace('login.html'); });
 }
 
 // ========== Auto-Logout on Inactivity (10 minutes) ==========
@@ -573,12 +579,16 @@ function showInactivityWarning() {
 function inactivityLogout() {
     var _theme = localStorage.getItem('pos_theme');
     var _salt  = localStorage.getItem('pos_device_salt');
+    var token  = localStorage.getItem('pos_token');
     localStorage.clear();
     sessionStorage.clear();
     if (_theme) localStorage.setItem('pos_theme', _theme);
     if (_salt)  localStorage.setItem('pos_device_salt', _salt);
-    // pos_eula_accepted cleared with localStorage.clear() above — next login re-verifies
-    window.location.replace('login.html?timeout=1');
+    var headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    fetch('/api/logout', { method: 'POST', credentials: 'include', headers: headers })
+        .catch(function() {})
+        .finally(function() { window.location.replace('login.html?timeout=1'); });
 }
 
 // Start inactivity tracking on every page (except login)
@@ -672,7 +682,8 @@ window.addEventListener('pageshow', async function () {
             try {
                 const token = localStorage.getItem('pos_token');
                 const res = await fetch('/api/auth/terms-status', {
-                    headers: { 'Authorization': 'Bearer ' + token }
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    credentials: 'include'
                 });
                 if (res.ok) {
                     const d = await res.json();

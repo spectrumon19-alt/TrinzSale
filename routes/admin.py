@@ -302,12 +302,13 @@ def get_all_invoices(payload):
     
     try:
         cur.execute("""
-            SELECT 
+            SELECT
                 si.invoice_id,
                 si.invoice_number,
                 si.invoice_date,
                 si.customer_name,
                 si.total_amount,
+                si.total_gst,
                 si.status,
                 u.username as created_by
             FROM sales_invoices si

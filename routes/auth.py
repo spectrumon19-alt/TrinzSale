@@ -7,7 +7,7 @@ import pyotp
 from flask import Blueprint, request, jsonify
 from psycopg2.extras import RealDictCursor
 
-from auth import hash_password, verify_password, generate_token
+from auth import hash_password, verify_password, generate_token, set_session_cookie, clear_session_cookie, _extract_token, verify_token
 from db import get_db_connection, release_db_connection
 from email_otp import (generate_otp, hash_otp, verify_otp_code, send_registration_otp,
                        hash_login_otp, verify_login_otp_code, send_login_otp,
@@ -160,10 +160,11 @@ def login():
             if cur.fetchone():
                 _log_success(cur, conn, user, ip_address, user_agent, browser, os_name, device_type)
                 token = generate_token(user_id, user['role'], user['username'])
-                return jsonify({
+                resp = jsonify({
                     'token': token,
                     'user': {'user_id': user_id, 'username': user['username'], 'role': user['role']}
-                }), 200
+                })
+                return set_session_cookie(resp, token), 200
 
         # ── TOTP / enforced MFA (only reached on untrusted device) ────────────
         if user['totp_enabled']:
@@ -186,10 +187,11 @@ def login():
         if not user_email or not device_fingerprint:
             _log_success(cur, conn, user, ip_address, user_agent, browser, os_name, device_type)
             token = generate_token(user_id, user['role'], user['username'])
-            return jsonify({
+            resp = jsonify({
                 'token': token,
                 'user': {'user_id': user_id, 'username': user['username'], 'role': user['role']}
-            }), 200
+            })
+            return set_session_cookie(resp, token), 200
 
         otp_code     = generate_otp()
         otp_hash_val = hash_login_otp(otp_code, user_id)
@@ -303,10 +305,11 @@ def verify_login_otp():
             return jsonify({'message': 'User not found'}), 404
 
         token = generate_token(user['user_id'], user['role'], user['username'])
-        return jsonify({
+        resp = jsonify({
             'token': token,
             'user': {'user_id': user['user_id'], 'username': user['username'], 'role': user['role']}
-        }), 200
+        })
+        return set_session_cookie(resp, token), 200
 
     except Exception:
         conn.rollback()
@@ -355,14 +358,15 @@ def verify_totp_login():
         conn.commit()
 
         token = generate_token(user['user_id'], user['role'], user['username'])
-        return jsonify({
+        resp = jsonify({
             'token': token,
             'user': {
                 'user_id':  user['user_id'],
                 'username': user['username'],
                 'role':     user['role']
             }
-        }), 200
+        })
+        return set_session_cookie(resp, token), 200
     except Exception:
         conn.rollback()
         logger.exception("TOTP login verify error")
@@ -549,8 +553,7 @@ def verify_registration():
 
         token = generate_token(new_user['user_id'], new_user['role'], new_user['username'])
         logger.info("New user registered: %s (%s)", new_user['username'], email)
-
-        return jsonify({
+        resp = jsonify({
             'message': 'Registration complete! Welcome to TrintzPOS.',
             'token': token,
             'user': {
@@ -558,7 +561,8 @@ def verify_registration():
                 'username': new_user['username'],
                 'role': new_user['role']
             }
-        }), 201
+        })
+        return set_session_cookie(resp, token), 201
 
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
@@ -782,16 +786,22 @@ def get_current_user():
     }), 200
 
 
+# ── Logout ────────────────────────────────────────────────────────────────────
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    resp = jsonify({'message': 'Logged out'})
+    clear_session_cookie(resp)
+    return resp, 200
+
+
 # ── EULA / Terms of Service ───────────────────────────────────────────────────
 
 def _get_token_payload():
-    """Extract and verify JWT from Authorization header. Returns payload or None."""
-    auth_header = request.headers.get('Authorization', '')
-    try:
-        token = auth_header.split(' ')[1]
-    except IndexError:
+    """Extract and verify JWT from cookie or Authorization header."""
+    token = _extract_token()
+    if not token:
         return None
-    from auth import verify_token
     return verify_token(token)
 
 

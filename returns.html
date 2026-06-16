@@ -116,6 +116,12 @@
         html.dark #receipt-modal td             { color:#111 !important; border-color:#888 !important; background:transparent !important; }
         html.dark #receipt-modal tbody tr:nth-child(even) { background:transparent !important; }
         html.dark #receipt-modal tbody tr:hover { background:transparent !important; }
+        .search-result-row:hover { background:rgba(59,130,246,.06); }
+        html.dark .search-result-row:hover { background:#1e3550 !important; }
+        html.dark .search-result-row { border-color:#253650 !important; color:#cbd5e1 !important; }
+        html.dark .search-result-row .inv-num { color:#818cf8 !important; }
+        html.dark .search-result-row .inv-meta { color:#64748b !important; }
+        html.dark .search-result-row .inv-total { color:#34d399 !important; }
         html.dark #receipt-modal .rcpt-co-sub   { color:#666 !important; }
         html.dark #receipt-modal .rcpt-dash     { color:#bbb !important; }
         html.dark #receipt-modal .rcpt-footer   { color:#999 !important; }
@@ -458,18 +464,19 @@ function renderSearchResults(invoices) {
     el.innerHTML = '';
     invoices.forEach(inv => {
         const d = document.createElement('div');
-        d.className = 'flex justify-between items-center p-2 border rounded-lg mb-1 hover:bg-blue-50 cursor-pointer text-sm';
+        d.className = 'search-result-row flex justify-between items-center p-2 border rounded-lg mb-1 cursor-pointer text-sm';
+        d.style.transition = 'background .15s';
         d.innerHTML = `
             <div>
-                <span class="font-semibold text-blue-700">${inv.invoice_number}</span>
-                <span class="text-gray-400 mx-2">|</span>
-                <span class="text-gray-600">${formatDate(inv.invoice_date)}</span>
-                <span class="text-gray-400 mx-2">|</span>
+                <span class="inv-num font-semibold">${inv.invoice_number}</span>
+                <span class="inv-meta mx-2">|</span>
+                <span class="inv-meta">${formatDate(inv.invoice_date)}</span>
+                <span class="inv-meta mx-2">|</span>
                 <span>${inv.customer_name || 'Walk-in'}</span>
-                ${inv.customer_mobile ? `<span class="text-gray-400 mx-2">|</span><span>${inv.customer_mobile}</span>` : ''}
+                ${inv.customer_mobile ? `<span class="inv-meta mx-2">|</span><span>${inv.customer_mobile}</span>` : ''}
             </div>
             <div class="flex items-center gap-3">
-                <span class="font-bold text-green-700">₹${fmt(inv.grand_total)}</span>
+                <span class="inv-total font-bold">₹${fmt(inv.grand_total)}</span>
                 <button class="btn btn-primary text-xs py-1 px-3">Select</button>
             </div>`;
         d.querySelector('button').addEventListener('click', () => loadReturnableItems(inv.invoice_id));
