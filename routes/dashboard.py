@@ -53,17 +53,19 @@ def get_dashboard_kpis(payload):
         month = cur.fetchone()
 
         # ── Returns (net out of sales figures, GST-inclusive) ────────────────
+        # sales_returns.total_amount is already GST-inclusive (subtotal + total_gst).
+        # Do NOT add total_gst again — that would double-count GST on returns.
         cur.execute("""
             SELECT
                 COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE
-                                  THEN total_amount + total_gst ELSE 0 END), 0) AS today_returns,
+                                  THEN total_amount ELSE 0 END), 0) AS today_returns,
                 COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE
-                                  THEN total_gst ELSE 0 END), 0)                AS today_returns_gst,
+                                  THEN total_gst ELSE 0 END), 0)    AS today_returns_gst,
                 COALESCE(SUM(CASE WHEN return_date = CURRENT_DATE - INTERVAL '1 day'
-                                  THEN total_amount + total_gst ELSE 0 END), 0) AS yest_returns,
+                                  THEN total_amount ELSE 0 END), 0) AS yest_returns,
                 COALESCE(SUM(CASE WHEN DATE_TRUNC('month', return_date)
                                        = DATE_TRUNC('month', CURRENT_DATE)
-                                  THEN total_amount + total_gst ELSE 0 END), 0) AS month_returns
+                                  THEN total_amount ELSE 0 END), 0) AS month_returns
             FROM sales_returns
             WHERE status = 'Completed'
         """)

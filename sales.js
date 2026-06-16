@@ -1,5 +1,14 @@
 // sales.js
 
+// Returns today's date as YYYY-MM-DD in local time (not UTC)
+function localDateStr(d) {
+    const dt = d || new Date();
+    const y  = dt.getFullYear();
+    const m  = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 // Global variables
 let currentUser = null;
 let invoiceItems = [];
@@ -242,7 +251,7 @@ function initDOMElements() {
     // Invoice date - set default to today
     const invoiceDateInput = document.getElementById('invoice-date');
     if (invoiceDateInput) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr();
         invoiceDateInput.value = today;
     }
     
@@ -582,6 +591,12 @@ function attachEventListeners() {
 
                     // Show email modal (handles print + clear inside)
                     showEmailReceiptModal(invoice);
+
+                    // Refresh Recent Invoices list if the modal is currently open
+                    const invModal = document.getElementById('view-invoices-modal');
+                    if (invModal && !invModal.classList.contains('hidden')) {
+                        loadRecentInvoices();
+                    }
                 })
                 .catch(error => {
                     // Hide loading indicator
@@ -612,12 +627,12 @@ function attachEventListeners() {
                 const modal = document.getElementById('view-invoices-modal');
                 if (modal) {
                     modal.classList.remove('hidden');
-                    // Default to today
-                    const today = new Date().toISOString().split('T')[0];
+                    // Always reset to today so the list reflects current day on every open
+                    const today = localDateStr();
                     const fromDate = document.getElementById('invoice-from-date');
                     const toDate = document.getElementById('invoice-to-date');
-                    if (fromDate && !fromDate.value) fromDate.value = today;
-                    if (toDate && !toDate.value) toDate.value = today;
+                    if (fromDate) fromDate.value = today;
+                    if (toDate) toDate.value = today;
                     loadRecentInvoices();
                 }
             });
@@ -639,7 +654,7 @@ function attachEventListeners() {
         const todayInvoicesBtn = document.getElementById('today-invoices-btn');
         if (todayInvoicesBtn) {
             todayInvoicesBtn.addEventListener('click', function() {
-                const today = new Date().toISOString().split('T')[0];
+                const today = localDateStr();
                 const fromDate = document.getElementById('invoice-from-date');
                 const toDate = document.getElementById('invoice-to-date');
                 if (fromDate) fromDate.value = today;
@@ -1161,7 +1176,7 @@ function clearInvoice() {
     // Reset invoice date to today
     const invoiceDateInput = document.getElementById('invoice-date');
     if (invoiceDateInput) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr();
         invoiceDateInput.value = today;
     }
     

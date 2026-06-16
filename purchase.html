@@ -632,7 +632,7 @@
                 initializeDOMElements();
                 
                 // Set today's date as default (after DOM elements are initialized)
-                const today = new Date().toISOString().split('T')[0];
+                const today = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date());
                 if (purchaseDateInput) {
                     purchaseDateInput.value = today;
                 }
@@ -1661,7 +1661,7 @@
                 supplier_name: supplier ? supplier.supplier_name : '',
                 supplier_gst_number: supplier ? supplier.supplier_gst_number : '',
                 purchase_order_number: purchaseOrderInput ? purchaseOrderInput.value : '',
-                purchase_date: purchaseDateInput ? purchaseDateInput.value : new Date().toISOString().split('T')[0],
+                purchase_date: purchaseDateInput ? purchaseDateInput.value : (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date()),
                 items: purchaseItems,
                 mode_of_payment: modeOfPaymentSelect ? modeOfPaymentSelect.value : 'Cash',
                 total_amount: grandTotal,
@@ -1738,7 +1738,7 @@
         function clearPurchaseOrder() {
             if (supplierSelect) supplierSelect.value = '';
             if (purchaseOrderInput) purchaseOrderInput.value = '';
-            if (purchaseDateInput) purchaseDateInput.value = new Date().toISOString().split('T')[0];
+            if (purchaseDateInput) purchaseDateInput.value = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date());
             if (supplierDetails) supplierDetails.style.display = 'none';
             if (productSearchInput) productSearchInput.value = '';
             if (quantityInput) quantityInput.value = '1';

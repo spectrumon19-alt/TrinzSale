@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('menu-toggle').addEventListener('click', toggleMenu);
 
     // set today's date defaults
-    const today = new Date().toISOString().split('T')[0];
+    const today = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date());
     document.getElementById('hist-from').value = today;
     document.getElementById('hist-to').value   = today;
 
@@ -551,10 +551,10 @@ function recalcTotal() {
             parseInt(document.querySelector(`.item-qty[data-id="${id}"]`).value) || 0,
             item.returnable_qty
         );
-        const base       = parseFloat(item.rate_at_sale) * qty;
-        const afterDisc  = base * (1 - parseFloat(item.discount_percentage) / 100);
-        const gstAmt     = afterDisc * parseFloat(item.gst_rate_at_sale) / 100;
-        const lineTotal  = afterDisc + gstAmt;
+        // total_line_amount is the GST-inclusive amount for the full original qty.
+        // Prorate by return qty to get the correct refund (avoids double-counting GST).
+        const perUnit   = parseFloat(item.total_line_amount) / parseFloat(item.original_qty);
+        const lineTotal = perUnit * qty;
         total += lineTotal;
         const amtEl = document.querySelector(`.item-refund-amt[data-id="${id}"]`);
         if (amtEl) amtEl.textContent = '₹' + fmt(lineTotal);
@@ -702,9 +702,9 @@ function buildReceiptHTML(r, items) {
   <div class="dash">- - - - - - - - - - - - - - - - - -</div>
 
   <table class="totals">
-    <tr><td>Subtotal (excl. GST)</td><td>&#x20B9;${fmt(r.subtotal)}</td></tr>
-    <tr><td>GST</td><td>&#x20B9;${fmt(r.total_gst)}</td></tr>
-    <tr class="grand"><td>Total Refund</td><td>&#x20B9;${fmt(r.total_amount)}</td></tr>
+    <tr class="grand"><td>Total Refund (incl. GST)</td><td>&#x20B9;${fmt(r.total_amount)}</td></tr>
+    <tr style="font-size:11px;color:#555;"><td>&nbsp;&nbsp;Taxable Value</td><td>&#x20B9;${fmt(r.subtotal)}</td></tr>
+    <tr style="font-size:11px;color:#555;"><td>&nbsp;&nbsp;GST (incl. in above)</td><td>&#x20B9;${fmt(r.total_gst)}</td></tr>
   </table>
 
   <div class="dash">- - - - - - - - - - - - - - - - - -</div>
@@ -744,7 +744,7 @@ function printReceipt() {
 
 // ── History ────────────────────────────────────────────────────────────────
 function loadToday() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = (d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)(new Date());
     document.getElementById('hist-from').value = today;
     document.getElementById('hist-to').value   = today;
     loadHistory();

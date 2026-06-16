@@ -30,13 +30,13 @@ def _next_return_number(cur):
 
 
 def _calc_line(rate, qty, discount_pct, gst_rate):
-    base          = rate * qty
-    after_disc    = base * (1 - discount_pct / 100)
-    gst_amount    = round(after_disc * gst_rate / 100, 2)
+    # rate_at_sale is GST-inclusive (mirrors sales.py calculate_invoice_item).
+    # total_line_amount = qty * rate, discounted; ex-GST is back-calculated.
+    total         = round(rate * qty * (1 - discount_pct / 100), 2)
+    excl_gst      = round(total / (1 + gst_rate / 100), 2)
+    gst_amount    = round(total - excl_gst, 2)
     sgst          = round(gst_amount / 2, 2)
     cgst          = round(gst_amount - sgst, 2)
-    total         = round(after_disc + gst_amount, 2)
-    excl_gst      = round(after_disc, 2)
     return dict(exclusive_gst_amount=excl_gst, sgst=sgst, cgst=cgst,
                 total_line_amount=total, total_gst=gst_amount)
 
@@ -62,7 +62,7 @@ def get_returnable_items(payload, invoice_id):
         if not invoice:
             return jsonify({'message': 'Invoice not found'}), 404
         if invoice['status'] == 'Cancelled':
-            return jsonify({'message': 'Cannot return a cancelled invoice'}), 400
+            return jsonify({'message': 'This invoice has been fully returned and is cancelled'}), 400
 
         cur.execute("""
             SELECT
@@ -281,6 +281,29 @@ def create_return(payload):
                 SET stock_quantity = stock_quantity + %s
                 WHERE product_id = %s
             """, (li['quantity'], li['product_id']))
+
+        # Mark original invoice Cancelled if all items are fully returned
+        cur.execute("""
+            SELECT
+                COALESCE(SUM(sii.quantity), 0) AS total_qty,
+                COALESCE(SUM(
+                    (SELECT COALESCE(SUM(sri.quantity), 0)
+                     FROM sales_return_items sri
+                     WHERE sri.original_item_id = sii.item_id)
+                ), 0) AS total_returned
+            FROM sales_invoice_items sii
+            WHERE sii.invoice_id = %s
+        """, (invoice_id,))
+        qty_row = cur.fetchone()
+        if int(qty_row['total_qty']) > 0 and int(qty_row['total_qty']) == int(qty_row['total_returned']):
+            cur.execute("""
+                UPDATE sales_invoices
+                SET status = 'Cancelled',
+                    cancel_reason = %s,
+                    cancelled_at  = CURRENT_TIMESTAMP,
+                    cancelled_by  = %s
+                WHERE invoice_id = %s
+            """, (f'Fully returned via {return_number}', user_id, invoice_id))
 
         conn.commit()
         logger.info("Return %s created (invoice %s)", return_number, invoice['invoice_number'])
