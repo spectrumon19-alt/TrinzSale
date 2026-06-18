@@ -672,6 +672,29 @@ tr:last-child td   { border-bottom: none; }
 }
 .btn-cancel:hover { background: var(--secondary-hover); transform: translateY(-2px); }
 
+/* ── Touch-friendly tap targets ─────────────────────────────── */
+/* Ensures interactive elements are at least 44px tall on touch screens */
+@media (hover: none) and (pointer: coarse) {
+    .btn-primary, .btn-success, .btn-warning,
+    .btn-secondary, .remove-btn, .btn-danger,
+    #nav-logout-btn,
+    .search-result-item,
+    .nav-link { min-height: 44px; }
+
+    /* Larger inputs on touch */
+    .form-group input,
+    .form-group select,
+    .form-group textarea { min-height: 44px; font-size: 1rem; }
+
+    /* Table rows easier to tap */
+    th, td { padding: .7rem .6rem; }
+}
+
+/* ── Table overflow wrapper ──────────────────────────────────── */
+/* Any table not inside .invoice-items gets auto-scroll on overflow */
+.overflow-x-auto,
+[class*="overflow-x-auto"] { -webkit-overflow-scrolling: touch; }
+
 /* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar            { width: 7px; height: 7px; }
 ::-webkit-scrollbar-track      { background: transparent; }
@@ -813,37 +836,113 @@ html.dark ::-webkit-scrollbar-thumb { background: #253650; border-radius: 4px; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5470; }
 
 /* ── Responsive ─────────────────────────────────────────────── */
+
+/* ── Tablet: 768px ── */
 @media (max-width: 768px) {
-    .container { padding: 1rem; }
-    header     { flex-direction: column; gap: 1rem; padding: 1rem; text-align: center; }
-    header h1  { font-size: 1.35rem; }
-    .nav-container { flex-direction: column; padding: .75rem 0; gap: .5rem; }
-    .nav-tabs       { flex-direction: column; width: 100%; }
-    .nav-link       { justify-content: center; padding: .85rem 1rem; font-size: .95rem; }
-    .nav-user       { flex-direction: column; gap: .5rem; padding: .5rem 0; align-items: center; }
-    .product-search { grid-template-columns: 1fr; gap: .9rem; }
-    .invoice-actions{ flex-direction: column; }
-    table           { font-size: .875rem; min-width: 37rem; }
-    th, td          { padding: .75rem .6rem; }
-    .summary-row    { font-size: .95rem; }
-    .grand-total    { font-size: 1.25rem; }
-    main            { padding: 1.25rem; border-radius: .625rem; }
-    .sales-screen   { padding: 1.25rem; border-radius: .625rem; }
-    .form-row       { grid-template-columns: 1fr; gap: .9rem; }
-    .footer-container { grid-template-columns: 1fr 1fr; padding: 2rem 1rem 1rem; }
-    .invoice-summary  { padding: 1.25rem; }
+    .container  { padding: .875rem; }
+    header      { flex-direction: column; gap: .75rem; padding: .875rem 1rem; text-align: center; }
+    header h1   { font-size: 1.25rem; }
+    .nav-container { flex-direction: column; padding: .625rem 0; gap: .4rem; }
+    .nav-tabs      { flex-direction: column; width: 100%; }
+    .nav-link      { justify-content: center; padding: .75rem 1rem; font-size: .9rem; }
+    .nav-user      { flex-direction: column; gap: .5rem; padding: .5rem 0; align-items: center; }
+    .product-search { grid-template-columns: 1fr; gap: .75rem; }
+    .invoice-actions { flex-direction: column; }
+    /* Wrap table in scrollable container — no fixed min-width */
+    .invoice-items  { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table           { font-size: .85rem; min-width: 32rem; }
+    th, td          { padding: .65rem .55rem; }
+    .summary-row    { font-size: .9rem; }
+    .grand-total    { font-size: 1.2rem; }
+    main            { padding: 1.125rem; border-radius: .5rem; }
+    .sales-screen   { padding: 1.125rem; border-radius: .5rem; }
+    .form-row       { grid-template-columns: 1fr; gap: .75rem; }
+    .footer-container { grid-template-columns: 1fr 1fr; padding: 1.75rem 1rem 1rem; gap: 1.25rem; }
+    .invoice-summary  { padding: 1rem; }
 }
 
-@media (max-width: 480px) {
-    .container { padding: .75rem; }
-    header h1  { font-size: 1.2rem; }
-    main, .sales-screen { padding: 1rem; }
-    table      { font-size: .8rem; min-width: 30rem; }
-    th, td     { padding: .6rem .5rem; }
-    .grand-total { font-size: 1.1rem; }
-    #edit-modal .modal-content { padding: 1.25rem; width: 92%; }
+/* ── Large mobile: 640px ── */
+@media (max-width: 640px) {
+    /* Content area shifts to full width — sidebar is off-canvas */
+    .md\:ml-\[220px\] { margin-left: 0 !important; }
+
+    /* Shared header: tighten up */
+    #pos-header { padding: 0 .75rem; gap: .5rem; }
+    #pos-header .hd-title { font-size: .85rem; }
+    #pos-header .hd-sub   { display: none; }
+
+    /* Hide desktop pin-sidebar toggle in header on small screens */
+    #pos-header .hidden.md\:flex { display: none !important; }
+
+    /* Tables: horizontal scroll with touch momentum */
+    table { min-width: 28rem; font-size: .82rem; }
+    th, td { padding: .55rem .45rem; }
+
+    /* Footer: single column */
+    .footer-container { grid-template-columns: 1fr; padding: 1.5rem .875rem 1rem; gap: 1rem; }
+
+    /* Modals: full-width with margin */
+    #edit-modal .modal-content { width: 95%; padding: 1.125rem; }
+
+    /* Buttons: slightly smaller on mobile */
     .btn-primary, .btn-success, .btn-warning,
-    .btn-secondary, .remove-btn, .btn-danger { padding: .6rem 1rem; font-size: .85rem; }
+    .btn-secondary, .remove-btn, .btn-danger {
+        padding: .55rem .9rem; font-size: .83rem; min-height: 2.5rem;
+    }
+
+    /* Invoice summary tighter */
+    .invoice-summary { padding: .875rem; }
+    .grand-total { font-size: 1.1rem; }
+
+    /* Form inputs: larger touch targets */
+    .form-group input,
+    .form-group select,
+    .form-group textarea { min-height: 2.875rem; font-size: 1rem; }
+}
+
+/* ── Small mobile: 480px ── */
+@media (max-width: 480px) {
+    .container { padding: .625rem; }
+    main, .sales-screen { padding: .875rem; border-radius: .375rem; }
+
+    /* Header: compress */
+    #pos-header { height: 50px; padding: 0 .625rem; }
+    #pos-header .hd-title { font-size: .8rem; letter-spacing: -.2px; }
+
+    /* Tables: minimal but still scrollable */
+    table  { min-width: 24rem; font-size: .78rem; }
+    th, td { padding: .5rem .4rem; }
+
+    /* KPI / summary */
+    .grand-total { font-size: 1rem; }
+    .summary-row { font-size: .85rem; }
+
+    /* Buttons: full tap targets */
+    .btn-primary, .btn-success, .btn-warning,
+    .btn-secondary, .remove-btn, .btn-danger {
+        padding: .55rem .75rem; font-size: .8rem;
+    }
+
+    /* Edit modal: full-width */
+    #edit-modal .modal-content { padding: 1rem; width: 97%; }
+
+    /* Footer */
+    .footer-container { padding: 1.25rem .75rem .875rem; }
+    .footer-bottom    { font-size: .75rem; padding: 1rem; }
+}
+
+/* ── Extra small: 380px ── */
+@media (max-width: 380px) {
+    #pos-header { height: 46px; }
+    #pos-header .hd-title { font-size: .75rem; }
+    #nav-logout-btn { font-size: .68rem; padding: .3rem .55rem; }
+    table  { min-width: 20rem; font-size: .75rem; }
+    th, td { padding: .45rem .35rem; }
+    main, .sales-screen { padding: .75rem; }
+    .btn-primary, .btn-success, .btn-warning,
+    .btn-secondary, .remove-btn, .btn-danger {
+        padding: .5rem .65rem; font-size: .78rem; min-height: 2.375rem;
+    }
 }
 
 /* ============================================================
@@ -857,6 +956,22 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5470; }
     width: 220px !important;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Smooth slide in/out on mobile */
+    transition: transform .2s ease;
+}
+
+/* On mobile (< 768px) sidebar slides off-canvas by default.
+   Tailwind's -translate-x-full class does this; we add z-index
+   and ensure the main content fills the full width. */
+@media (max-width: 767px) {
+    #sidebar {
+        position: fixed !important;
+        top: 0; left: 0; bottom: 0;
+        z-index: 50;
+        /* Width already 220px; Tailwind handles translate via JS */
+    }
+    /* Hamburger button: always show on mobile */
+    #menu-toggle { display: flex !important; }
 }
 /* Thin custom scrollbar — visible only when content overflows */
 #sidebar::-webkit-scrollbar {
@@ -976,4 +1091,13 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5470; }
 [data-theme="dark"] #nav-logout-btn {
     background: rgba(225,29,72,.12);
     border-color: rgba(225,29,72,.3);
+}
+
+/* ── Mobile header: compact on very small screens ───────────── */
+@media (max-width: 480px) {
+    /* Compact logout — keep SVG icon only by clipping text via overflow */
+    #nav-logout-btn { padding: .35rem .45rem; font-size: 0; gap: 0; }
+    #nav-logout-btn svg { width: 1rem; height: 1rem; }
+    /* Hide username greeting */
+    #headerUserInfo { display: none !important; }
 }

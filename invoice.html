@@ -35,30 +35,44 @@
             background-color: #fff;
         }
         
+        /* ── Invoice header ── */
         .header {
-            text-align: center;
-            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid #1a5c1a;
+            margin-bottom: 14px;
         }
-        
+        .header-logo {
+            flex-shrink: 0;
+            width: 80px; height: 80px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .header-logo img {
+            width: 80px; height: 80px;
+            object-fit: contain; display: block;
+        }
+        .header-info { flex: 1; }
         .company-name {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-size: 22px; font-weight: 800;
+            color: #1a5c1a; letter-spacing: .5px;
+            margin-bottom: 2px; line-height: 1.1;
         }
-        
-        .company-details {
-            font-size: 12px;
-            margin-bottom: 5px;
+        .company-tagline {
+            font-size: 11px; color: #555; font-style: italic;
+            margin-bottom: 4px;
         }
-        
-        .company-address {
-            font-size: 12px;
-            margin-bottom: 5px;
-        }
-        
-        .company-licenses {
-            font-size: 11px;
-            margin-bottom: 10px;
+        .company-details { font-size: 11px; color: #333; margin-bottom: 2px; }
+        .company-address { font-size: 11px; color: #444; margin-bottom: 2px; }
+        .company-licenses { font-size: 10px; color: #666; line-height: 1.5; }
+        .header-badge {
+            flex-shrink: 0;
+            background: #1a5c1a; color: #fff;
+            font-size: 11px; font-weight: 700;
+            padding: 5px 12px; border-radius: 4px;
+            letter-spacing: .5px; text-align: center;
+            align-self: flex-start;
         }
         
         .invoice-info {
@@ -328,25 +342,21 @@
             
             /* Reduce header size for print */
             .header {
-                margin-bottom: 10px;
+                margin-bottom: 10px; padding-bottom: 10px;
+                border-bottom: 2px solid #1a5c1a !important;
                 page-break-inside: avoid;
-                color: black !important;
                 background-color: white !important;
             }
-            
-            .company-name {
-                font-size: 18px;
-                color: black !important;
-                background-color: white !important;
-            }
-            
+            .header-logo { width: 64px !important; height: 64px !important; }
+            .header-logo img { width: 64px !important; height: 64px !important; }
+            .company-name { font-size: 18px; color: #1a5c1a !important; }
+            .company-tagline { color: #444 !important; }
             .company-details,
             .company-address,
-            .company-licenses {
-                font-size: 10px;
-                color: black !important;
-                background-color: white !important;
-            }
+            .company-licenses { font-size: 9px; color: #333 !important; }
+            .header-badge { font-size: 10px !important; background: #1a5c1a !important; color: #fff !important; }
+            .powered-by { color: #aaa !important; }
+            .powered-by strong { color: #888 !important; }
             
             /* Make UPI and mobile values bold for better visibility */
             #upi-transaction-id,
@@ -388,6 +398,25 @@
             }
         }
 
+        /* ── Powered-by footer ── */
+        .powered-by {
+            margin-top: 14px;
+            padding-top: 8px;
+            border-top: 1px solid #d1d5db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 9.5px;
+            color: #9ca3af;
+            letter-spacing: .3px;
+        }
+        .powered-by strong { color: #6b7280; font-weight: 700; }
+        .powered-by-logo {
+            height: 14px; width: auto;
+            opacity: .55; vertical-align: middle;
+        }
+
         /* =================== THERMAL 80mm MODE =================== */
         body.thermal-mode .main-content { max-width: 80mm; padding: 2px; background: #fff; }
         body.thermal-mode .invoice-container { border: none; padding: 3px; font-family: 'Courier New', Courier, monospace; background: #fff; }
@@ -422,11 +451,18 @@
         <div class="invoice-container">
             <div id="a4-content">
             <div class="header">
-                <img src="assets/logo.png" alt="Nandi Agro" style="height:60px;width:auto;object-fit:contain;display:block;margin:0 auto 6px;">
-                <div class="company-details">Dealers in Fertilisers, Pesticides & Seeds</div>
-                <div class="company-address">#2454, Agasi Main Road, Sangameshwar Circle, Kolhar - 586210, Dist. Vijayapur</div>
-                <div class="company-details">GST: 29AASFN9214H1ZP | Cell: 8660180378 / 9148271333</div>
-                <div class="company-licenses">Fertiliser Lic: FE19-20103879 | Pesticide Lic: JDA/VJ/PL/PE19-2099256/2021-2022 | Seed Lic: VJ/SE19-20104382/2021</div>
+                <div class="header-logo">
+                    <img src="assets/nandiAgro.png" alt="Nandi Agro">
+                </div>
+                <div class="header-info">
+                    <div class="company-name">NANDI AGRO</div>
+                    <div class="company-tagline">Trusted Quality &bull; Better Harvest &bull; Prosperous Future</div>
+                    <div class="company-details">Dealers in Fertilisers, Pesticides &amp; Seeds</div>
+                    <div class="company-address">#2454, Agasi Main Road, Sangameshwar Circle, Kolhar – 586210, Dist. Vijayapur</div>
+                    <div class="company-details">GST: 29AASFN9214H1ZP &nbsp;|&nbsp; Cell: 8660180378 / 9148271333</div>
+                    <div class="company-licenses">Fertiliser Lic: FE19-20103879 &nbsp;|&nbsp; Pesticide Lic: JDA/VJ/PL/PE19-2099256/2021-2022 &nbsp;|&nbsp; Seed Lic: VJ/SE19-20104382/2021</div>
+                </div>
+                <div class="header-badge">TAX<br>INVOICE</div>
             </div>
             
             <div class="invoice-info">
@@ -531,18 +567,26 @@
             </div>
             
             <div class="signature">
-                <div>For TrintzPOS</div>
-                <div class="signature-line">Signature</div>
+                <div>For <strong>Nandi Agro</strong></div>
+                <div class="signature-line">Authorised Signatory</div>
+            </div>
+
+            <div class="powered-by">
+                <span>Powered by</span>
+                <img src="assets/logo.png" alt="TrintzPOS" class="powered-by-logo">
+                <strong>TrintzPOS</strong>
+                <span>&mdash; Smart Billing for Agri Retail</span>
             </div>
             </div><!-- /a4-content -->
 
             <!-- Thermal 80mm receipt -->
             <div id="thermal-receipt">
                 <div class="th-center">
-                    <img src="assets/logo.png" alt="Nandi Agro" style="height:36px;width:auto;display:block;margin:0 auto 3px;">
-                    <div style="font-size:12px;font-weight:bold;">NANDI AGRO</div>
-                    <div style="font-size:8px;">Dealers in Fertilisers, Pesticides &amp; Seeds</div>
-                    <div style="font-size:8px;">#2454, Agasi Main Road, Kolhar - 586210</div>
+                    <img src="assets/nandiAgro.png" alt="Nandi Agro" style="height:48px;width:auto;display:block;margin:0 auto 4px;">
+                    <div style="font-size:13px;font-weight:900;letter-spacing:1px;">NANDI AGRO</div>
+                    <div style="font-size:8px;font-style:italic;margin-bottom:2px;">Trusted Quality · Better Harvest · Prosperous Future</div>
+                    <div style="font-size:8px;">Fertilisers, Pesticides &amp; Seeds</div>
+                    <div style="font-size:8px;">#2454, Agasi Main Road, Kolhar – 586210</div>
                     <div style="font-size:8px;">GST: 29AASFN9214H1ZP | Ph: 8660180378</div>
                 </div>
                 <div class="th-divider"></div>
@@ -557,6 +601,9 @@
                     <div>Goods once sold will not be taken back.</div>
                     <div>Use for Agriculture Purpose Only.</div>
                     <div style="margin-top:4px;font-weight:bold;">** Thank You — Visit Again **</div>
+                    <div style="margin-top:6px;border-top:1px dashed #bbb;padding-top:4px;font-size:8px;color:#888;">
+                        Powered by <strong style="color:#555;">TrintzPOS</strong>
+                    </div>
                 </div>
                 <div class="th-divider"></div>
             </div><!-- /thermal-receipt -->

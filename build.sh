@@ -1,53 +1,52 @@
 #!/bin/bash
-# Build script for Render deployment
+set -e
 
-# Print environment variables for debugging
-echo "Environment variables:"
-echo "PYTHON_VERSION: $PYTHON_VERSION"
-echo "PORT: $PORT"
-echo "PIP_REQUIREMENTS_FILE: $PIP_REQUIREMENTS_FILE"
+echo "============================================================"
+echo "TrintzPOS — Render build script"
+echo "============================================================"
 
-# Explicitly set Python version
-export PYTHON_VERSION=3.11.9
+echo "Python version: $(python --version)"
+echo "pip version:    $(pip --version)"
 
-# Set environment variables to force binary installations
-export PIP_ONLY_BINARY=:all:
-export PIP_PREFER_BINARY=true
-export PIP_NO_CACHE_DIR=false
-
-# Print Python version for debugging
-echo "Python version before installation:"
-python --version
-
-# Print current directory and files for debugging
-echo "Current directory:"
-pwd
-echo "Files in current directory:"
-ls -la
-
-# Update pip to the latest version
+# ── Python dependencies ───────────────────────────────────────────────────────
+echo ""
 echo "Updating pip..."
 pip install --upgrade pip
 
-# Install other dependencies with optimization flags
-# Use --prefer-binary to prefer pre-compiled wheels over source distributions
-echo "Installing requirements..."
+echo ""
+echo "Installing Python requirements..."
 pip install --prefer-binary --no-cache-dir -r requirements.txt
 
-# Print installed packages for debugging
+echo ""
 echo "Installed packages:"
 pip list
 
-# Print Python version after installation
-echo "Python version after installation:"
-python --version
+# ── Smoke-test PDF generation ─────────────────────────────────────────────────
+echo ""
+echo "Smoke-testing xhtml2pdf..."
+python - <<'EOF'
+try:
+    from io import BytesIO
+    from xhtml2pdf import pisa
+    buf = BytesIO()
+    result = pisa.CreatePDF('<p>TrintzPOS OK</p>', dest=buf)
+    assert not result.err and len(buf.getvalue()) > 100
+    print("[PASS] xhtml2pdf rendered a test PDF successfully.")
+except Exception as e:
+    print(f"[WARN] xhtml2pdf smoke test failed: {e}")
+    print("[WARN] PDF email attachments will fall back to HTML body.")
+EOF
 
-# Test gunicorn installation
-echo "Testing gunicorn..."
-if command -v gunicorn &> /dev/null
-then
-    echo "gunicorn is installed"
-    gunicorn --version
+# ── Gunicorn check ────────────────────────────────────────────────────────────
+echo ""
+if command -v gunicorn &>/dev/null; then
+    echo "gunicorn $(gunicorn --version) — ready."
 else
-    echo "gunicorn is not installed"
+    echo "[FAIL] gunicorn not found."
+    exit 1
 fi
+
+echo ""
+echo "============================================================"
+echo "Build complete."
+echo "============================================================"

@@ -629,6 +629,10 @@ function buildReceiptHTML(r, items) {
             <td style="text-align:right;padding:3px 0;font-size:12px;color:#111;white-space:nowrap;">&#x20B9;${fmt(i.total_line_amount)}</td>
         </tr>`).join('');
 
+    // Use absolute URL for logo so it works inside srcdoc iframe
+    const logoSrc = new URL('assets/nandiAgro.png', window.location.origin).href;
+    const poweredLogoSrc = new URL('assets/logo.png', window.location.origin).href;
+
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -637,44 +641,81 @@ function buildReceiptHTML(r, items) {
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Segoe UI', Arial, sans-serif;
     font-size: 13px;
     background: #fff;
     color: #111;
-    padding: 20px 24px;
+    padding: 18px 22px;
     max-width: 380px;
     margin: 0 auto;
   }
-  .co-name { text-align:center; font-size:20px; font-weight:900; letter-spacing:3px; margin-bottom:2px; }
-  .co-sub  { text-align:center; font-size:11px; color:#666; margin-bottom:8px; }
-  .title-wrap { text-align:center; margin-bottom:4px; }
-  .title { font-size:11px; font-weight:700; border:1.5px solid #111;
-           display:inline-block; padding:3px 14px; letter-spacing:1.5px; }
-  .dash  { color:#bbb; font-size:10px; text-align:center; letter-spacing:2px; margin:8px 0; }
-  .kv    { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:2px; }
-  .kv td { padding:2px 0; vertical-align:top; }
-  .kv td:first-child { color:#555; width:44%; white-space:nowrap; }
-  .kv td:last-child  { font-weight:600; text-align:right; }
+  /* ── Header ── */
+  .rcpt-header {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #1a5c1a;
+    margin-bottom: 8px;
+  }
+  .rcpt-header img { width:56px; height:56px; object-fit:contain; flex-shrink:0; }
+  .rcpt-co-name  { font-size:16px; font-weight:900; color:#1a5c1a; letter-spacing:.5px; line-height:1.1; }
+  .rcpt-co-tag   { font-size:9px; color:#666; font-style:italic; margin-top:1px; }
+  .rcpt-co-sub   { font-size:9px; color:#555; margin-top:2px; }
+  /* ── Badge ── */
+  .title-wrap { text-align:center; margin:8px 0 4px; }
+  .title { font-size:11px; font-weight:700; background:#1a5c1a; color:#fff;
+           display:inline-block; padding:3px 16px; border-radius:3px; letter-spacing:1.5px; }
+  /* ── Lines ── */
+  .dash  { color:#ccc; font-size:10px; text-align:center; letter-spacing:2px; margin:7px 0; }
+  /* ── KV table ── */
+  .kv    { width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:2px; }
+  .kv td { padding:2.5px 0; vertical-align:top; }
+  .kv td:first-child { color:#666; width:44%; white-space:nowrap; }
+  .kv td:last-child  { font-weight:600; text-align:right; color:#111; }
+  /* ── Items ── */
   .items { width:100%; border-collapse:collapse; font-size:12px; margin:4px 0; }
-  .items th { font-size:11px; font-weight:700; padding:4px 0; border-bottom:1px solid #888;
-              background:transparent; color:#111; }
+  .items th { font-size:10.5px; font-weight:700; padding:4px 0; border-bottom:1.5px solid #1a5c1a;
+              background:transparent; color:#1a5c1a; }
   .items th:first-child { text-align:left; }
   .items th:nth-child(2){ text-align:center; width:36px; }
   .items th:last-child  { text-align:right; }
   .items td { padding:3px 0; }
-  .totals { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
-  .totals td { padding:2px 0; }
+  /* ── Totals ── */
+  .totals { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .totals td { padding:2.5px 0; }
   .totals td:last-child { text-align:right; }
-  .grand td { font-size:15px; font-weight:900; padding-top:6px; border-top:1.5px solid #111; }
-  .footer { text-align:center; font-size:10px; color:#999; margin-top:12px; line-height:1.8; }
-  .refund-method { color:#059669; font-weight:700; }
-  @media print { body { padding:10px 15px; } }
+  .grand td { font-size:15px; font-weight:900; padding-top:7px; border-top:2px solid #1a5c1a;
+              color:#1a5c1a; }
+  .sub-row td { font-size:10.5px; color:#777; padding-left:8px; }
+  /* ── Refund badge ── */
+  .refund-method { background:#dcfce7; color:#15803d; font-weight:700;
+                   padding:1px 7px; border-radius:4px; }
+  /* ── Footer ── */
+  .footer { text-align:center; font-size:10px; color:#aaa; margin-top:10px; line-height:1.7; }
+  /* ── Powered by ── */
+  .powered-by {
+    margin-top:10px; padding-top:7px;
+    border-top:1px dashed #e5e7eb;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    font-size:9px; color:#bbb; font-family:'Segoe UI',Arial,sans-serif;
+  }
+  .powered-by img { height:13px; width:auto; opacity:.5; vertical-align:middle; }
+  .powered-by strong { color:#999; font-weight:700; }
+  @media print { body { padding:10px 14px; } }
 </style>
 </head>
 <body>
-  <div class="co-name">TRINTZPOS</div>
-  <div class="co-sub">Point of Sale System</div>
-  <div class="title-wrap"><span class="title">RETURN RECEIPT</span></div>
+  <!-- Header with Nandi Agro logo -->
+  <div class="rcpt-header">
+    <img src="${logoSrc}" alt="Nandi Agro">
+    <div>
+      <div class="rcpt-co-name">NANDI AGRO</div>
+      <div class="rcpt-co-tag">Trusted Quality &bull; Better Harvest &bull; Prosperous Future</div>
+      <div class="rcpt-co-sub">Fertilisers &bull; Pesticides &bull; Seeds</div>
+      <div class="rcpt-co-sub">GST: 29AASFN9214H1ZP &nbsp;&bull;&nbsp; Ph: 8660180378</div>
+    </div>
+  </div>
+
+  <div class="title-wrap"><span class="title">RETURN / CREDIT NOTE</span></div>
   <div class="dash">- - - - - - - - - - - - - - - - - -</div>
 
   <table class="kv">
@@ -683,7 +724,7 @@ function buildReceiptHTML(r, items) {
     <tr><td>Orig. Invoice</td><td>${r.original_invoice_number}</td></tr>
     <tr><td>Customer</td><td>${r.customer_name || 'Walk-in'}</td></tr>
     <tr><td>Reason</td><td>${r.return_reason}</td></tr>
-    <tr><td>Refund Via</td><td class="refund-method">${r.refund_method}</td></tr>
+    <tr><td>Refund Via</td><td><span class="refund-method">${r.refund_method}</span></td></tr>
   </table>
 
   <div class="dash">- - - - - - - - - - - - - - - - - -</div>
@@ -703,15 +744,21 @@ function buildReceiptHTML(r, items) {
 
   <table class="totals">
     <tr class="grand"><td>Total Refund (incl. GST)</td><td>&#x20B9;${fmt(r.total_amount)}</td></tr>
-    <tr style="font-size:11px;color:#555;"><td>&nbsp;&nbsp;Taxable Value</td><td>&#x20B9;${fmt(r.subtotal)}</td></tr>
-    <tr style="font-size:11px;color:#555;"><td>&nbsp;&nbsp;GST (incl. in above)</td><td>&#x20B9;${fmt(r.total_gst)}</td></tr>
+    <tr class="sub-row"><td>&nbsp;Taxable Value</td><td>&#x20B9;${fmt(r.subtotal)}</td></tr>
+    <tr class="sub-row"><td>&nbsp;GST (incl. above)</td><td>&#x20B9;${fmt(r.total_gst)}</td></tr>
   </table>
 
   <div class="dash">- - - - - - - - - - - - - - - - - -</div>
   <div class="footer">
     Thank you for your patience.<br>
-    Processed by TrintzPOS<br>
     ${new Date().toLocaleString('en-IN')}
+  </div>
+
+  <div class="powered-by">
+    <span>Powered by</span>
+    <img src="${poweredLogoSrc}" alt="TrintzPOS">
+    <strong>TrintzPOS</strong>
+    <span>&mdash; Smart Billing for Agri Retail</span>
   </div>
 </body>
 </html>`;
