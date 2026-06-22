@@ -18,11 +18,11 @@ PROVIDERS = {
         'name': 'Anthropic Claude',
         'icon': '🟣',
         'models': [
-            'claude-haiku-4-5-20251001',
-            'claude-sonnet-4-6',
+            'claude-opus-4-8',
             'claude-opus-4-7',
-            'claude-3-5-haiku-20241022',
-            'claude-3-5-sonnet-20241022',
+            'claude-sonnet-4-6',
+            'claude-haiku-4-5',
+            'claude-haiku-4-5-20251001',
         ],
         'needs_key': True,
         'needs_url': False,
@@ -189,8 +189,50 @@ def _mask(key: str) -> str:
     return key[:4] + '••••••••' + key[-4:]
 
 
+# ── Helper: reject obviously-invalid keys before they reach the DB ────────────
+def _validate_key(provider: str, key: str):
+    """Return an error string if the key is clearly not a valid key, else None.
+    Guards against pasting error text / partial keys into the key field."""
+    key = key or ''
+    if any(ch.isspace() for ch in key):
+        return 'API key contains spaces or line breaks — paste the key only, with no surrounding text.'
+    if any(ord(c) > 127 for c in key):
+        return 'API key contains hidden non-ASCII characters — re-copy it directly from the provider console.'
+    if provider == 'anthropic':
+        if not key.startswith('sk-ant-'):
+            return 'Anthropic keys start with "sk-ant-". The value you pasted does not look like an API key.'
+        if len(key) < 40:
+            return 'Anthropic key looks truncated — copy the full key from console.anthropic.com.'
+    return None
+
+
 # ── Helper: call any provider ─────────────────────────────────────────────────
-def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 1024) -> str:
+def _log_token_usage(provider: str, model: str, feature: str,
+                      prompt_tokens: int, output_tokens: int,
+                      user_id=None, username: str = '') -> None:
+    """Fire-and-forget insert into ai_token_usage. Errors are suppressed."""
+    try:
+        from db import get_db_connection, release_db_connection
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO ai_token_usage
+                        (user_id, username, provider, model, feature,
+                         prompt_tokens, output_tokens, total_tokens)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (user_id, username or '', provider, model, feature,
+                      prompt_tokens, output_tokens, prompt_tokens + output_tokens))
+            conn.commit()
+        finally:
+            release_db_connection(conn)
+    except Exception:
+        pass  # never break the caller over analytics
+
+
+def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 1024,
+                  feature: str = 'chat', user_id=None, username: str = '') -> str:
+    """Call the configured LLM provider and log token usage to ai_token_usage."""
     provider = config.get('provider', '')
     api_key  = config.get('api_key', '')
     model    = config.get('model', '')
@@ -204,12 +246,31 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
 
     if provider == 'anthropic':
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model=model, max_tokens=max_tokens,
-            system=system,
-            messages=[{'role': 'user', 'content': user_msg}],
-        )
+        key = (api_key or '').strip()
+        if not key:
+            raise RuntimeError('Anthropic API key is missing. Paste your sk-ant-… key and save.')
+        if not model:
+            raise RuntimeError('No Claude model selected. Pick a model (e.g. claude-sonnet-4-6).')
+        client = anthropic.Anthropic(api_key=key)
+        try:
+            msg = client.messages.create(
+                model=model, max_tokens=max_tokens,
+                system=system,
+                messages=[{'role': 'user', 'content': user_msg}],
+            )
+        except anthropic.AuthenticationError:
+            raise RuntimeError('Invalid Anthropic API key (401). Check the key is correct and active.')
+        except anthropic.PermissionDeniedError:
+            raise RuntimeError(f'API key lacks access to "{model}" (403). Enable the model for your org or pick another.')
+        except anthropic.NotFoundError:
+            raise RuntimeError(f'Model "{model}" not found (404). It may be retired — pick a current model like claude-sonnet-4-6.')
+        except anthropic.RateLimitError:
+            raise RuntimeError('Anthropic rate limit hit (429). Wait a moment and try again.')
+        except anthropic.APIConnectionError as e:
+            raise RuntimeError(f'Could not reach Anthropic (network/SSL/proxy). {e}')
+        pt = getattr(msg.usage, 'input_tokens', 0)
+        ot = getattr(msg.usage, 'output_tokens', 0)
+        _log_token_usage(provider, model, feature, pt, ot, user_id, username)
         return msg.content[0].text.strip()
 
     elif provider == 'mimo':
@@ -232,7 +293,12 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             timeout=120,
         )
         r.raise_for_status()
-        return r.json()['choices'][0]['message']['content'].strip()
+        data = r.json()
+        usage = data.get('usage', {})
+        _log_token_usage(provider, model, feature,
+                         usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0),
+                         user_id, username)
+        return data['choices'][0]['message']['content'].strip()
 
     elif provider in ('openai', 'together', 'mistral'):
         base = {
@@ -257,7 +323,12 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             timeout=30,
         )
         r.raise_for_status()
-        return r.json()['choices'][0]['message']['content'].strip()
+        data = r.json()
+        usage = data.get('usage', {})
+        _log_token_usage(provider, model, feature,
+                         usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0),
+                         user_id, username)
+        return data['choices'][0]['message']['content'].strip()
 
     elif provider == 'groq':
         r = requests.post(
@@ -275,7 +346,12 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             timeout=30,
         )
         r.raise_for_status()
-        return r.json()['choices'][0]['message']['content'].strip()
+        data = r.json()
+        usage = data.get('usage', {})
+        _log_token_usage(provider, model, feature,
+                         usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0),
+                         user_id, username)
+        return data['choices'][0]['message']['content'].strip()
 
     elif provider == 'ollama':
         base = base_url or 'http://localhost:11434'
@@ -297,7 +373,11 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             timeout=120,
         )
         r.raise_for_status()
-        return r.json()['message']['content'].strip()
+        data = r.json()
+        pt = data.get('prompt_eval_count', 0)
+        ot = data.get('eval_count', 0)
+        _log_token_usage(provider, model, feature, pt, ot, user_id, username)
+        return data['message']['content'].strip()
 
     elif provider == 'gemini':
         r = requests.post(
@@ -309,7 +389,12 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             timeout=30,
         )
         r.raise_for_status()
-        return r.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+        data = r.json()
+        meta = data.get('usageMetadata', {})
+        _log_token_usage(provider, model, feature,
+                         meta.get('promptTokenCount', 0), meta.get('candidatesTokenCount', 0),
+                         user_id, username)
+        return data['candidates'][0]['content']['parts'][0]['text'].strip()
 
     elif provider == 'minimax':
         r = requests.post(
@@ -328,6 +413,10 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
         )
         r.raise_for_status()
         data = r.json()
+        usage = data.get('usage', {})
+        _log_token_usage(provider, model, feature,
+                         usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0),
+                         user_id, username)
         return data['choices'][0]['message']['content'].strip()
 
     else:
@@ -373,6 +462,10 @@ def create_setting(current_user):
         return jsonify({'error': 'Display name is required'}), 400
     if not model:
         return jsonify({'error': 'Model is required'}), 400
+    if api_key:
+        key_err = _validate_key(provider, api_key)
+        if key_err:
+            return jsonify({'error': key_err}), 400
 
     conn = get_db_connection()
     try:
@@ -410,6 +503,10 @@ def update_setting(current_user, cfg_id):
             extra_config = body.get('extra_config', row.get('extra_config') or {})
             # Only update key if provided (non-empty)
             new_key = (body.get('api_key') or '').strip()
+            if new_key:
+                key_err = _validate_key(row['provider'], new_key)
+                if key_err:
+                    return jsonify({'error': key_err}), 400
             api_key = new_key if new_key else row['api_key']
 
             cur.execute("""
@@ -491,6 +588,24 @@ def test_connection(current_user):
     if not config.get('provider'):
         return jsonify({'ok': False, 'error': 'Provider is required'}), 400
 
+    # ── Non-secret key diagnostic: pinpoints corrupted/partial keys without
+    #    ever exposing the key itself. Reports length, visible prefix/suffix,
+    #    and flags any hidden/non-ASCII characters or interior whitespace.
+    raw_key = config.get('api_key') or ''
+    stripped = raw_key.strip()
+    has_interior_ws = any(ch.isspace() for ch in stripped)
+    non_ascii = [hex(ord(c)) for c in stripped if ord(c) > 127][:5]
+    key_diag = {
+        'length':            len(raw_key),
+        'length_stripped':   len(stripped),
+        'prefix':            stripped[:7],
+        'suffix':            stripped[-4:] if len(stripped) >= 4 else '',
+        'had_outer_ws':      raw_key != stripped,
+        'has_interior_ws':   has_interior_ws,
+        'non_ascii_codes':   non_ascii,
+        'starts_with_skant': stripped.startswith('sk-ant-'),
+    }
+
     start = time.time()
     try:
         response = call_provider(
@@ -503,7 +618,12 @@ def test_connection(current_user):
         return jsonify({'ok': True, 'response': response, 'latency_ms': latency_ms})
     except Exception as e:
         logger.warning('AI test failed: %s', e)
-        return jsonify({'ok': False, 'error': str(e), 'latency_ms': round((time.time() - start) * 1000)})
+        return jsonify({
+            'ok': False,
+            'error': str(e),
+            'latency_ms': round((time.time() - start) * 1000),
+            'key_diag': key_diag,
+        })
 
 
 # ── GET /api/ai/active ────────────────────────────────────────────────────────

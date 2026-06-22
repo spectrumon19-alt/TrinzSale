@@ -11,13 +11,28 @@
     } catch (e) { /* localStorage unavailable */ }
 })();
 
+// ── Ensure Font Awesome is available for sidebar rail icons ──────────────────
+// Some pages don't load it; inject the CDN once so icons render everywhere.
+(function ensureFontAwesome() {
+    try {
+        const hasFA = Array.from(document.styleSheets || []).some(s =>
+            (s.href || '').includes('font-awesome') || (s.href || '').includes('fontawesome'));
+        const hasLink = document.querySelector('link[href*="font-awesome"],link[href*="fontawesome"]');
+        if (hasFA || hasLink) return;
+        const link = document.createElement('link');
+        link.rel  = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+        (document.head || document.documentElement).appendChild(link);
+    } catch (e) { /* ignore */ }
+})();
+
 // ── Enforce uniform sidebar link styling (matching dashboard.html: py-2 px-3 text-sm)
 // This runs synchronously during script parse, before DOM renders
 (function() {
     const style = document.createElement('style');
     style.id = 'sidebar-uniform-style';
     style.textContent = `
-        #sidebar a[href] {
+        #sidebar a[href]:not(.snav-link) {
             padding: 0.5rem 0.75rem !important;
             font-size: 0.875rem !important;
             line-height: 1.25rem !important;
@@ -25,6 +40,15 @@
         }
     `;
     (document.head || document.documentElement).appendChild(style);
+})();
+
+// ── Restore collapsed-rail state before first paint (prevents flash) ─────────
+(function applyRailStateEarly() {
+    try {
+        if (localStorage.getItem('sidebarRail') === 'true') {
+            document.documentElement.classList.add('sidebar-rail-mode');
+        }
+    } catch (e) { /* ignore */ }
 })();
 
 // License guard disabled - license checking removed per user request
@@ -117,64 +141,181 @@ function isCashier() {
 // Sidebar nav — grouped for clarity. Admin-only tools live inside admin.html, not here.
 const SIDEBAR_NAV_LINKS = [
     { group: 'Operations' },
-    { href: 'dashboard.html', icon: '🏠', label: 'Dashboard', permission: 'dashboard' },
-    { href: 'index.html',     icon: '🛒', label: 'Sales',     permission: 'sales'     },
-    { href: 'returns.html',   icon: '🔄', label: 'Returns',   permission: 'returns'   },
-    { href: 'purchase.html',  icon: '📥', label: 'Purchase',  permission: 'purchase'  },
-    { href: 'inventory.html', icon: '📦', label: 'Inventory', permission: 'inventory' },
+    { href: 'dashboard.html', icon: '🏠', fa: 'fa-house',          label: 'Dashboard', permission: 'dashboard' },
+    { href: 'index.html',     icon: '🛒', fa: 'fa-cart-shopping',  label: 'Sales',     permission: 'sales'     },
+    { href: 'returns.html',   icon: '🔄', fa: 'fa-rotate-left',    label: 'Returns',   permission: 'returns'   },
+    { href: 'purchase.html',  icon: '📥', fa: 'fa-download',       label: 'Purchase',  permission: 'purchase'  },
+    { href: 'inventory.html', icon: '📦', fa: 'fa-boxes-stacked',  label: 'Inventory', permission: 'inventory' },
 
     { group: 'Customers' },
-    { href: 'creditDashboard.html',    icon: '📒', label: 'Credit Dashboard', permission: 'credit' },
-    { href: 'creditManagement.html',   icon: '💳', label: 'Credit',    permission: 'credit' },
-    { href: 'customerManagement.html', icon: '👤', label: 'Customers', permission: 'credit' },
+    { href: 'creditDashboard.html',    icon: '📒', fa: 'fa-book',         label: 'Credit Dashboard', permission: 'credit' },
+    { href: 'creditManagement.html',   icon: '💳', fa: 'fa-credit-card',  label: 'Credit',    permission: 'credit' },
+    { href: 'customerManagement.html', icon: '👤', fa: 'fa-user',         label: 'Customers', permission: 'credit' },
 
     { group: 'Reports' },
-    { href: 'reports.html',     icon: '📊', label: 'Reports',     permission: 'reports'     },
-    { href: 'gst-reports.html', icon: '🧾', label: 'GST Reports', permission: 'gst-reports' },
+    { href: 'reports.html',     icon: '📊', fa: 'fa-chart-column',          label: 'Reports',     permission: 'reports'     },
+    { href: 'gst-reports.html', icon: '🧾', fa: 'fa-file-invoice-dollar',   label: 'GST Reports', permission: 'gst-reports' },
 
     { group: 'Tools' },
-    { href: 'ocrExcel.html',     icon: '📄', label: 'OCR → Excel',  permission: 'ocr-excel' },
+    { href: 'ocrExcel.html',     icon: '📄', fa: 'fa-file-excel',  label: 'OCR → Excel',  permission: 'ocr-excel' },
 
     { group: 'Admin' },
-    { href: 'admin.html',        icon: '⚙️', label: 'Admin Panel',  permission: 'admin'      },
-    { href: 'service.html',      icon: '🔧', label: 'Service',      permission: 'service'    },
-    { href: 'tally-export.html', icon: '📤', label: 'Tally Export', permission: 'tally-export' },
-    { href: 'backup.html',       icon: '🛡️', label: 'Auto Backup',  permission: 'backup'       },
-    { href: 'ai-settings.html',    icon: '🤖', label: 'AI Settings',    permission: 'ai-settings'  },
-    { href: 'knowledge-base.html', icon: '🧠', label: 'Knowledge Base', permission: 'ai-settings'  },
-    { href: 'license_activation.html', icon: '🔑', label: 'License',    permission: 'admin'        },
+    { href: 'admin.html',        icon: '⚙️', fa: 'fa-gear',          label: 'Admin Panel',  permission: 'admin'      },
+    // NOTE: Service, Tally Export, Auto Backup, AI Settings, Knowledge Base and
+    // License were removed from the sidebar to reduce clutter. They remain fully
+    // reachable as tiles inside the Admin Panel (admin.html). The Admin Panel is
+    // the single entry point for all administrative tools.
 ];
 
 // Inject sidebar nav styles once (CSS-variable-aware, dark-mode safe)
+// Supports a collapsible icon-only "rail" mode that expands on hover.
 (function injectSidebarStyles() {
     if (document.getElementById('_sidebar_nav_styles')) return;
     const s = document.createElement('style');
     s.id = '_sidebar_nav_styles';
     s.textContent = `
+        /* Single source of truth: sidebar width. Content margin reads the SAME
+           variable, so the two can never desync and content can't run off-screen. */
+        :root { --app-sidebar-w: 220px; }
+        html.sidebar-rail-mode { --app-sidebar-w: 64px; }
+
+        /* ── Sidebar as a flex column: logo fixed top, collapse btn fixed
+           bottom, nav links scroll in the middle. The sidebar itself never
+           scrolls — the inner nav list does — so all menu items are reachable. */
+        #sidebar {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        #sidebar-nav-links {
+            flex: 1 1 auto;
+            min-height: 0;            /* lets the flex child actually shrink + scroll */
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148,163,184,.35) transparent;
+        }
+        #sidebar-nav-links::-webkit-scrollbar { width: 6px; }
+        #sidebar-nav-links::-webkit-scrollbar-track { background: transparent; }
+        #sidebar-nav-links::-webkit-scrollbar-thumb {
+            background: rgba(148,163,184,.3); border-radius: 6px;
+        }
+        #sidebar-nav-links::-webkit-scrollbar-thumb:hover {
+            background: rgba(148,163,184,.55);
+        }
+        /* Keep the collapse button pinned at the very bottom, never scrolled away. */
+        #snav-collapse-btn { flex: 0 0 auto; }
+
+        /* ── Group headers ────────────────────────────────────────────────── */
         .snav-group {
             font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.09em; color: var(--text-subtle, #475569);
             padding: 0.7rem 0.875rem 0.2rem; margin-top: 0.1rem;
             pointer-events: none; user-select: none;
+            white-space: nowrap; overflow: hidden;
+            transition: opacity 0.15s;
         }
+
+        /* ── Nav links ────────────────────────────────────────────────────── */
         .snav-link {
-            display: flex; align-items: center; gap: 0.55rem;
-            padding: 0.42rem 0.875rem; border-radius: 8px; margin: 0 0.35rem;
+            position: relative;
+            display: flex; align-items: center; gap: 0.7rem;
+            padding: 0.5rem 0.875rem; border-radius: 9px; margin: 0.1rem 0.45rem;
             font-size: 0.8rem; font-weight: 500;
             color: var(--text-muted, #94a3b8);
             text-decoration: none; transition: background 0.13s, color 0.13s;
             white-space: nowrap; overflow: hidden;
         }
-        .snav-link:hover { background: rgba(99,102,241,0.09); color: var(--text-base, #e2e8f0); }
+        .snav-link:hover { background: rgba(99,102,241,0.10); color: var(--text-base, #e2e8f0); }
+        .snav-link:hover .snav-icon { opacity: 1; color: #818cf8; }
         .snav-link.snav-active {
-            background: rgba(99,102,241,0.18); color: #818cf8;
+            background: rgba(99,102,241,0.16); color: #818cf8;
             font-weight: 600; cursor: default;
-            border-left: 3px solid #6366f1; padding-left: calc(0.875rem - 3px);
         }
-        .snav-link.snav-active:hover { background: rgba(99,102,241,0.18); color: #818cf8; }
-        .snav-link.snav-active .snav-icon { opacity: 1; }
-        .snav-icon { width: 1.1rem; text-align: center; font-size: 0.82rem; flex-shrink: 0; opacity: 0.75; }
+        .snav-link.snav-active::before {
+            content: ''; position: absolute; left: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 60%; border-radius: 0 3px 3px 0;
+            background: #6366f1;
+        }
+        .snav-link.snav-active:hover { background: rgba(99,102,241,0.16); color: #818cf8; }
+        .snav-link.snav-active .snav-icon { opacity: 1; color: #818cf8; }
+        .snav-icon {
+            width: 1.35rem; text-align: center; font-size: 0.95rem;
+            flex-shrink: 0; opacity: 0.8; transition: color 0.13s, opacity 0.13s;
+        }
         .snav-label { overflow: hidden; text-overflow: ellipsis; }
+
+        /* ── Rail-collapse toggle button (bottom of sidebar) ──────────────── */
+        .snav-collapse-btn {
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            width: calc(100% - 0.9rem); margin: 0.35rem 0.45rem 0.2rem;
+            padding: 0.5rem; border-radius: 9px; cursor: pointer;
+            background: rgba(148,163,184,0.08); border: none;
+            color: var(--text-muted, #94a3b8);
+            font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+            transition: background 0.13s, color 0.13s;
+            white-space: nowrap; overflow: hidden;
+        }
+        .snav-collapse-btn:hover { background: rgba(99,102,241,0.12); color: #818cf8; }
+        .snav-collapse-btn i { font-size: 0.85rem; }
+
+        /* ════════════════════════════════════════════════════════════════════
+           DESKTOP LAYOUT (≥768px) — width + matching content margin, both
+           from --app-sidebar-w. This is the rule that keeps content on-screen.
+           ════════════════════════════════════════════════════════════════════ */
+        @media (min-width: 768px) {
+            #sidebar {
+                width: var(--app-sidebar-w) !important;
+                transition: width 0.2s ease;
+                /* Sidebar shell doesn't scroll; #sidebar-nav-links does.
+                   visible overflow lets the rail flyout + tooltips escape. */
+                overflow: visible !important;
+            }
+            /* Push main content over by exactly the sidebar width. We target the
+               md:ml-[220px] class, which sidebar-utils.js adds when the sidebar
+               is shown and removes when it's hidden — so unpinning still works. */
+            .md\\:ml-\\[220px\\] {
+                margin-left: var(--app-sidebar-w) !important;
+                transition: margin-left 0.2s ease;
+            }
+
+            /* ── RAIL MODE: icon-only, labels hidden ── */
+            html.sidebar-rail-mode #sidebar .snav-label,
+            html.sidebar-rail-mode #sidebar .snav-group,
+            html.sidebar-rail-mode #sidebar .snav-collapse-btn span,
+            html.sidebar-rail-mode #sidebar .sidebar-pin-area { opacity: 0; visibility: hidden; }
+            html.sidebar-rail-mode #sidebar .snav-link { justify-content: center; }
+            html.sidebar-rail-mode #sidebar .snav-collapse-btn { justify-content: center; }
+            html.sidebar-rail-mode #sidebar .snav-collapse-btn i { transform: rotate(180deg); }
+
+            /* Tooltip showing the label on hover (rail only) */
+            html.sidebar-rail-mode #sidebar .snav-link::after {
+                content: attr(data-label);
+                position: absolute; left: calc(100% + 8px); top: 50%;
+                transform: translateY(-50%);
+                background: #1e293b; color: #f1f5f9;
+                padding: 0.3rem 0.6rem; border-radius: 7px;
+                font-size: 0.74rem; font-weight: 600; white-space: nowrap;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+                opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 9999;
+            }
+            html.sidebar-rail-mode #sidebar:not(:hover) .snav-link:hover::after { opacity: 1; }
+
+            /* HOVER-PEEK: hovering the rail temporarily widens the sidebar ONLY
+               (via the variable) WITHOUT moving content — content margin stays
+               pinned to the rail width so the page never shifts. */
+            html.sidebar-rail-mode #sidebar:hover {
+                width: 220px !important;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+                z-index: 60;
+            }
+            html.sidebar-rail-mode #sidebar:hover .snav-label,
+            html.sidebar-rail-mode #sidebar:hover .snav-group,
+            html.sidebar-rail-mode #sidebar:hover .snav-collapse-btn span,
+            html.sidebar-rail-mode #sidebar:hover .sidebar-pin-area { opacity: 1; visibility: visible; }
+            html.sidebar-rail-mode #sidebar:hover .snav-link { justify-content: flex-start; }
+            html.sidebar-rail-mode #sidebar:hover .snav-collapse-btn { justify-content: center; }
+        }
     `;
     document.head.appendChild(s);
 })();
@@ -235,12 +376,42 @@ function renderSidebarLinks() {
         const a = document.createElement('a');
         a.href      = isActive ? 'javascript:void(0)' : item.href;
         a.className = 'snav-link' + (isActive ? ' snav-active' : '');
-        a.innerHTML = `<span class="snav-icon">${item.icon}</span><span class="snav-label">${item.label}</span>`;
+        a.setAttribute('data-label', item.label);
+        // Prefer crisp Font Awesome icon; fall back to emoji if FA class missing
+        const iconHtml = item.fa
+            ? `<i class="fas ${item.fa}"></i>`
+            : item.icon;
+        a.innerHTML = `<span class="snav-icon">${iconHtml}</span><span class="snav-label">${item.label}</span>`;
         navContainer.appendChild(a);
     });
 
+    // ── Inject the rail collapse toggle into the pin area (desktop only) ──────
+    _injectRailToggle(sidebar);
+
     const hideStyle = document.getElementById('sidebar-perm-hide');
     if (hideStyle) hideStyle.remove();
+}
+
+// Add a "collapse to icons" toggle button at the bottom of the sidebar.
+function _injectRailToggle(sidebar) {
+    if (!sidebar || document.getElementById('snav-collapse-btn')) return;
+    const pinArea = sidebar.querySelector('.sidebar-pin-area') ||
+                    sidebar.querySelector('.px-4.mt-auto');
+    const btn = document.createElement('button');
+    btn.id = 'snav-collapse-btn';
+    btn.type = 'button';
+    btn.className = 'snav-collapse-btn';
+    btn.innerHTML = `<i class="fas fa-angles-left"></i><span>Collapse</span>`;
+    btn.setAttribute('aria-label', 'Collapse sidebar to icons');
+    btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (typeof toggleSidebarRail === 'function') toggleSidebarRail();
+    });
+    if (pinArea && pinArea.parentNode) {
+        pinArea.parentNode.insertBefore(btn, pinArea);
+    } else {
+        sidebar.appendChild(btn);
+    }
 }
 
 // Map page filenames to permission screen IDs

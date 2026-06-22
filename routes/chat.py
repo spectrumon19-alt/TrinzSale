@@ -169,10 +169,12 @@ def _get_active_ai_config() -> dict:
     }
 
 
-def _call_llm(system: str, user_msg: str, max_tokens: int = 1024) -> str:
+def _call_llm(system: str, user_msg: str, max_tokens: int = 1024,
+              feature: str = 'chat', user_id=None, username: str = '') -> str:
     from routes.ai_settings import call_provider
     config = _get_active_ai_config()
-    return call_provider(config, system, user_msg, max_tokens)
+    return call_provider(config, system, user_msg, max_tokens,
+                         feature=feature, user_id=user_id, username=username)
 
 
 def _strip_sql(raw: str) -> str:
@@ -197,7 +199,7 @@ def _strip_sql(raw: str) -> str:
     return sql
 
 
-def _nl_to_sql(question: str, history: list) -> str:
+def _nl_to_sql(question: str, history: list, user_id=None, username: str = '') -> str:
     history_str = ''
     if history:
         lines = []
@@ -211,7 +213,8 @@ def _nl_to_sql(question: str, history: list) -> str:
     for attempt in range(2):
         extra = ("\n\nOutput ONLY the raw SQL — no markdown, no explanation, no preamble. "
                  "Start your response with SELECT or WITH.") if attempt else ""
-        raw = _call_llm(SYSTEM_SQL, base_prompt + extra, max_tokens=1024)
+        raw = _call_llm(SYSTEM_SQL, base_prompt + extra, max_tokens=1024,
+                        feature='sql-query', user_id=user_id, username=username)
         logger.debug('SQL gen attempt %d raw: %.300s', attempt + 1, raw)
         sql = _strip_sql(raw)
         if re.search(r'\bSELECT\b', sql, re.IGNORECASE):
@@ -253,8 +256,11 @@ def chat(current_user):
     if len(question) > 1000:
         return jsonify({'error': 'Question too long (max 1000 characters).'}), 400
 
+    uid  = current_user.get('user_id')
+    uname = current_user.get('username', '')
+
     try:
-        sql = _nl_to_sql(question, history)
+        sql = _nl_to_sql(question, history, user_id=uid, username=uname)
     except RuntimeError as e:
         logger.warning('Chat AI config error: %s', e)
         return jsonify({'error': str(e)}), 503

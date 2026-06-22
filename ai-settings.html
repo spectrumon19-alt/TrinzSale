@@ -814,7 +814,19 @@
                     + 'Latency: ' + d.latency_ms + ' ms &nbsp;·&nbsp; Response: <em>' + _esc(d.response) + '</em>';
             } else {
                 res.className = 'test-result fail';
-                res.innerHTML = '<i class="fas fa-times-circle"></i> <strong>Failed:</strong> ' + _esc(d.error);
+                var html = '<i class="fas fa-times-circle"></i> <strong>Failed:</strong> ' + _esc(d.error);
+                if (d.key_diag) {
+                    var k = d.key_diag;
+                    html += '<div style="margin-top:8px;font-size:.72rem;opacity:.85;line-height:1.6;">'
+                        + '<strong>Key diagnostic</strong> (no secret shown):<br>'
+                        + 'length: ' + k.length + (k.had_outer_ws ? ' (had trailing/leading spaces — trimmed to ' + k.length_stripped + ')' : '') + '<br>'
+                        + 'starts with: <code>' + _esc(k.prefix) + '…</code> &nbsp; ends with: <code>…' + _esc(k.suffix) + '</code><br>'
+                        + 'looks like sk-ant key: ' + (k.starts_with_skant ? 'yes' : '<strong style="color:#dc2626;">NO</strong>')
+                        + (k.has_interior_ws ? '<br><strong style="color:#dc2626;">⚠ contains spaces/newlines inside the key</strong>' : '')
+                        + (k.non_ascii_codes && k.non_ascii_codes.length ? '<br><strong style="color:#dc2626;">⚠ hidden non-ASCII chars: ' + _esc(k.non_ascii_codes.join(', ')) + '</strong>' : '')
+                        + '</div>';
+                }
+                res.innerHTML = html;
             }
             res.style.display = 'block';
         } catch(e) {

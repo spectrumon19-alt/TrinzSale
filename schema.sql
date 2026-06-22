@@ -590,3 +590,23 @@ EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Knowledge-base (pgvector) setup skipped: %', SQLERRM;
 END
 $kb$;
+
+-- ============================================================
+-- AI TOKEN USAGE TRACKING
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ai_token_usage (
+    id              SERIAL       PRIMARY KEY,
+    called_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id         INTEGER      REFERENCES users(user_id) ON DELETE SET NULL,
+    username        VARCHAR(100),
+    provider        VARCHAR(50)  NOT NULL DEFAULT '',
+    model           VARCHAR(150) NOT NULL DEFAULT '',
+    feature         VARCHAR(100) NOT NULL DEFAULT 'chat',
+    prompt_tokens   INTEGER      NOT NULL DEFAULT 0,
+    output_tokens   INTEGER      NOT NULL DEFAULT 0,
+    total_tokens    INTEGER      NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_token_usage_called_at ON ai_token_usage(called_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_token_usage_user      ON ai_token_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_token_usage_provider  ON ai_token_usage(provider);

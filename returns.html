@@ -116,12 +116,112 @@
         html.dark #receipt-modal td             { color:#111 !important; border-color:#888 !important; background:transparent !important; }
         html.dark #receipt-modal tbody tr:nth-child(even) { background:transparent !important; }
         html.dark #receipt-modal tbody tr:hover { background:transparent !important; }
-        .search-result-row:hover { background:rgba(59,130,246,.06); }
-        html.dark .search-result-row:hover { background:#1e3550 !important; }
-        html.dark .search-result-row { border-color:#253650 !important; color:#cbd5e1 !important; }
-        html.dark .search-result-row .inv-num { color:#818cf8 !important; }
-        html.dark .search-result-row .inv-meta { color:#64748b !important; }
-        html.dark .search-result-row .inv-total { color:#34d399 !important; }
+        /* ── Mobile column visibility ───────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .hide-mobile { display: none !important; }
+        }
+
+        /* ── Predictive search ──────────────────────────────────────────────── */
+        .inv-search-wrap {
+            position: relative;
+        }
+        .inv-search-input {
+            width: 100%;
+            padding: .5rem .75rem .5rem 2.4rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: .45rem;
+            font-size: .925rem;
+            background: #fff;
+            color: #111;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            box-sizing: border-box;
+        }
+        .inv-search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+        }
+        .inv-search-icon {
+            position: absolute; left: .7rem; top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af; font-size: .9rem; pointer-events: none;
+        }
+        .inv-search-clear {
+            position: absolute; right: .6rem; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: #9ca3af; font-size: .85rem; padding: 2px 4px;
+            border-radius: 50%; display: none;
+            line-height: 1;
+        }
+        .inv-search-clear:hover { color: #ef4444; background: #fee2e2; }
+        .inv-search-spinner {
+            position: absolute; right: .65rem; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            border: 2px solid #e5e7eb; border-top-color: #3b82f6;
+            border-radius: 50%; animation: spin .6s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+        .inv-dropdown {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: #fff;
+            border: 1.5px solid #d1d5db;
+            border-radius: .45rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+            z-index: 200;
+            max-height: 340px;
+            overflow-y: auto;
+            display: none;
+        }
+        .inv-dropdown.open { display: block; }
+        .inv-drop-hint {
+            padding: .65rem 1rem;
+            font-size: .8rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+        .inv-drop-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: .6rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background .1s;
+            gap: .75rem;
+        }
+        .inv-drop-item:last-child { border-bottom: none; }
+        .inv-drop-item:hover, .inv-drop-item.focused { background: #eff6ff; }
+        .inv-drop-left { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+        .inv-drop-num {
+            font-size: .875rem; font-weight: 700; color: #1d4ed8;
+            font-family: monospace; letter-spacing: .02em;
+        }
+        .inv-drop-meta {
+            font-size: .78rem; color: #6b7280;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .inv-drop-right { display: flex; flex-direction: column; align-items: flex-end; gap: .1rem; flex-shrink: 0; }
+        .inv-drop-total { font-size: .875rem; font-weight: 700; color: #16a34a; }
+        .inv-drop-date  { font-size: .75rem; color: #9ca3af; }
+        .inv-drop-badge {
+            font-size: .68rem; font-weight: 600; padding: 1px 6px;
+            border-radius: 9999px; background: #dcfce7; color: #16a34a;
+        }
+
+        /* dark mode */
+        html.dark .inv-search-input { background:#0f1a28; border-color:#253650; color:#e2e8f0; }
+        html.dark .inv-search-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.2); }
+        html.dark .inv-dropdown { background:#162032; border-color:#253650; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+        html.dark .inv-drop-item:hover, html.dark .inv-drop-item.focused { background:#1e3550; }
+        html.dark .inv-drop-item { border-color:#253650; }
+        html.dark .inv-drop-num  { color:#818cf8; }
+        html.dark .inv-drop-meta { color:#64748b; }
+        html.dark .inv-drop-total{ color:#34d399; }
+        html.dark .inv-drop-date { color:#475569; }
+        html.dark .inv-drop-badge{ background:#14532d; color:#4ade80; }
+        html.dark .inv-drop-hint { color:#475569; }
+        html.dark .inv-search-icon { color:#475569; }
         html.dark #receipt-modal .rcpt-co-sub   { color:#666 !important; }
         html.dark #receipt-modal .rcpt-dash     { color:#bbb !important; }
         html.dark #receipt-modal .rcpt-footer   { color:#999 !important; }
@@ -223,17 +323,20 @@
                 <!-- STEP 1: Search Invoice -->
                 <div class="card mb-4">
                     <p class="section-label">Step 1 — Find Original Invoice</p>
-                    <div class="flex gap-2 items-end flex-wrap">
-                        <div class="flex-1 min-w-48">
-                            <label class="block text-xs font-medium text-gray-700 mb-1">Invoice Number or Customer Mobile</label>
-                            <input id="search-q" type="text" class="form-control" placeholder="e.g. D01P001_260515 or 9876543210"
-                                   onkeydown="if(event.key==='Enter') searchInvoice()">
-                        </div>
-                        <button onclick="searchInvoice()" class="btn btn-primary">
-                            <i class="fas fa-search"></i> Search
-                        </button>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">
+                        Type invoice number or customer mobile — results appear instantly
+                    </label>
+                    <div class="inv-search-wrap">
+                        <i class="fas fa-search inv-search-icon"></i>
+                        <input id="search-q" type="text" class="inv-search-input"
+                               placeholder="Invoice number or mobile number…"
+                               autocomplete="off" spellcheck="false">
+                        <div class="inv-search-spinner" id="search-spinner"></div>
+                        <button class="inv-search-clear" id="search-clear" title="Clear">&#x2715;</button>
+                        <div class="inv-dropdown" id="inv-dropdown"></div>
                     </div>
-                    <div id="search-results-list" class="mt-3" style="display:none;"></div>
+                    <!-- legacy container kept for compatibility, hidden -->
+                    <div id="search-results-list" style="display:none;"></div>
                 </div>
 
                 <!-- STEP 2: Select Items (shown after invoice selected) -->
@@ -254,14 +357,14 @@
                                     <tr>
                                         <th style="width:36px;"></th>
                                         <th>Product</th>
-                                        <th>SKU</th>
-                                        <th>Pack</th>
-                                        <th class="text-right">Rate</th>
+                                        <th class="hide-mobile">SKU</th>
+                                        <th class="hide-mobile">Pack</th>
+                                        <th class="text-right hide-mobile">Rate</th>
                                         <th class="text-center">Orig Qty</th>
-                                        <th class="text-center">Returned</th>
-                                        <th class="text-center">Returnable</th>
-                                        <th class="text-center">Return Qty</th>
-                                        <th class="text-right">Refund Amt</th>
+                                        <th class="text-center hide-mobile">Returned</th>
+                                        <th class="text-center hide-mobile">Returnable</th>
+                                        <th class="text-center">Ret. Qty</th>
+                                        <th class="text-right">Refund</th>
                                     </tr>
                                 </thead>
                                 <tbody id="return-items-body"></tbody>
@@ -321,11 +424,11 @@
                     <div class="flex flex-wrap gap-3 items-end mb-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">From</label>
-                            <input type="date" id="hist-from" class="form-control" style="width:150px;">
+                            <input type="date" id="hist-from" class="form-control" style="min-width:130px;width:100%;max-width:180px;">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1">To</label>
-                            <input type="date" id="hist-to" class="form-control" style="width:150px;">
+                            <input type="date" id="hist-to" class="form-control" style="min-width:130px;width:100%;max-width:180px;">
                         </div>
                         <button onclick="loadHistory()" class="btn btn-primary"><i class="fas fa-search"></i> Load</button>
                         <button onclick="loadToday()" class="btn btn-secondary">Today</button>
@@ -444,46 +547,162 @@ function showAlert(msg, type='error') {
 let _selectedInvoice = null;
 let _returnableItems  = [];
 
-// ── STEP 1: search invoice ─────────────────────────────────────────────────
-async function searchInvoice() {
-    const q = document.getElementById('search-q').value.trim();
-    if (!q) return showAlert('Enter an invoice number or mobile number');
-    document.getElementById('search-results-list').style.display = 'none';
-    try {
-        const res  = await fetch(`${API}/api/sales-invoices/search?q=${encodeURIComponent(q)}`,
-                                 { headers: { Authorization: 'Bearer ' + token() } });
-        const data = await res.json();
-        if (!res.ok) return showAlert(data.message || 'Search failed');
-        if (!data.length) return showAlert('No completed invoices found for "' + q + '"', 'info');
-        renderSearchResults(data);
-    } catch { showAlert('Network error'); }
-}
+// ── STEP 1: predictive invoice search ─────────────────────────────────────
+(function initInvoiceSearch() {
+    const input    = document.getElementById('search-q');
+    const dropdown = document.getElementById('inv-dropdown');
+    const spinner  = document.getElementById('search-spinner');
+    const clearBtn = document.getElementById('search-clear');
 
-function renderSearchResults(invoices) {
-    const el = document.getElementById('search-results-list');
-    el.innerHTML = '';
-    invoices.forEach(inv => {
-        const d = document.createElement('div');
-        d.className = 'search-result-row flex justify-between items-center p-2 border rounded-lg mb-1 cursor-pointer text-sm';
-        d.style.transition = 'background .15s';
-        d.innerHTML = `
-            <div>
-                <span class="inv-num font-semibold">${inv.invoice_number}</span>
-                <span class="inv-meta mx-2">|</span>
-                <span class="inv-meta">${formatDate(inv.invoice_date)}</span>
-                <span class="inv-meta mx-2">|</span>
-                <span>${inv.customer_name || 'Walk-in'}</span>
-                ${inv.customer_mobile ? `<span class="inv-meta mx-2">|</span><span>${inv.customer_mobile}</span>` : ''}
-            </div>
-            <div class="flex items-center gap-3">
-                <span class="inv-total font-bold">₹${fmt(inv.grand_total)}</span>
-                <button class="btn btn-primary text-xs py-1 px-3">Select</button>
-            </div>`;
-        d.querySelector('button').addEventListener('click', () => loadReturnableItems(inv.invoice_id));
-        el.appendChild(d);
+    if (!input) return;
+
+    let _debounce = null;
+    let _focusIdx = -1;
+    let _results  = [];
+
+    function showSpinner(v) {
+        spinner.style.display  = v ? 'block' : 'none';
+        clearBtn.style.display = (!v && input.value) ? 'block' : 'none';
+    }
+
+    function closeDropdown() {
+        dropdown.classList.remove('open');
+        dropdown.innerHTML = '';
+        _focusIdx = -1;
+        _results  = [];
+    }
+
+    function highlight(text, q) {
+        if (!q) return text;
+        const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(re, '<mark style="background:#fef08a;border-radius:2px;padding:0 1px;">$1</mark>');
+    }
+
+    function renderDropdown(invoices, q) {
+        dropdown.innerHTML = '';
+        _results = invoices;
+        _focusIdx = -1;
+
+        if (!invoices.length) {
+            dropdown.innerHTML = `<div class="inv-drop-hint">No invoices found for "<strong>${q}</strong>"</div>`;
+            dropdown.classList.add('open');
+            return;
+        }
+
+        invoices.forEach((inv, i) => {
+            const item = document.createElement('div');
+            item.className = 'inv-drop-item';
+            item.dataset.idx = i;
+            const customer = inv.customer_name || 'Walk-in';
+            const mobile   = inv.customer_mobile ? ` · ${inv.customer_mobile}` : '';
+            item.innerHTML = `
+                <div class="inv-drop-left">
+                    <span class="inv-drop-num">${highlight(inv.invoice_number, q)}</span>
+                    <span class="inv-drop-meta">${highlight(customer + mobile, q)}</span>
+                </div>
+                <div class="inv-drop-right">
+                    <span class="inv-drop-total">₹${fmt(inv.grand_total)}</span>
+                    <span class="inv-drop-date">${formatDate(inv.invoice_date)}</span>
+                </div>`;
+            item.addEventListener('mousedown', e => {
+                e.preventDefault();
+                selectInvoice(inv);
+            });
+            item.addEventListener('mouseover', () => setFocus(i));
+            dropdown.appendChild(item);
+        });
+
+        if (invoices.length === 1) {
+            dropdown.innerHTML += `<div class="inv-drop-hint" style="color:#3b82f6;font-weight:600;">↵ Press Enter to select</div>`;
+        }
+
+        dropdown.classList.add('open');
+    }
+
+    function setFocus(idx) {
+        const items = dropdown.querySelectorAll('.inv-drop-item');
+        items.forEach(el => el.classList.remove('focused'));
+        if (idx >= 0 && idx < items.length) {
+            items[idx].classList.add('focused');
+            items[idx].scrollIntoView({ block: 'nearest' });
+        }
+        _focusIdx = idx;
+    }
+
+    async function doSearch(q) {
+        showSpinner(true);
+        try {
+            const res  = await fetch(`${API}/api/sales-invoices/search?q=${encodeURIComponent(q)}`,
+                                     { headers: { Authorization: 'Bearer ' + token() } });
+            const data = await res.json();
+            if (!res.ok) { closeDropdown(); showAlert(data.message || 'Search failed'); return; }
+            renderDropdown(data, q);
+        } catch { closeDropdown(); showAlert('Network error'); }
+        finally { showSpinner(false); }
+    }
+
+    function selectInvoice(inv) {
+        input.value = inv.invoice_number;
+        clearBtn.style.display = 'block';
+        closeDropdown();
+        loadReturnableItems(inv.invoice_id);
+    }
+
+    // Keyboard navigation
+    input.addEventListener('keydown', e => {
+        const items = dropdown.querySelectorAll('.inv-drop-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setFocus(Math.min(_focusIdx + 1, items.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setFocus(Math.max(_focusIdx - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (_focusIdx >= 0 && _results[_focusIdx]) {
+                selectInvoice(_results[_focusIdx]);
+            } else if (_results.length === 1) {
+                selectInvoice(_results[0]);
+            }
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+        }
     });
-    el.style.display = 'block';
-}
+
+    // Live typing — debounced 280ms, fires at ≥2 chars
+    input.addEventListener('input', () => {
+        const q = input.value.trim();
+        clearBtn.style.display = q ? 'block' : 'none';
+        clearTimeout(_debounce);
+        if (q.length < 2) { closeDropdown(); showSpinner(false); return; }
+        showSpinner(true);
+        _debounce = setTimeout(() => doSearch(q), 280);
+    });
+
+    // Close on outside click
+    document.addEventListener('mousedown', e => {
+        if (!input.closest('.inv-search-wrap').contains(e.target)) closeDropdown();
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', () => {
+        input.value = '';
+        clearBtn.style.display = 'none';
+        closeDropdown();
+        input.focus();
+    });
+
+    // Reopen dropdown on re-focus if there's a value
+    input.addEventListener('focus', () => {
+        const q = input.value.trim();
+        if (q.length >= 2 && !dropdown.classList.contains('open')) doSearch(q);
+    });
+})();
+
+// Legacy function kept for URL param auto-load (?invoice_id=X)
+async function searchInvoice() {}
+
+function renderSearchResults() {}
 
 // ── STEP 2: load returnable items ──────────────────────────────────────────
 async function loadReturnableItems(invoiceId) {
@@ -523,12 +742,12 @@ function renderReturnItems(items) {
                     ${canReturn ? '' : 'disabled'} onchange="recalcTotal()">
             </td>
             <td class="font-medium">${item.product_name}</td>
-            <td class="text-gray-500">${item.sku || '-'}</td>
-            <td class="text-gray-500">${item.pack_size || '-'}</td>
-            <td class="text-right">₹${fmt(item.rate_at_sale)}</td>
+            <td class="text-gray-500 hide-mobile">${item.sku || '-'}</td>
+            <td class="text-gray-500 hide-mobile">${item.pack_size || '-'}</td>
+            <td class="text-right hide-mobile">₹${fmt(item.rate_at_sale)}</td>
             <td class="text-center">${item.original_qty}</td>
-            <td class="text-center ${item.already_returned > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}">${item.already_returned}</td>
-            <td class="text-center ${canReturn ? 'text-green-700 font-medium' : 'text-red-500'}">${item.returnable_qty}</td>
+            <td class="text-center hide-mobile ${item.already_returned > 0 ? 'text-orange-600 font-medium' : 'text-gray-400'}">${item.already_returned}</td>
+            <td class="text-center hide-mobile ${canReturn ? 'text-green-700 font-medium' : 'text-red-500'}">${item.returnable_qty}</td>
             <td class="text-center">
                 <input type="number" class="qty-input item-qty" data-id="${item.item_id}"
                     min="1" max="${item.returnable_qty}" value="1"

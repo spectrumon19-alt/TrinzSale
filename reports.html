@@ -691,12 +691,18 @@
             display: flex;
             border-bottom: 1px solid var(--surface-border);
             margin-bottom: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
         }
+        .tab-buttons::-webkit-scrollbar { display: none; }
 
         .tab-button {
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             cursor: pointer;
             border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            flex-shrink: 0;
             transition: all 0.3s ease;
             font-weight: 500;
             color: var(--text-muted);
@@ -718,6 +724,13 @@
         .tab-button.active {
             color: var(--brand-accent);
             border-bottom: 3px solid var(--brand-accent);
+        }
+
+        @media (max-width: 640px) {
+            .tab-button { padding: 0.6rem 0.85rem; font-size: 0.78rem; }
+        }
+        @media (max-width: 480px) {
+            .tab-button { padding: 0.55rem 0.7rem; font-size: 0.74rem; }
         }
 
         .tab-content {
@@ -1205,6 +1218,7 @@
                                 <button class="tab-button" onclick="openTab(event, 'purchase-tab')">Purchase Orders</button>
                                 <button class="tab-button" onclick="openTab(event, 'inventory-tab')">Inventory Reports</button>
                                 <button class="tab-button" onclick="openTab(event, 'pl-tab')">Profit & Loss</button>
+                                <button class="tab-button" onclick="openTab(event, 'gst-tab'); loadGstReport()">GST Returns</button>
                             </div>
                         </div>
                         
@@ -1547,6 +1561,138 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- GST Returns Tab -->
+                        <div id="gst-tab" class="tab-content">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">GST Returns</h3>
+
+                            <!-- Period picker + controls -->
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+                                <div>
+                                    <label style="font-size:13px;font-weight:600;color:#374151;margin-right:6px;">Period (Month)</label>
+                                    <input type="month" id="gst-period"
+                                           style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;"
+                                           onchange="loadGstReport()">
+                                </div>
+                                <button onclick="loadGstReport()"
+                                        style="background:#1a5c1a;color:#fff;border:none;border-radius:6px;
+                                               padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
+                                    Load
+                                </button>
+                                <button onclick="exportGstExcel()"
+                                        style="background:#166534;color:#fff;border:none;border-radius:6px;
+                                               padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
+                                    ⬇ Download Excel (GSTR-1 + GSTR-3B)
+                                </button>
+                                <span id="gst-loading" style="display:none;font-size:13px;color:#6b7280;">Loading…</span>
+                            </div>
+
+                            <div id="gst-error" style="display:none;color:#dc2626;font-size:13px;margin-bottom:12px;"></div>
+
+                            <!-- Summary cards -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#16a34a;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Invoices</div>
+                                    <div id="gst-inv-count" style="font-size:22px;font-weight:800;color:#14532d;">—</div>
+                                </div>
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#16a34a;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Taxable Value</div>
+                                    <div id="gst-taxable" style="font-size:20px;font-weight:800;color:#14532d;">—</div>
+                                </div>
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#16a34a;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Total GST</div>
+                                    <div id="gst-total-gst" style="font-size:20px;font-weight:800;color:#14532d;">—</div>
+                                </div>
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#16a34a;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Grand Total</div>
+                                    <div id="gst-grand" style="font-size:20px;font-weight:800;color:#14532d;">—</div>
+                                </div>
+                                <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#b45309;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Credit Notes</div>
+                                    <div id="gst-cn-count" style="font-size:22px;font-weight:800;color:#92400e;">—</div>
+                                </div>
+                                <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:14px;">
+                                    <div style="font-size:11px;color:#b45309;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Net GST Liability</div>
+                                    <div id="gst-net-gst" style="font-size:20px;font-weight:800;color:#92400e;">—</div>
+                                </div>
+                            </div>
+
+                            <!-- GSTR-1 Rate-wise Summary -->
+                            <div style="margin-bottom:20px;">
+                                <h4 style="font-size:14px;font-weight:700;color:#14532d;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #bbf7d0;">
+                                    GSTR-1 — Rate-wise Outward Supply Summary
+                                </h4>
+                                <div class="admin-table">
+                                    <table style="width:100%;">
+                                        <thead>
+                                            <tr>
+                                                <th>GST Rate %</th>
+                                                <th>Invoices</th>
+                                                <th>Taxable Value (₹)</th>
+                                                <th>SGST (₹)</th>
+                                                <th>CGST (₹)</th>
+                                                <th>Total GST (₹)</th>
+                                                <th>Gross Value (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gst-rate-tbody">
+                                            <tr><td colspan="7" class="text-center py-4 text-gray-500">Select a period and click Load</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Credit Notes Summary -->
+                            <div id="gst-cn-section" style="display:none;margin-bottom:20px;">
+                                <h4 style="font-size:14px;font-weight:700;color:#92400e;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #fde68a;">
+                                    Credit Notes (Sales Returns) — Reduce Outward Liability
+                                </h4>
+                                <div class="admin-table">
+                                    <table style="width:100%;">
+                                        <thead>
+                                            <tr>
+                                                <th>GST Rate %</th>
+                                                <th>Notes</th>
+                                                <th>Taxable Value (₹)</th>
+                                                <th>SGST (₹)</th>
+                                                <th>CGST (₹)</th>
+                                                <th>Total GST (₹)</th>
+                                                <th>Gross Value (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gst-cn-tbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Invoice List -->
+                            <div>
+                                <h4 style="font-size:14px;font-weight:700;color:#14532d;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #bbf7d0;">
+                                    B2C Invoice List
+                                    <span id="gst-inv-list-count" style="font-size:12px;font-weight:400;color:#6b7280;margin-left:8px;"></span>
+                                </h4>
+                                <div class="admin-table" style="max-height:400px;overflow-y:auto;">
+                                    <table style="width:100%;">
+                                        <thead style="position:sticky;top:0;z-index:1;">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Invoice No.</th>
+                                                <th>Date</th>
+                                                <th>Customer</th>
+                                                <th>Payment</th>
+                                                <th>Taxable (₹)</th>
+                                                <th>GST (₹)</th>
+                                                <th>Total (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gst-inv-tbody">
+                                            <tr><td colspan="8" class="text-center py-4 text-gray-500">Select a period and click Load</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                     </section>
                 </div>
             </main>
@@ -2614,6 +2760,144 @@
                 }
             }
         }
+
+        // ── GST Returns ──────────────────────────────────────────────────────
+
+        function gstFmt(n) {
+            return '₹' + Number(n || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function gstPeriod() {
+            const el = document.getElementById('gst-period');
+            return el && el.value ? el.value : new Date().toISOString().slice(0, 7);
+        }
+
+        async function loadGstReport() {
+            const period = gstPeriod();
+            const token  = localStorage.getItem('pos_token');
+            const errEl  = document.getElementById('gst-error');
+            const loadEl = document.getElementById('gst-loading');
+
+            errEl.style.display  = 'none';
+            loadEl.style.display = 'inline';
+
+            try {
+                const res  = await fetch(`/api/gst/gstr1?period=${period}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) { const e = await res.json(); throw new Error(e.error || res.statusText); }
+                const d = await res.json();
+
+                // Summary cards
+                document.getElementById('gst-inv-count').textContent  = d.invoice_count;
+                document.getElementById('gst-taxable').textContent    = gstFmt(d.total_taxable);
+                document.getElementById('gst-total-gst').textContent  = gstFmt(d.total_gst);
+                document.getElementById('gst-grand').textContent      = gstFmt(d.grand_total);
+                document.getElementById('gst-cn-count').textContent   = d.credit_note_count;
+                document.getElementById('gst-net-gst').textContent    = gstFmt(d.net_gst);
+
+                // Rate-wise table
+                const rtbody = document.getElementById('gst-rate-tbody');
+                if (!d.rate_summary.length) {
+                    rtbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:16px;color:#6b7280;">No sales for this period</td></tr>';
+                } else {
+                    rtbody.innerHTML = d.rate_summary.map(r => `
+                        <tr>
+                            <td style="text-align:center;font-weight:600;">${r.gst_rate}%</td>
+                            <td style="text-align:center;">${r.invoice_count}</td>
+                            <td style="text-align:right;">${gstFmt(r.taxable_value)}</td>
+                            <td style="text-align:right;">${gstFmt(r.sgst)}</td>
+                            <td style="text-align:right;">${gstFmt(r.cgst)}</td>
+                            <td style="text-align:right;font-weight:600;">${gstFmt(r.total_gst)}</td>
+                            <td style="text-align:right;font-weight:700;">${gstFmt(r.gross_value)}</td>
+                        </tr>`).join('') + `
+                        <tr style="background:#f0fdf4;font-weight:700;">
+                            <td>TOTAL</td>
+                            <td style="text-align:center;">${d.invoice_count}</td>
+                            <td style="text-align:right;">${gstFmt(d.total_taxable)}</td>
+                            <td style="text-align:right;">${gstFmt(d.total_sgst)}</td>
+                            <td style="text-align:right;">${gstFmt(d.total_cgst)}</td>
+                            <td style="text-align:right;">${gstFmt(d.total_gst)}</td>
+                            <td style="text-align:right;">${gstFmt(d.grand_total)}</td>
+                        </tr>`;
+                }
+
+                // Credit notes
+                const cnSection = document.getElementById('gst-cn-section');
+                const cnTbody   = document.getElementById('gst-cn-tbody');
+                if (d.credit_notes.length) {
+                    cnSection.style.display = 'block';
+                    cnTbody.innerHTML = d.credit_notes.map(r => `
+                        <tr>
+                            <td style="text-align:center;font-weight:600;">${r.gst_rate}%</td>
+                            <td style="text-align:center;">${r.note_count}</td>
+                            <td style="text-align:right;color:#dc2626;">(${gstFmt(r.taxable_value)})</td>
+                            <td style="text-align:right;color:#dc2626;">(${gstFmt(r.sgst)})</td>
+                            <td style="text-align:right;color:#dc2626;">(${gstFmt(r.cgst)})</td>
+                            <td style="text-align:right;color:#dc2626;font-weight:600;">(${gstFmt(r.total_gst)})</td>
+                            <td style="text-align:right;color:#dc2626;font-weight:700;">(${gstFmt(r.gross_value)})</td>
+                        </tr>`).join('');
+                } else {
+                    cnSection.style.display = 'none';
+                }
+
+                // Invoice list
+                document.getElementById('gst-inv-list-count').textContent = `(${d.invoices.length} invoices)`;
+                const invTbody = document.getElementById('gst-inv-tbody');
+                if (!d.invoices.length) {
+                    invTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:16px;color:#6b7280;">No invoices for this period</td></tr>';
+                } else {
+                    invTbody.innerHTML = d.invoices.map((inv, i) => `
+                        <tr>
+                            <td style="text-align:center;color:#6b7280;">${i + 1}</td>
+                            <td style="font-family:monospace;font-size:12px;">${inv.invoice_number}</td>
+                            <td>${inv.invoice_date}</td>
+                            <td>${inv.customer_name || 'Retail'}</td>
+                            <td>${inv.mode_of_payment || ''}</td>
+                            <td style="text-align:right;">${gstFmt(inv.taxable_value)}</td>
+                            <td style="text-align:right;">${gstFmt(inv.total_gst)}</td>
+                            <td style="text-align:right;font-weight:700;">${gstFmt(inv.total_amount)}</td>
+                        </tr>`).join('');
+                }
+
+            } catch (err) {
+                errEl.textContent    = 'Error: ' + err.message;
+                errEl.style.display  = 'block';
+            } finally {
+                loadEl.style.display = 'none';
+            }
+        }
+
+        function exportGstExcel() {
+            const period = gstPeriod();
+            const token  = localStorage.getItem('pos_token');
+            // Use a form POST trick so the browser downloads the file with auth header
+            fetch(`/api/gst/export/excel?period=${period}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(res => {
+                if (!res.ok) throw new Error('Export failed');
+                return res.blob();
+            }).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a   = document.createElement('a');
+                a.href    = url;
+                a.download = `GST_Report_${period}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }).catch(err => {
+                const errEl = document.getElementById('gst-error');
+                errEl.textContent   = 'Export error: ' + err.message;
+                errEl.style.display = 'block';
+            });
+        }
+
+        // Set default period to current month on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const gstPeriodEl = document.getElementById('gst-period');
+            if (gstPeriodEl) {
+                gstPeriodEl.value = new Date().toISOString().slice(0, 7);
+            }
+        });
     </script>
     <script src="chat-widget.js?v=2"></script>
 </body>

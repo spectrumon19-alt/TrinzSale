@@ -1,11 +1,13 @@
 // sidebar-utils.js - Sidebar pin/unpin functionality
 // Note: filterSidebarByPermissions and SIDEBAR_HREF_TO_PERMISSION are defined in auth-utils.js
 
-// Enforce uniform sidebar link styling (matching dashboard.html: py-2 px-3 text-sm)
+// Enforce uniform styling for any *legacy* sidebar links (static <a> tags that
+// some pages may still hardcode). Excludes .snav-link — those are rendered by
+// renderSidebarLinks() and fully own their own flex/rail styling.
 (function() {
     const style = document.createElement('style');
     style.textContent = `
-        #sidebar a[href] {
+        #sidebar a[href]:not(.snav-link) {
             display: block;
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
@@ -13,7 +15,7 @@
             border-radius: 0.25rem;
             transition: background-color 200ms;
         }
-        #sidebar a[href]:hover {
+        #sidebar a[href]:not(.snav-link):hover {
             background-color: rgb(55, 65, 81);
         }
     `;
@@ -102,6 +104,42 @@ function toggleSidebarPin() {
     }
 }
 
+// ── Rail (icon-only) collapse mode ───────────────────────────────────────────
+// Toggles a narrow icon-only sidebar that expands on hover. State persists in
+// localStorage('sidebarRail') and is applied via .sidebar-rail-mode on <html>.
+function toggleSidebarRail() {
+    const railed = document.documentElement.classList.toggle('sidebar-rail-mode');
+    try { localStorage.setItem('sidebarRail', railed ? 'true' : 'false'); } catch (e) {}
+    _syncRailToggleLabel(railed);
+
+    // When entering rail mode, make sure the sidebar is actually pinned/visible
+    // (rail only makes sense on desktop with the sidebar showing).
+    if (railed && window.innerWidth >= 768) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('md:-translate-x-full')) {
+            sidebar.classList.remove('md:-translate-x-full');
+            sidebar.classList.add('md:translate-x-0');
+            localStorage.setItem('sidebarPinned', 'true');
+        }
+    }
+}
+
+function _syncRailToggleLabel(railed) {
+    const btn = document.getElementById('snav-collapse-btn');
+    if (!btn) return;
+    const span = btn.querySelector('span');
+    if (span) span.textContent = railed ? 'Expand' : 'Collapse';
+    btn.setAttribute('aria-label', railed ? 'Expand sidebar' : 'Collapse sidebar to icons');
+    btn.title = railed ? 'Expand sidebar' : 'Collapse to icons';
+}
+
+function initializeSidebarRail() {
+    // The early-paint IIFE in auth-utils.js already added .sidebar-rail-mode if
+    // it was previously enabled — just sync the toggle button label to match.
+    const railed = document.documentElement.classList.contains('sidebar-rail-mode');
+    _syncRailToggleLabel(railed);
+}
+
 function initializeSidebarPin() {
     const sidebar = document.getElementById('sidebar');
     const pinToggle = document.getElementById('pin-sidebar-toggle');
@@ -162,6 +200,16 @@ window.addEventListener('resize', function() {
 document.addEventListener('DOMContentLoaded', function() {
     if (!window.sidebarInitialized) {
         initializeSidebarPin();
+        initializeSidebarRail();
+        // The collapse toggle is injected asynchronously by renderSidebarLinks();
+        // sync its label once it exists.
+        let _tries = 0;
+        const _syncTimer = setInterval(function () {
+            if (document.getElementById('snav-collapse-btn') || _tries++ > 20) {
+                clearInterval(_syncTimer);
+                initializeSidebarRail();
+            }
+        }, 100);
         window.sidebarInitialized = true;
     }
 });

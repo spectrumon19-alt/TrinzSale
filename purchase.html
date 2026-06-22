@@ -117,6 +117,10 @@
         @media (max-width: 480px) {
             .pagination-wrapper { flex-direction: column; align-items: flex-start; }
         }
+
+        @media (max-width: 640px) {
+            .hide-mobile { display: none !important; }
+        }
     </style>
 </head>
 <body class="font-sans leading-normal tracking-normal">
@@ -292,13 +296,13 @@
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
-                                        <th>Pack Size</th>
+                                        <th class="hide-mobile">Pack Size</th>
                                         <th>Qty</th>
                                         <th>Rate</th>
-                                        <th>GST %</th>
-                                        <th>Taxable</th>
-                                        <th>SGST</th>
-                                        <th>CGST</th>
+                                        <th class="hide-mobile">GST %</th>
+                                        <th class="hide-mobile">Taxable</th>
+                                        <th class="hide-mobile">SGST</th>
+                                        <th class="hide-mobile">CGST</th>
                                         <th>Amount</th>
                                         <th>Action</th>
                                     </tr>
@@ -410,13 +414,13 @@
                                 <table id="invoices-table">
                                     <thead>
                                         <tr>
-                                            <th>#</th>
-                                            <th>Invoice Number</th>
+                                            <th class="hide-mobile">#</th>
+                                            <th>Invoice No.</th>
                                             <th>Supplier</th>
-                                            <th>Date</th>
-                                            <th>Created By</th>
-                                            <th>Total Amount</th>
-                                            <th>Status</th>
+                                            <th class="hide-mobile">Date</th>
+                                            <th class="hide-mobile">Created By</th>
+                                            <th>Amount</th>
+                                            <th class="hide-mobile">Status</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -1790,13 +1794,13 @@
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${item.name || 'N/A'}</td>
-                    <td>${item.pack_size || '-'}</td>
+                    <td class="hide-mobile">${item.pack_size || '-'}</td>
                     <td>${quantity}</td>
                     <td>₹${purchaseRate.toFixed(2)}</td>
-                    <td>${gstRate.toFixed(2)}%</td>
-                    <td>₹${taxableValue.toFixed(2)}</td>
-                    <td>₹${sgst.toFixed(2)}</td>
-                    <td>₹${cgst.toFixed(2)}</td>
+                    <td class="hide-mobile">${gstRate.toFixed(2)}%</td>
+                    <td class="hide-mobile">₹${taxableValue.toFixed(2)}</td>
+                    <td class="hide-mobile">₹${sgst.toFixed(2)}</td>
+                    <td class="hide-mobile">₹${cgst.toFixed(2)}</td>
                     <td>₹${totalAmount.toFixed(2)}</td>
                     <td>
                         <button class="remove-btn" onclick="removePurchaseItem(${index})" title="Remove Item">
@@ -1909,13 +1913,13 @@
                 const rowNum = start + idx + 1;
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${rowNum}</td>
+                    <td class="hide-mobile">${rowNum}</td>
                     <td>${invoice.purchase_order_number || 'N/A'}</td>
                     <td>${invoice.supplier_name || 'N/A'}</td>
-                    <td>${invoice.purchase_date ? new Date(invoice.purchase_date).toLocaleDateString() : 'N/A'}</td>
-                    <td>${invoice.created_by || 'N/A'}</td>
+                    <td class="hide-mobile">${invoice.purchase_date ? new Date(invoice.purchase_date).toLocaleDateString() : 'N/A'}</td>
+                    <td class="hide-mobile">${invoice.created_by || 'N/A'}</td>
                     <td>₹${parseFloat(invoice.total_amount || 0).toFixed(2)}</td>
-                    <td><span class="status-badge ${invoice.status === 'Completed' ? 'status-completed' : 'status-cancelled'}">${invoice.status || 'N/A'}</span></td>
+                    <td class="hide-mobile"><span class="status-badge ${invoice.status === 'Completed' ? 'status-completed' : 'status-cancelled'}">${invoice.status || 'N/A'}</span></td>
                     <td>
                         <div class="flex gap-1">
                             <button class="btn-sm btn-primary p-2" onclick="showInvoiceDetail(${invoice.purchase_order_id})" title="View Details">
