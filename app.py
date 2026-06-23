@@ -132,13 +132,13 @@ def create_app():
     from routes.products import products_bp
     from routes.sales import sales_bp
     from routes.inventory import inventory_bp
-    from routes.reports import reports_bp
-    from routes.admin import admin_bp
+    from routes.reports import REPORTS_BLUEPRINTS
+    from routes.admin import ADMIN_BLUEPRINTS
     from routes.purchase import purchase_bp
     from routes.suppliers import suppliers_bp
     from routes.supplier_data import supplier_data_bp
     from routes.data_upload import data_upload_bp
-    from routes.service import service_bp
+    from routes.service import SERVICE_BLUEPRINTS
     from routes.credit import credit_bp
     from routes.credit_management import credit_management_bp
     from routes.totp import totp_bp
@@ -161,13 +161,16 @@ def create_app():
     app.register_blueprint(products_bp, url_prefix='/api')
     app.register_blueprint(sales_bp, url_prefix='/api')
     app.register_blueprint(inventory_bp, url_prefix='/api')
-    app.register_blueprint(reports_bp, url_prefix='/api')
-    app.register_blueprint(admin_bp, url_prefix='/api')
+    for _reports_bp in REPORTS_BLUEPRINTS:
+        app.register_blueprint(_reports_bp, url_prefix='/api')
+    for _admin_bp in ADMIN_BLUEPRINTS:
+        app.register_blueprint(_admin_bp, url_prefix='/api')
     app.register_blueprint(purchase_bp, url_prefix='/api')
     app.register_blueprint(suppliers_bp, url_prefix='/api')
     app.register_blueprint(supplier_data_bp, url_prefix='/api')
     app.register_blueprint(data_upload_bp, url_prefix='/api')
-    app.register_blueprint(service_bp, url_prefix='/api')
+    for _service_bp in SERVICE_BLUEPRINTS:
+        app.register_blueprint(_service_bp, url_prefix='/api')
     app.register_blueprint(credit_bp, url_prefix='/api')
     app.register_blueprint(credit_management_bp, url_prefix='/api')
     app.register_blueprint(totp_bp,    url_prefix='/api')

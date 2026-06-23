@@ -1,6 +1,7 @@
 import psycopg2
 import os
 import sys
+from contextlib import contextmanager
 from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
@@ -130,6 +131,75 @@ def close_all_connections():
     if _connection_pool:
         _connection_pool.closeall()
         _connection_pool = None
+
+
+@contextmanager
+def db_cursor(commit=False, dict_rows=True):
+    """Pooled cursor as a context manager — the safe, leak-proof way to talk to
+    the DB from a route.
+
+        with db_cursor() as cur:                 # read
+            cur.execute("SELECT ...")
+            rows = cur.fetchall()
+
+        with db_cursor(commit=True) as cur:      # write (auto-commits on success)
+            cur.execute("UPDATE ...")
+
+    Guarantees the connection is always returned to the pool (no leaks), commits
+    on clean exit when commit=True, and rolls back on any exception before
+    re-raising. Set dict_rows=False for plain tuple rows.
+    """
+    conn = get_db_connection()
+    factory = RealDictCursor if dict_rows else None
+    cur = conn.cursor(cursor_factory=factory)
+    try:
+        yield cur
+        if commit:
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        release_db_connection(conn)
+
+
+def run_readonly_query(sql, params=None, timeout_ms=12000, max_rows=1000):
+    """Execute *sql* inside a server-enforced READ ONLY transaction.
+
+    Defense in depth that a regex blocklist cannot provide: Postgres itself
+    rejects any write (INSERT/UPDATE/DELETE/DDL/TRUNCATE/COPY-to-table/etc.)
+    raised inside a `READ ONLY` transaction, regardless of how the SQL is
+    phrased (CTEs, comments, multi-statement, function side effects).
+
+    Returns (columns, rows) where rows is a list of dicts (capped at max_rows).
+    Always rolls back. Raises on any DB error (caller maps to an HTTP response).
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        # Run in a fresh read-only transaction with a hard statement timeout.
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SET TRANSACTION READ ONLY")
+            cur.execute("SET LOCAL statement_timeout = %s", (int(timeout_ms),))
+            cur.execute(sql, params or ())
+            columns = [d.name for d in cur.description] if cur.description else []
+            rows = cur.fetchmany(max_rows) if cur.description else []
+        return columns, [dict(r) for r in rows]
+    finally:
+        if conn:
+            # Read-only: rollback is a no-op for data but resets the txn cleanly.
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            release_db_connection(conn)
 
 def init_db():
     """Initialize database - verify connection and run schema only if needed."""

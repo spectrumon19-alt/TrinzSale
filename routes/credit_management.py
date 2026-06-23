@@ -16,6 +16,17 @@ Ledger sign convention (identical on both sides):
 `current_balance` is a stored running total; the reconciliation check
 re-derives the expected balance from the ledger and flags any account
 where the two disagree (drift from a bug, manual edit or failed txn).
+
+OUTSTANDING-DEBT DIRECTION (the two sides are mirror images):
+    • CUSTOMER (receivable): a credit *sale* posts a 'debit', so a customer who
+      owes the shop carries a NEGATIVE balance. Outstanding = -balance (when
+      balance < 0). The charge that ages is the 'debit'; a 'credit' is a payment.
+    • SUPPLIER (payable): a credit *purchase* posts a 'credit', so a supplier the
+      shop owes carries a POSITIVE balance. Outstanding = +balance (when
+      balance > 0). The charge that ages is the 'credit'; a 'debit' is a payment.
+
+This is captured per-side in _SIDE['outstanding_sign'] / ['charge_type'] so a
+single set of helpers serves both ledgers without inverting one of them.
 """
 
 import io
@@ -70,28 +81,29 @@ def _bucket_for(age):
     return 'd90_plus'
 
 
-def _age_ledger(rows, authoritative_balance=None):
+def _age_ledger(rows, charge_type='credit', authoritative_outstanding=None):
     """
     FIFO aging for one account.
 
     `rows` are that account's ledger entries (each: transaction_type, amount,
-    created_at), ANY order. Payments (debits) settle the oldest outstanding
-    charges (credits) first; the unpaid remainder of each charge is then placed
-    in an aging bucket by the charge's age. Only positive net balances age
-    (a net advance/credit balance has nothing outstanding to age).
+    created_at), ANY order. `charge_type` is the entry that CREATES the debt for
+    this side ('debit' for customers, 'credit' for suppliers); the opposite type
+    is a payment. Payments settle the oldest outstanding charges first; the unpaid
+    remainder of each charge is placed in an aging bucket by the charge's age.
+    Only outstanding debt ages (a net advance has nothing to age).
 
-    `authoritative_balance` is the stored current_balance. When the ledger does
-    not perfectly reconcile to it (drift), the bucket amounts are scaled so the
-    buckets still sum to max(authoritative_balance, 0). This keeps the aging
-    breakup consistent with the outstanding total shown to the user.
+    `authoritative_outstanding` is the side-signed outstanding figure (a positive
+    number, or 0). When the ledger does not perfectly reconcile to it (drift), the
+    bucket amounts are scaled so the buckets still sum to that figure, keeping the
+    aging breakup consistent with the outstanding total shown to the user.
 
-    Returns {bucket: amount, ...} that sums to max(balance, 0).
+    Returns {bucket: amount, ...} that sums to max(outstanding, 0).
     """
     charges = []          # list of [age_days, remaining_amount], oldest first
     payment_pool = 0.0
     for r in rows:
         amt = _f(r['amount'])
-        if r['transaction_type'] == 'credit':
+        if r['transaction_type'] == charge_type:
             charges.append([_age_days(r['created_at']), amt])
         else:
             payment_pool += amt
@@ -110,10 +122,10 @@ def _age_ledger(rows, authoritative_balance=None):
         if remaining > 0.005:
             buckets[_bucket_for(age)] += remaining
 
-    # Reconcile the bucket total to the authoritative balance so the aging
-    # breakup always sums to the outstanding figure the user sees.
-    if authoritative_balance is not None:
-        target = max(_f(authoritative_balance), 0.0)
+    # Reconcile the bucket total to the authoritative outstanding figure so the
+    # aging breakup always sums to the outstanding amount the user sees.
+    if authoritative_outstanding is not None:
+        target = max(_f(authoritative_outstanding), 0.0)
         ledger_total = sum(buckets.values())
         if target <= 0.005:
             # Net advance / settled: nothing outstanding to age.
@@ -140,26 +152,30 @@ def credit_overview(payload):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        # Receivables — customers owe us (only positive balances count as outstanding)
+        # Receivables — customers owe us. A customer who owes carries a NEGATIVE
+        # balance (a credit sale posts a 'debit'), so outstanding = -SUM(balance)
+        # over balances < 0.
         cur.execute("""
             SELECT
-                COALESCE(SUM(current_balance), 0) AS total_outstanding,
-                COUNT(*)                          AS customer_count
+                COALESCE(-SUM(current_balance), 0) AS total_outstanding,
+                COUNT(*)                           AS customer_count
             FROM credit_customers
-            WHERE current_balance > 0
+            WHERE current_balance < 0
         """)
         recv = cur.fetchone()
 
-        # Customers in credit (we owe them / advance) — separate, informational
+        # Customers in credit (advance / we owe them) — POSITIVE balances. Separate,
+        # informational.
         cur.execute("""
             SELECT COALESCE(SUM(current_balance), 0) AS advance_total,
                    COUNT(*)                          AS advance_count
             FROM credit_customers
-            WHERE current_balance < 0
+            WHERE current_balance > 0
         """)
         recv_adv = cur.fetchone()
 
-        # Payables — we owe suppliers
+        # Payables — we owe suppliers. A supplier we owe carries a POSITIVE balance
+        # (a credit purchase posts a 'credit'), so outstanding = SUM over balances > 0.
         cur.execute("""
             SELECT
                 COALESCE(SUM(current_balance), 0) AS total_outstanding,
@@ -203,6 +219,9 @@ _SIDE = {
         'id_col':     'customer_id',
         'name_col':   'name',
         'extra_cols': ['customer_code'],
+        # Customer who owes the shop carries a NEGATIVE balance (credit sale = debit).
+        'outstanding_sign': -1,     # outstanding = -balance when balance is "owing"
+        'charge_type':      'debit',  # the ledger entry that creates debt; 'credit' settles it
     },
     'supplier': {
         'master':     'suppliers',
@@ -210,8 +229,18 @@ _SIDE = {
         'id_col':     'supplier_id',
         'name_col':   'supplier_name',
         'extra_cols': ['supplier_gst_number'],
+        # Supplier the shop owes carries a POSITIVE balance (credit purchase = credit).
+        'outstanding_sign': +1,     # outstanding = +balance when balance is "owing"
+        'charge_type':      'credit',  # the ledger entry that creates debt; 'debit' settles it
     },
 }
+
+
+def _outstanding(balance, sign):
+    """Outstanding debt for one account given the side's sign.
+    Returns a positive number when there IS debt, else 0."""
+    val = _f(balance) * sign
+    return val if val > 0 else 0.0
 
 
 def _build_account_list(cur, side):
@@ -224,16 +253,20 @@ def _build_account_list(cur, side):
     id_col   = cfg['id_col']
     name_col = cfg['name_col']
     extra    = cfg['extra_cols']
+    sign     = cfg['outstanding_sign']   # +1 supplier, -1 customer
+    charge_t = cfg['charge_type']
     extra_sql = ''.join(f'm.{c}, ' for c in extra)
 
-    # Master rows with a non-zero balance
+    # Master rows with a non-zero balance, ordered biggest-debt-first for THIS
+    # side: customers owe when balance is most negative, suppliers when most
+    # positive — `current_balance * sign DESC` puts the largest debtor on top.
     cur.execute(f"""
         SELECT m.{id_col} AS account_id, m.{name_col} AS name, m.mobile,
                {extra_sql} m.current_balance
         FROM {cfg['master']} m
         WHERE m.current_balance <> 0
-        ORDER BY m.current_balance DESC
-    """)
+        ORDER BY m.current_balance * %s DESC
+    """, (sign,))
     master_rows = cur.fetchall()
     if not master_rows:
         return [], _empty_summary()
@@ -261,12 +294,16 @@ def _build_account_list(cur, side):
                        else -_f(x['amount']) for x in led)
         reconciled = abs(balance - expected) <= RECON_TOLERANCE
         last_activity = max((x['created_at'] for x in led), default=None)
-        aging = _age_ledger(led, authoritative_balance=balance)
+
+        # Outstanding debt for this side (positive number, or 0 if not owing).
+        outstanding = _outstanding(balance, sign)
+        aging = _age_ledger(led, charge_type=charge_t,
+                            authoritative_outstanding=outstanding)
 
         if not reconciled:
             summary['mismatched_count'] += 1
-        if balance > 0:
-            summary['total_outstanding'] += balance
+        if outstanding > 0:
+            summary['total_outstanding'] += outstanding
             for b in AGING_BUCKETS:
                 summary['aging'][b] += aging[b]
 
@@ -276,6 +313,7 @@ def _build_account_list(cur, side):
             'name':             r['name'],
             'mobile':           r['mobile'],
             'current_balance':  round(balance, 2),
+            'outstanding':      round(outstanding, 2),   # debt owed for this side (>=0)
             'expected_balance': round(expected, 2),
             'reconciled':       reconciled,
             'discrepancy':      round(balance - expected, 2),
@@ -525,7 +563,7 @@ def export_credit(payload):
         w.set_column('A:A', 6);  w.set_column('B:B', 26); w.set_column('C:C', 20)
         w.set_column('D:D', 14); w.set_column('E:I', 14); w.set_column('J:J', 18)
         w.write('A1', f'{sheet_name} — as on {today}', title)
-        headers = ['#', 'Name', code_header, 'Mobile', 'Balance',
+        headers = ['#', 'Name', code_header, 'Mobile', 'Outstanding',
                    AGING_LABELS['current'], AGING_LABELS['d31_60'],
                    AGING_LABELS['d61_90'], AGING_LABELS['d90_plus'], 'Status']
         for c, h in enumerate(headers):
@@ -536,7 +574,8 @@ def export_credit(payload):
             w.write(rr, 1, a['name'] or '', cell)
             w.write(rr, 2, a.get(code_key) or '', cell)
             w.write(rr, 3, a['mobile'] or '', cell)
-            w.write(rr, 4, a['current_balance'], money)
+            # Outstanding debt for the side (>=0), not the raw signed balance.
+            w.write(rr, 4, a['outstanding'], money)
             w.write(rr, 5, a['aging']['current'],  money)
             w.write(rr, 6, a['aging']['d31_60'],   money)
             w.write(rr, 7, a['aging']['d61_90'],   money)
@@ -546,9 +585,9 @@ def export_credit(payload):
         # Totals row
         w.write(rr, 0, '', cell); w.write(rr, 1, 'TOTAL', sub)
         w.write(rr, 2, '', sub);  w.write(rr, 3, '', sub)
-        w.write(rr, 4, sum(a['current_balance'] for a in accounts if a['current_balance'] > 0), money_b)
+        w.write(rr, 4, round(sum(a['outstanding'] for a in accounts), 2), money_b)
         for ci, b in enumerate(AGING_BUCKETS, 5):
-            w.write(rr, ci, sum(a['aging'][b] for a in accounts), money_b)
+            w.write(rr, ci, round(sum(a['aging'][b] for a in accounts), 2), money_b)
         w.write(rr, 9, '', sub)
 
     write_breakup('By Customer', customers, 'Customer Code', 'customer_code')

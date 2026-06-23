@@ -436,11 +436,19 @@
             body.innerHTML = filtered.map((r, i) => {
                 const name = isRecv ? r.name : r.supplier_name;
                 const sub  = isRecv ? (r.customer_code || '-') : (r.supplier_gst_number || '-');
+                // Use the backend's side-aware `outstanding` (>=0 = real debt owed
+                // for this side). The raw current_balance is signed oppositely on the
+                // two ledgers (customer owes when negative), so never key UI off it.
+                const outstanding = Number(r.outstanding) || 0;
                 const bal  = Number(r.current_balance) || 0;
-                if (bal > 0) total += bal;
-                const owed = bal > 0;
+                total += outstanding;
+                const owed = outstanding > 0;
+                // An account that is not owing but has a non-zero balance is in advance/credit.
+                const inAdvance = !owed && bal !== 0;
                 const balCls = owed ? 'amt-owed' : 'amt-credit';
-                const balTxt = fmt(Math.abs(bal)) + (owed ? '' : ' Cr');
+                const balTxt = owed ? fmt(outstanding)
+                            : inAdvance ? fmt(Math.abs(bal)) + ' Cr'
+                            : '—';
                 const ag = r.aging || { current:0, d31_60:0, d61_90:0, d90_plus:0 };
                 tA += ag.current; tB += ag.d31_60; tC += ag.d61_90; tD += ag.d90_plus;
                 const cell = (v, cls) => `<td class="age-cell ${v > 0 ? cls : ''}">${v > 0 ? fmt(v) : '—'}</td>`;
@@ -495,8 +503,14 @@
                     `${d.mobile || ''}  ·  ${d.txn_count} transaction${d.txn_count !== 1 ? 's' : ''}`;
                 const bal = Number(d.current_balance) || 0;
                 const balEl = document.getElementById('led-balance');
-                balEl.textContent = fmt(Math.abs(bal)) + (bal > 0 ? ' outstanding' : bal < 0 ? ' credit' : '');
-                balEl.style.color = bal > 0 ? '#dc2626' : bal < 0 ? '#059669' : 'var(--text-muted)';
+                // Side-aware: customers owe when balance is NEGATIVE, suppliers when
+                // POSITIVE. `outstandingSign` makes one path serve both ledgers.
+                const outstandingSign = (kind === 'customers') ? -1 : 1;
+                const owing = bal * outstandingSign;          // >0 = real debt
+                balEl.textContent = owing > 0 ? fmt(owing) + ' outstanding'
+                                  : owing < 0 ? fmt(Math.abs(owing)) + ' credit'
+                                  : fmt(0) + ' settled';
+                balEl.style.color = owing > 0 ? '#dc2626' : owing < 0 ? '#059669' : 'var(--text-muted)';
 
                 if (!d.transactions.length) {
                     document.getElementById('led-body').innerHTML =

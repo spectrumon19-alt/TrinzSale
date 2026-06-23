@@ -627,26 +627,26 @@
         const queryStatus = document.getElementById('query-status');
         
         // Query Functions
-        function executeQuery() {
+        function executeQuery(confirmDestructive) {
             const query = sqlQueryTextarea.value.trim();
-            
+
             if (!query) {
                 showStatus('Please enter a SQL query', 'error');
                 return;
             }
-            
+
             showStatus('Executing query...', 'info');
             queryResultContainer.style.display = 'none';
-            
+
             const token = localStorage.getItem('pos_token');
-            
+
             fetch('/api/admin/service/execute-sql', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ query: query })
+                body: JSON.stringify({ query: query, confirm_destructive: !!confirmDestructive })
             })
             .then(response => {
                 // Check if the response is JSON
@@ -661,6 +661,20 @@
                 }
             })
             .then(data => {
+                // Server flags a write/destructive query — confirm before proceeding.
+                if (data.requires_confirmation) {
+                    const ok = window.confirm(
+                        '⚠ This query MODIFIES the database (not a read-only SELECT).\n\n'
+                        + 'It may insert, update, delete, or drop data. This action is logged.\n\n'
+                        + 'Are you sure you want to run it?'
+                    );
+                    if (ok) {
+                        executeQuery(true);   // re-run with confirmation
+                    } else {
+                        showStatus('Query cancelled.', 'info');
+                    }
+                    return;
+                }
                 if (data.success) {
                     if (data.results) {
                         // Display SELECT query results
@@ -761,9 +775,10 @@
             // Update DB status
             updateDBStatus();
             
-            // Set up event listeners for query controls
+            // Set up event listeners for query controls.
+            // Wrap so the click Event isn't passed as confirmDestructive=true.
             if (executeQueryBtn) {
-                executeQueryBtn.addEventListener('click', executeQuery);
+                executeQueryBtn.addEventListener('click', function () { executeQuery(false); });
             }
             
             if (clearQueryBtn) {
@@ -774,7 +789,7 @@
             if (sqlQueryTextarea) {
                 sqlQueryTextarea.addEventListener('keydown', function(e) {
                     if (e.ctrlKey && e.key === 'Enter') {
-                        executeQuery();
+                        executeQuery(false);
                     }
                 });
             }

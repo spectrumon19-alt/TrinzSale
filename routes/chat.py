@@ -122,17 +122,11 @@ def _validate_sql(sql: str):
 
 
 def _run_sql(sql: str):
-    conn = get_db_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SET statement_timeout = 12000")
-            cur.execute(sql)
-            rows = cur.fetchmany(501)
-            columns = [d.name for d in cur.description] if cur.description else []
-            conn.rollback()
-        return columns, [dict(r) for r in rows]
-    finally:
-        release_db_connection(conn)
+    # Defense in depth: the AI-generated SQL runs inside a server-enforced
+    # READ ONLY transaction, so even if the keyword blocklist in _validate_sql
+    # is bypassed, Postgres rejects any write at execution time.
+    from db import run_readonly_query
+    return run_readonly_query(sql, timeout_ms=12000, max_rows=501)
 
 
 def _get_active_ai_config() -> dict:

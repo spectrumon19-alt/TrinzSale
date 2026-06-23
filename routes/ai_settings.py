@@ -1,5 +1,8 @@
+import base64
+import hashlib
 import json
 import logging
+import os
 import time
 
 import requests
@@ -11,6 +14,87 @@ from auth import token_required, admin_required
 
 logger = logging.getLogger(__name__)
 ai_settings_bp = Blueprint('ai_settings', __name__)
+
+# ── API-key encryption at rest (Fernet / AES-128-CBC + HMAC) ──────────────────
+# Stored keys are encrypted with a versioned prefix so we can transparently
+# distinguish them from legacy plaintext rows and migrate on the fly.
+_ENC_PREFIX = 'enc:v1:'
+_cipher = None
+
+
+def _get_cipher():
+    """Build (once) a Fernet cipher.
+
+    Key source priority:
+      1. AI_KEY_ENCRYPTION_KEY  — a urlsafe-base64 32-byte Fernet key (preferred).
+      2. Derived from SECRET_KEY — so encryption works out-of-the-box, but we
+         warn because rotating SECRET_KEY would then orphan stored keys.
+    """
+    global _cipher
+    if _cipher is not None:
+        return _cipher
+    from cryptography.fernet import Fernet
+
+    raw = os.environ.get('AI_KEY_ENCRYPTION_KEY', '').strip()
+    if raw:
+        fernet_key = raw.encode()
+    else:
+        secret = os.environ.get('SECRET_KEY', '')
+        if not secret:
+            raise RuntimeError(
+                'Cannot encrypt AI keys: set AI_KEY_ENCRYPTION_KEY (preferred) '
+                'or SECRET_KEY in the environment.'
+            )
+        logger.warning(
+            'AI_KEY_ENCRYPTION_KEY not set — deriving the AI-key encryption key '
+            'from SECRET_KEY. Set a dedicated AI_KEY_ENCRYPTION_KEY so rotating '
+            'SECRET_KEY does not orphan stored AI provider keys. '
+            'Generate one with: python -c "from cryptography.fernet import Fernet;'
+            'print(Fernet.generate_key().decode())"'
+        )
+        digest = hashlib.sha256(secret.encode()).digest()  # 32 bytes
+        fernet_key = base64.urlsafe_b64encode(digest)
+
+    _cipher = Fernet(fernet_key)
+    return _cipher
+
+
+def _encrypt_key(plain: str) -> str:
+    """Encrypt a plaintext key for storage. Empty stays empty.
+    Idempotent: an already-encrypted value is returned unchanged."""
+    if not plain:
+        return ''
+    if plain.startswith(_ENC_PREFIX):
+        return plain  # already encrypted
+    try:
+        token = _get_cipher().encrypt(plain.encode()).decode()
+        return _ENC_PREFIX + token
+    except Exception:
+        # Never lose the user's key over an encryption setup error — fall back
+        # to storing as-is and surface the misconfiguration in logs.
+        logger.exception('AI key encryption failed; storing key UNENCRYPTED. '
+                         'Fix AI_KEY_ENCRYPTION_KEY/SECRET_KEY to enable encryption.')
+        return plain
+
+
+def _decrypt_key(stored: str) -> str:
+    """Decrypt a stored key for use. Legacy plaintext (no prefix) is returned
+    as-is so old rows keep working until they're next saved (then re-encrypted)."""
+    if not stored:
+        return ''
+    if not stored.startswith(_ENC_PREFIX):
+        return stored  # legacy plaintext
+    try:
+        token = stored[len(_ENC_PREFIX):].encode()
+        return _get_cipher().decrypt(token).decode()
+    except Exception:
+        logger.error('Failed to decrypt a stored AI key — wrong/changed '
+                     'encryption key? Returning empty so the call fails cleanly.')
+        return ''
+
+
+def _is_encrypted(stored: str) -> bool:
+    return bool(stored) and stored.startswith(_ENC_PREFIX)
 
 # ── Provider catalogue ────────────────────────────────────────────────────────
 PROVIDERS = {
@@ -234,7 +318,9 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
                   feature: str = 'chat', user_id=None, username: str = '') -> str:
     """Call the configured LLM provider and log token usage to ai_token_usage."""
     provider = config.get('provider', '')
-    api_key  = config.get('api_key', '')
+    # Decrypt at the single point of use. Transparently handles both encrypted
+    # (enc:v1:…) values from the DB and plaintext keys passed in for inline tests.
+    api_key  = _decrypt_key(config.get('api_key', ''))
     model    = config.get('model', '')
     base_url = (config.get('api_base_url') or '').rstrip('/')
     extra    = config.get('extra_config') or {}
@@ -436,7 +522,8 @@ def list_settings(current_user):
         result = []
         for r in rows:
             d = dict(r)
-            d['api_key_masked'] = _mask(d.get('api_key', ''))
+            # Mask the *decrypted* key so the preview shows the real prefix/suffix.
+            d['api_key_masked'] = _mask(_decrypt_key(d.get('api_key', '')))
             d['api_key'] = ''  # never send key to frontend
             result.append(d)
         return jsonify({'configs': result, 'providers': PROVIDERS})
@@ -474,7 +561,7 @@ def create_setting(current_user):
             cur.execute("""
                 INSERT INTO ai_settings (provider, display_name, api_key, api_base_url, model, extra_config)
                 VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-            """, (provider, display_name, api_key, api_base_url, model,
+            """, (provider, display_name, _encrypt_key(api_key), api_base_url, model,
                   json.dumps(extra_config)))
             new_id = cur.fetchone()['id']
             conn.commit()
@@ -507,14 +594,16 @@ def update_setting(current_user, cfg_id):
                 key_err = _validate_key(row['provider'], new_key)
                 if key_err:
                     return jsonify({'error': key_err}), 400
-            api_key = new_key if new_key else row['api_key']
+                stored_key = _encrypt_key(new_key)          # new key → encrypt
+            else:
+                stored_key = _encrypt_key(row['api_key'])   # keep existing; encrypt if legacy plaintext
 
             cur.execute("""
                 UPDATE ai_settings
                 SET display_name=%s, model=%s, api_key=%s, api_base_url=%s,
                     extra_config=%s, updated_at=NOW()
                 WHERE id=%s
-            """, (display_name, model, api_key, api_base_url,
+            """, (display_name, model, stored_key, api_base_url,
                   json.dumps(extra_config), cfg_id))
             conn.commit()
         return jsonify({'message': 'Updated successfully.'})
@@ -591,7 +680,8 @@ def test_connection(current_user):
     # ── Non-secret key diagnostic: pinpoints corrupted/partial keys without
     #    ever exposing the key itself. Reports length, visible prefix/suffix,
     #    and flags any hidden/non-ASCII characters or interior whitespace.
-    raw_key = config.get('api_key') or ''
+    #    Decrypt first so the diagnostic reflects the real key, not the cipher blob.
+    raw_key = _decrypt_key(config.get('api_key') or '')
     stripped = raw_key.strip()
     has_interior_ws = any(ch.isspace() for ch in stripped)
     non_ascii = [hex(ord(c)) for c in stripped if ord(c) > 127][:5]

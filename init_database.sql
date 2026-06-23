@@ -642,6 +642,24 @@ CREATE INDEX IF NOT EXISTS idx_ai_token_usage_provider  ON ai_token_usage(provid
 
 
 -- ============================================================
+-- SQL QUERY AUDIT (Query-to-DB tool — who ran what, when, outcome)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS sql_query_audit (
+    id          SERIAL       PRIMARY KEY,
+    run_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id     INTEGER,
+    username    VARCHAR(100),
+    query_text  TEXT         NOT NULL,
+    is_select   BOOLEAN      NOT NULL DEFAULT TRUE,
+    success     BOOLEAN      NOT NULL DEFAULT FALSE,
+    row_count   INTEGER,
+    error_msg   TEXT,
+    ip_address  VARCHAR(64)
+);
+CREATE INDEX IF NOT EXISTS idx_sql_audit_run_at ON sql_query_audit(run_at DESC);
+
+
+-- ============================================================
 -- VERIFY
 -- ============================================================
 SELECT 'TrintzPOS database initialised successfully!' AS status;
