@@ -229,3 +229,54 @@ def permission_required(screen):
 
         return decorated
     return decorator
+
+
+def strict_permission_required(screen):
+    """Gate a screen on the per-user permission for EVERY role except Super Admin.
+
+    Unlike permission_required (which auto-passes the Admin/Manager privileged
+    tier), this decorator honours the user_permissions toggle for Admins and
+    Managers too. Only Super Admin bypasses the check.
+
+    Policy: DENY-BY-DEFAULT — access is granted only when an explicit
+    user_permissions row sets has_access = TRUE. Fails closed on error.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            token = _extract_token()
+            if not token:
+                return jsonify({'message': 'Token is missing!'}), 401
+
+            payload = verify_token(token)
+            if not payload:
+                return jsonify({'message': 'Token is invalid!'}), 401
+
+            # Super Admin always has unrestricted access.
+            if payload.get('role') == 'Super Admin':
+                return f(payload, *args, **kwargs)
+
+            user_id = payload.get('user_id')
+            if not user_id:
+                return jsonify({'message': 'Invalid token payload'}), 401
+
+            try:
+                conn = get_db_connection()
+                cur  = conn.cursor()
+                cur.execute(
+                    "SELECT has_access FROM user_permissions WHERE user_id = %s AND page_id = %s",
+                    (user_id, screen)
+                )
+                perm = cur.fetchone()
+                cur.close()
+                release_db_connection(conn)
+
+                if perm is not None and perm[0]:
+                    return f(payload, *args, **kwargs)
+                return jsonify({'message': f'Access denied for {screen}'}), 403
+            except Exception as e:
+                print(f'Permission check error: {e}')
+                return jsonify({'message': 'Permission check failed'}), 403
+
+        return decorated
+    return decorator

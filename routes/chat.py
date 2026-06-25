@@ -58,6 +58,13 @@ DATABASE TABLES:
     transaction_type ['credit'|'debit'], amount DECIMAL, invoice_no,
     note, previous_balance DECIMAL, created_at TIMESTAMP)
 
+   Sign convention (Tally): credit_customers.current_balance is NEGATIVE when the
+   customer OWES the shop (receivable); a credit sale posts a 'debit'. So
+   "customers who owe / receivables" = rows WHERE current_balance < 0, and the
+   amount owed = -current_balance. A POSITIVE balance is a customer advance.
+   For suppliers it is the opposite: current_balance > 0 means the shop OWES the
+   supplier (payable); a credit purchase posts a 'credit'.
+
 11. users (user_id PK, username UNIQUE, role ['Admin'|'Cashier'|'Manager'|'Super Admin'],
     full_name, email, mobile)
 

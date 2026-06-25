@@ -66,39 +66,49 @@ def generate_invoice_number(conn, cur):
     return f"D{d_val:02d}P{p_val:03d}_{date_str}"
 
 def generate_receipt_number(conn, cur):
-    """Generate receipt number in format R_YYYYMMDD_seq with daily reset"""
+    """Generate receipt number in format RYYYYMMDDseq with daily reset (e.g. R20260617005)"""
     # Get current date
     now = datetime.now()
     full_date_str = now.strftime('%Y%m%d')  # YYYYMMDD format
-    short_date_str = now.strftime('%y%m%d')  # YYMMDD format (for compatibility)
-    
-    # Find all receipt numbers with format R_YYYYMMDD_seq for today
-    cur.execute("SELECT receipt_number FROM sales_invoices WHERE receipt_number IS NOT NULL AND receipt_number LIKE %s", 
-                (f'R_{full_date_str}_%',))
+
+    # Find all receipt numbers for today. Match both the current format (RYYYYMMDDseq)
+    # and the legacy format (R_YYYYMMDD_seq) so the daily sequence stays correct.
+    cur.execute(
+        "SELECT receipt_number FROM sales_invoices "
+        "WHERE receipt_number IS NOT NULL AND (receipt_number LIKE %s OR receipt_number LIKE %s)",
+        (f'R{full_date_str}%', f'R_{full_date_str}_%'))
     today_receipts = cur.fetchall()
-    
+
     # Extract sequence numbers from today's receipts
     max_seq = 0
     for row in today_receipts:
         receipt = row['receipt_number']
-        if receipt and receipt.startswith(f'R_{full_date_str}_'):
-            try:
-                # Extract sequence number (after the last underscore)
-                seq_part = receipt.split('_')[-1]
-                seq_num = int(seq_part)
-                if seq_num > max_seq:
-                    max_seq = seq_num
-            except (ValueError, IndexError):
-                # Skip invalid formats
-                continue
-    
+        if not receipt:
+            continue
+        seq_part = None
+        if receipt.startswith(f'R_{full_date_str}_'):
+            # Legacy format: sequence after the last underscore
+            seq_part = receipt.split('_')[-1]
+        elif receipt.startswith(f'R{full_date_str}'):
+            # Current format: sequence is everything after RYYYYMMDD
+            seq_part = receipt[len(f'R{full_date_str}'):]
+        if seq_part is None:
+            continue
+        try:
+            seq_num = int(seq_part)
+            if seq_num > max_seq:
+                max_seq = seq_num
+        except (ValueError, IndexError):
+            # Skip invalid formats
+            continue
+
     # Increment sequence number
     next_seq = max_seq + 1
-    
+
     # Format with leading zeros (3 digits)
     seq_str = str(next_seq).zfill(3)
-    
-    return f'R_{full_date_str}_{seq_str}'
+
+    return f'R{full_date_str}{seq_str}'
 
 @sales_bp.route('/customers/search', methods=['GET'])
 @token_required
@@ -306,11 +316,57 @@ def create_sale(payload):
             
             # Update invoice with calculated totals
             cur.execute("""
-                UPDATE sales_invoices 
+                UPDATE sales_invoices
                 SET total_amount = %s, total_gst = %s, discount_amount = %s
                 WHERE invoice_id = %s
             """, (total_invoice_amount, total_invoice_gst, total_discount_amount, invoice_id))
-            
+
+            # Tally-style: a credit sale debits the customer (Debtor) ledger so the
+            # receivable goes up automatically. Customer is a debtor → 'debit' entry,
+            # which decreases current_balance (negative = receivable per credit module).
+            # Non-fatal: if no matching credit customer is found, the sale still saves
+            # and we surface a warning instead of blocking the cashier.
+            credit_post_warning = None
+            if (data.get('mode_of_payment') or '').strip().lower() == 'credit':
+                grand_total = round(float(total_invoice_amount) + float(total_invoice_gst), 2)
+                cust_mobile = (data.get('customer_mobile') or data.get('customer_contact') or '').strip()
+                try:
+                    cc = None
+                    if cust_mobile:
+                        cur.execute("""
+                            SELECT customer_id, current_balance
+                            FROM credit_customers
+                            WHERE mobile = %s
+                            ORDER BY customer_id
+                            LIMIT 1
+                        """, (cust_mobile,))
+                        cc = cur.fetchone()
+                    if cc and grand_total > 0:
+                        prev_balance = float(cc['current_balance'] or 0)
+                        new_balance = round(prev_balance - grand_total, 2)  # debit lowers balance
+                        cur.execute("""
+                            INSERT INTO credit_transactions (
+                                customer_id, transaction_type, amount, invoice_no, note, previous_balance
+                            ) VALUES (%s, 'debit', %s, %s, %s, %s)
+                        """, (cc['customer_id'], grand_total, invoice_number,
+                              'Auto-posted from credit sale', prev_balance))
+                        cur.execute("""
+                            UPDATE credit_customers
+                            SET current_balance = %s
+                            WHERE customer_id = %s
+                        """, (new_balance, cc['customer_id']))
+                    else:
+                        credit_post_warning = (
+                            "Sale marked 'Credit' but no matching credit customer was found"
+                            + (f" for mobile {cust_mobile}." if cust_mobile else " (no customer mobile provided).")
+                            + " The customer's receivable was NOT updated — add them in Credit Management."
+                        )
+                except Exception as _credit_err:
+                    logger.warning("Credit-ledger auto-post skipped for invoice %s: %s",
+                                   invoice_number, _credit_err)
+                    credit_post_warning = ("Sale saved, but the credit ledger could not be "
+                                           "updated automatically. Adjust the customer's balance manually.")
+
             # Commit transaction
             conn.commit()
 
@@ -392,7 +448,9 @@ def create_sale(payload):
                 result['discount_percentage'] = float(result['discount_percentage']) if result['discount_percentage'] else 0.0
                 # Add receipt number to the result
                 result['receipt_number'] = result['receipt_number'] if result.get('receipt_number') else None
-        
+                if credit_post_warning:
+                    result['warning'] = credit_post_warning
+
             return jsonify(result), 201
         except Exception as e:
             if conn:
@@ -506,20 +564,46 @@ def cancel_sale(payload, invoice_id):
             WHERE invoice_id = %s
         """, (user_id, cancel_reason, invoice_id))
 
-        # 6. Detect (don't block on) any credit-ledger entries for this invoice
+        # 6. Reverse any auto-posted credit-ledger debit for this invoice (Tally:
+        #    cancelling a credit sale reverses the debtor charge). We post an
+        #    offsetting 'credit' entry per linked 'debit' and restore the balance.
+        #    Non-fatal: if the ledger isn't present we just skip with a warning.
         credit_warning = None
         try:
             cur.execute("""
-                SELECT COUNT(*) AS credit_count
+                SELECT transaction_id, customer_id, amount
                 FROM credit_transactions
-                WHERE invoice_no = %s
+                WHERE invoice_no = %s AND transaction_type = 'debit'
             """, (invoice['invoice_number'],))
-            credit_count = int((cur.fetchone() or {}).get('credit_count', 0))
-            if credit_count > 0:
-                credit_warning = (f"This invoice has {credit_count} linked credit-ledger "
-                                  f"entry(ies). Adjust the customer's credit balance manually.")
-        except Exception:
+            posted = cur.fetchall() or []
+            reversed_count = 0
+            for txn in posted:
+                cur.execute("""
+                    SELECT current_balance FROM credit_customers WHERE customer_id = %s
+                """, (txn['customer_id'],))
+                row = cur.fetchone()
+                if not row:
+                    continue
+                prev_balance = float(row['current_balance'] or 0)
+                amt = float(txn['amount'] or 0)
+                new_balance = round(prev_balance + amt, 2)  # credit reverses the debit
+                cur.execute("""
+                    INSERT INTO credit_transactions (
+                        customer_id, transaction_type, amount, invoice_no, note, previous_balance
+                    ) VALUES (%s, 'credit', %s, %s, %s, %s)
+                """, (txn['customer_id'], amt, invoice['invoice_number'],
+                      'Reversal of cancelled credit sale', prev_balance))
+                cur.execute("""
+                    UPDATE credit_customers SET current_balance = %s WHERE customer_id = %s
+                """, (new_balance, txn['customer_id']))
+                reversed_count += 1
+            if reversed_count:
+                credit_warning = (f"Reversed {reversed_count} credit-ledger entry(ies); "
+                                  f"the customer's receivable was restored automatically.")
+        except Exception as _rev_err:
             # credit_transactions may not exist in every deployment — ignore.
+            logger.warning("Credit-ledger reversal skipped for invoice %s: %s",
+                           invoice['invoice_number'], _rev_err)
             credit_warning = None
 
         conn.commit()

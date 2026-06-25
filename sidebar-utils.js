@@ -78,7 +78,7 @@ function toggleSidebarPin() {
     const sidebar = document.getElementById('sidebar');
     const pinToggle = document.getElementById('pin-sidebar-toggle');
     const headerPinToggle = document.getElementById('pin-sidebar-toggle-header');
-    const mainContent = document.querySelector('.flex-1');
+    const mainContent = document.querySelector('.main-col') || document.querySelector('.flex-1');
     const floatingToggle = document.getElementById('floating-sidebar-toggle');
     
     if (!sidebar) return;
@@ -143,7 +143,7 @@ function initializeSidebarRail() {
 function initializeSidebarPin() {
     const sidebar = document.getElementById('sidebar');
     const pinToggle = document.getElementById('pin-sidebar-toggle');
-    const mainContent = document.querySelector('.flex-1');
+    const mainContent = document.querySelector('.main-col') || document.querySelector('.flex-1');
     const floatingToggle = document.getElementById('floating-sidebar-toggle');
     const overlay = document.getElementById('overlay');
     
@@ -158,13 +158,14 @@ function initializeSidebarPin() {
     if (mainContent) mainContent.classList.remove('sidebar-hidden');
     if (pinToggle) pinToggle.checked = true;
     if (floatingToggle) floatingToggle.classList.add('hidden');
-    
+
     if (pinToggle) pinToggle.addEventListener('change', toggleSidebarPin);
-    
+
     const headerPinToggle = document.getElementById('pin-sidebar-toggle-header');
     if (headerPinToggle) {
         headerPinToggle.addEventListener('change', toggleSidebarPin);
-        if (pinToggle) headerPinToggle.checked = pinToggle.checked;
+        // Reflect current pinned state (sidebar defaults to pinned/visible above)
+        headerPinToggle.checked = true;
     }
 }
 

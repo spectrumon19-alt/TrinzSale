@@ -45,22 +45,33 @@
   var style = document.createElement('style');
   style.textContent = [
     '#pos-chat-bubble{position:fixed;bottom:24px;right:24px;z-index:9998;',
-    'width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;',
-    'background:linear-gradient(135deg,#6366f1,#8b5cf6);',
-    'box-shadow:0 4px 18px rgba(99,102,241,.45);',
-    'display:flex;align-items:center;justify-content:center;',
+    'width:60px;height:60px;border-radius:18px;border:none;cursor:pointer;padding:0;',
+    'background:radial-gradient(120% 120% at 30% 20%,#1e2a52 0%,#0b1124 100%);',
+    'box-shadow:0 8px 26px rgba(67,56,202,.45),0 0 0 1px rgba(129,140,248,.35) inset;',
+    'display:flex;align-items:center;justify-content:center;overflow:visible;',
     'transition:transform .2s,box-shadow .2s;outline:none;}',
 
-    '#pos-chat-bubble:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(99,102,241,.6);}',
-    '#pos-chat-bubble svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;}',
+    '#pos-chat-bubble:hover{transform:translateY(-2px) scale(1.06);',
+    'box-shadow:0 12px 34px rgba(67,56,202,.6),0 0 0 1px rgba(129,140,248,.55) inset;}',
+    '#pos-chat-bubble:active{transform:scale(.98);}',
+    '#pos-chat-bubble img{width:40px;height:40px;object-fit:contain;border-radius:12px;',
+    'filter:drop-shadow(0 1px 4px rgba(99,102,241,.55));pointer-events:none;}',
 
-    '#pos-chat-badge{position:absolute;top:-3px;right:-3px;',
-    'width:18px;height:18px;border-radius:50%;',
-    'background:#ef4444;color:#fff;font-size:10px;font-weight:700;',
+    /* soft pulsing aura ring */
+    '#pos-chat-bubble::before{content:"";position:absolute;inset:-4px;border-radius:22px;',
+    'background:conic-gradient(from 0deg,#6366f1,#8b5cf6,#22d3ee,#6366f1);',
+    'opacity:.0;z-index:-1;filter:blur(7px);transition:opacity .25s;}',
+    '#pos-chat-bubble:hover::before{opacity:.55;}',
+
+    '#pos-chat-badge{position:absolute;top:-5px;right:-5px;',
+    'height:18px;min-width:18px;padding:0 5px;border-radius:9px;',
+    'background:linear-gradient(135deg,#22d3ee,#6366f1);color:#fff;font-size:9px;',
+    'font-weight:800;letter-spacing:.04em;',
     'display:flex;align-items:center;justify-content:center;',
-    'animation:pos-bounce .8s infinite alternate;border:2px solid #fff;}',
+    'box-shadow:0 2px 8px rgba(34,211,238,.5);',
+    'animation:pos-bounce .9s infinite alternate;border:2px solid var(--surface,#fff);}',
 
-    '@keyframes pos-bounce{from{transform:translateY(0)}to{transform:translateY(-4px)}}',
+    '@keyframes pos-bounce{from{transform:translateY(0)}to{transform:translateY(-3px)}}',
 
     '#pos-chat-panel{position:fixed;bottom:90px;right:24px;z-index:9999;',
     'width:380px;max-width:calc(100vw - 32px);',
@@ -76,24 +87,45 @@
 
     '#pos-chat-panel.open{transform:scale(1);opacity:1;pointer-events:auto;}',
 
-    '#pos-chat-head{display:flex;align-items:center;gap:10px;',
-    'padding:14px 16px;',
-    'background:linear-gradient(135deg,#6366f1,#8b5cf6);',
-    'flex-shrink:0;}',
+    '#pos-chat-head{position:relative;display:flex;align-items:center;gap:11px;',
+    'padding:13px 14px;',
+    'background:radial-gradient(120% 140% at 0% 0%,#4f46e5 0%,#6d28d9 55%,#7c3aed 100%);',
+    'flex-shrink:0;overflow:hidden;}',
+    '#pos-chat-head::after{content:"";position:absolute;right:-30px;top:-50px;',
+    'width:140px;height:140px;border-radius:50%;',
+    'background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);pointer-events:none;}',
 
-    '#pos-chat-head-title{flex:1;color:#fff;font-weight:700;font-size:.95rem;',
-    'font-family:inherit;}',
+    '#pos-chat-avatar{position:relative;z-index:1;width:38px;height:38px;border-radius:11px;flex-shrink:0;',
+    'background:radial-gradient(120% 120% at 30% 20%,#1e2a52,#0b1124);',
+    'display:flex;align-items:center;justify-content:center;',
+    'box-shadow:0 2px 8px rgba(0,0,0,.3),0 0 0 1px rgba(129,140,248,.4) inset;}',
+    '#pos-chat-avatar img{width:26px;height:26px;object-fit:contain;}',
+    '#pos-chat-avatar .pos-online{position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;',
+    'border-radius:50%;background:#22c55e;border:2px solid #5b3bd6;',
+    'box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pos-pulse 1.8s infinite;}',
+    '@keyframes pos-pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 6px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}',
 
-    '#pos-chat-head-sub{color:rgba(255,255,255,.75);font-size:.7rem;font-family:inherit;}',
+    '#pos-chat-head-title{position:relative;z-index:1;flex:1;color:#fff;font-weight:800;font-size:.96rem;',
+    'font-family:inherit;letter-spacing:-.01em;line-height:1.15;}',
+
+    '#pos-chat-head-sub{color:rgba(255,255,255,.8);font-size:.69rem;font-family:inherit;',
+    'display:flex;align-items:center;gap:5px;margin-top:1px;}',
 
     '#pos-chat-close{background:none;border:none;cursor:pointer;',
     'color:rgba(255,255,255,.85);padding:4px;border-radius:6px;',
     'display:flex;align-items:center;transition:background .15s;}',
     '#pos-chat-close:hover{background:rgba(255,255,255,.2);}',
 
-    '#pos-chat-msgs{flex:1;overflow-y:auto;padding:14px 12px;',
+    '#pos-chat-msgs{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px 12px;',
     'display:flex;flex-direction:column;gap:10px;',
-    'scroll-behavior:smooth;}',
+    'scroll-behavior:smooth;overscroll-behavior:contain;',
+    'scrollbar-width:thin;scrollbar-color:rgba(99,102,241,.32) transparent;}',
+    '#pos-chat-msgs::-webkit-scrollbar{width:6px;}',
+    '#pos-chat-msgs::-webkit-scrollbar-track{background:transparent;}',
+    '#pos-chat-msgs::-webkit-scrollbar-thumb{background:rgba(99,102,241,.28);',
+    'border-radius:8px;border:1px solid transparent;background-clip:padding-box;}',
+    '#pos-chat-msgs:hover::-webkit-scrollbar-thumb{background:rgba(99,102,241,.5);}',
+    '#pos-chat-msgs::-webkit-scrollbar-thumb:hover{background:rgba(99,102,241,.7);}',
 
     '.pos-msg{display:flex;flex-direction:column;max-width:88%;}',
     '.pos-msg.user{align-self:flex-end;align-items:flex-end;}',
@@ -101,8 +133,8 @@
 
     '.pos-bubble{padding:9px 13px;border-radius:12px;font-size:.82rem;line-height:1.55;',
     'word-break:break-word;font-family:inherit;}',
-    '.pos-msg.user .pos-bubble{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;',
-    'border-bottom-right-radius:3px;}',
+    '.pos-msg.user .pos-bubble{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;',
+    'box-shadow:0 2px 8px rgba(79,70,229,.3);border-bottom-right-radius:3px;}',
     '.pos-msg.ai .pos-bubble{background:var(--surface-alt,#f8fafc);',
     'color:var(--text-base,#1e293b);border:1px solid var(--surface-border,rgba(0,0,0,.08));',
     'border-bottom-left-radius:3px;}',
@@ -132,7 +164,7 @@
     'font-family:inherit;transition:background .15s,color .15s;}',
     '.pos-act-btn:hover{background:#6366f1;color:#fff;border-color:#6366f1;}',
 
-    '.pos-examples{display:flex;flex-direction:column;gap:6px;padding:8px 0;}',
+    '.pos-examples{display:flex;flex-direction:column;gap:6px;padding:4px 0 2px;}',
     '.pos-example-chip{padding:7px 11px;border-radius:10px;font-size:.78rem;',
     'background:var(--surface-alt,#f8fafc);border:1px solid var(--surface-border,rgba(0,0,0,.09));',
     'color:var(--text-base,#1e293b);cursor:pointer;text-align:left;font-family:inherit;',
@@ -140,10 +172,15 @@
     '.pos-example-chip:hover{background:rgba(99,102,241,.1);border-color:#6366f1;color:#6366f1;}',
 
     '.pos-empty{display:flex;flex-direction:column;align-items:center;',
-    'padding:16px 8px;gap:10px;}',
-    '.pos-empty-icon{font-size:2rem;opacity:.5;}',
-    '.pos-empty-title{font-size:.85rem;font-weight:600;color:var(--text-base,#1e293b);}',
-    '.pos-empty-sub{font-size:.75rem;color:var(--text-muted,#64748b);text-align:center;}',
+    'padding:14px 8px 8px;gap:9px;}',
+    '.pos-empty-icon{width:64px;height:64px;border-radius:18px;',
+    'background:radial-gradient(120% 120% at 30% 20%,#1e2a52,#0b1124);',
+    'display:flex;align-items:center;justify-content:center;',
+    'box-shadow:0 6px 18px rgba(67,56,202,.35),0 0 0 1px rgba(129,140,248,.3) inset;}',
+    '.pos-empty-icon img{width:44px;height:44px;object-fit:contain;',
+    'filter:drop-shadow(0 1px 5px rgba(99,102,241,.5));}',
+    '.pos-empty-title{font-size:.92rem;font-weight:700;color:var(--text-base,#1e293b);}',
+    '.pos-empty-sub{font-size:.75rem;color:var(--text-muted,#64748b);text-align:center;max-width:240px;line-height:1.5;}',
 
     '#pos-chat-foot{padding:10px 12px;border-top:1px solid var(--surface-border,rgba(0,0,0,.08));',
     'display:flex;gap:8px;flex-shrink:0;background:var(--surface,#fff);}',
@@ -156,8 +193,9 @@
     '#pos-chat-input:focus{border-color:#6366f1;}',
     '#pos-chat-input::placeholder{color:var(--text-muted,#94a3b8);}',
 
-    '#pos-chat-send{width:38px;height:38px;border-radius:10px;border:none;cursor:pointer;',
-    'background:linear-gradient(135deg,#6366f1,#8b5cf6);',
+    '#pos-chat-send{width:38px;height:38px;border-radius:11px;border:none;cursor:pointer;',
+    'background:linear-gradient(135deg,#4f46e5,#7c3aed);',
+    'box-shadow:0 2px 8px rgba(79,70,229,.35);',
     'display:flex;align-items:center;justify-content:center;',
     'flex-shrink:0;align-self:flex-end;',
     'transition:opacity .15s,transform .15s;}',
@@ -174,23 +212,43 @@
   document.head.appendChild(style);
 
   // ── Build DOM ─────────────────────────────────────────────────────────────
+  var LOGO_SRC = 'assets/Abhi_AI.png';
+  // Graceful fallback: if the logo asset can't load, swap in a stylised "A" so
+  // the bubble/header never show a broken-image icon.
+  window._posChatLogoFallback = function (img) {
+    if (!img || img.dataset.fellBack) return;
+    img.dataset.fellBack = '1';
+    var span = document.createElement('span');
+    span.textContent = 'A';
+    span.style.cssText = 'font-weight:900;font-size:1.05em;color:#a5b4fc;'
+      + 'font-family:inherit;line-height:1;';
+    if (img.parentNode) img.parentNode.replaceChild(span, img);
+  };
+  var LOGO_IMG = function (cls) {
+    return '<img src="' + LOGO_SRC + '" alt="Abhi AI"'
+      + (cls ? ' class="' + cls + '"' : '')
+      + ' onerror="window._posChatLogoFallback(this)" />';
+  };
+
   var bubble = document.createElement('button');
   bubble.id = 'pos-chat-bubble';
-  bubble.setAttribute('aria-label', 'Open AI Chat');
+  bubble.setAttribute('aria-label', 'Open Abhi AI');
+  bubble.title = 'Ask Abhi AI';
   bubble.innerHTML = (
-    '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+    LOGO_IMG()
     + '<span id="pos-chat-badge">AI</span>'
   );
 
   var panel = document.createElement('div');
   panel.id = 'pos-chat-panel';
   panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', 'AI Business Assistant');
+  panel.setAttribute('aria-label', 'Abhi AI Assistant');
   panel.innerHTML = (
     '<div id="pos-chat-head">'
-    + '<div>'
-    + '<div id="pos-chat-head-title">AI Business Assistant</div>'
-    + '<div id="pos-chat-head-sub">Ask anything about your sales &amp; inventory</div>'
+    + '<div id="pos-chat-avatar">' + LOGO_IMG() + '<span class="pos-online"></span></div>'
+    + '<div style="flex:1;min-width:0;">'
+    + '<div id="pos-chat-head-title">Abhi AI</div>'
+    + '<div id="pos-chat-head-sub"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span> Online · Sales &amp; inventory assistant</div>'
     + '</div>'
     + '<button id="pos-chat-close" aria-label="Close" onclick="window._posChatClose()">'
     + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
@@ -198,7 +256,7 @@
     + '</div>'
     + '<div id="pos-chat-msgs"></div>'
     + '<div id="pos-chat-foot">'
-    + '<textarea id="pos-chat-input" rows="1" placeholder="Ask about sales, inventory, GST…" maxlength="1000"></textarea>'
+    + '<textarea id="pos-chat-input" rows="1" placeholder="Ask Abhi AI about sales, inventory, GST…" maxlength="1000"></textarea>'
     + '<button id="pos-chat-send" aria-label="Send">'
     + '<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
     + '</button>'
@@ -239,17 +297,17 @@
     _busy = v;
     sendEl.disabled = v;
     inputEl.disabled = v;
-    if (v) inputEl.setAttribute('placeholder', 'Thinking…');
-    else    inputEl.setAttribute('placeholder', 'Ask about sales, inventory, GST…');
+    if (v) inputEl.setAttribute('placeholder', 'Abhi AI is thinking…');
+    else    inputEl.setAttribute('placeholder', 'Ask Abhi AI about sales, inventory, GST…');
   }
 
   // ── Render empty state ────────────────────────────────────────────────────
   function _renderEmpty() {
     msgsEl.innerHTML = (
       '<div class="pos-empty">'
-      + '<div class="pos-empty-icon">🤖</div>'
-      + '<div class="pos-empty-title">How can I help you today?</div>'
-      + '<div class="pos-empty-sub">Ask a question in plain English about your business data.</div>'
+      + '<div class="pos-empty-icon">' + LOGO_IMG() + '</div>'
+      + '<div class="pos-empty-title">Hi, I’m Abhi AI</div>'
+      + '<div class="pos-empty-sub">Ask me anything about your sales, inventory, customers or GST — in plain English.</div>'
       + '</div>'
       + '<div class="pos-examples"></div>'
     );
@@ -361,7 +419,7 @@
     var token = _token();
     if (!token) {
       _removeTyping();
-      _addMsg('ai', 'Please log in to use the AI assistant.', null);
+      _addMsg('ai', 'Please log in to chat with Abhi AI.', null);
       _setLoading(false);
       return;
     }

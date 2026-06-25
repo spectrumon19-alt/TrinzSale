@@ -9,19 +9,29 @@
     <!-- Load Tailwind CSS for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Custom styles for specific components - COMPACT VERSION */
+        /* ===== Reports — Modern UI tokens (scoped) ===== */
+        :root {
+            --rp-brand: #6366f1;
+            --rp-brand-2: #4f46e5;
+            --rp-brand-soft: rgba(99,102,241,.10);
+            --rp-radius: 14px;
+            --rp-radius-sm: 10px;
+            --rp-ring: 0 0 0 3px rgba(99,102,241,.18);
+        }
+
         .search-results {
             position: absolute;
             background: var(--surface);
             border: 1px solid var(--surface-border);
-            border-radius: 0.25rem;
+            border-radius: var(--rp-radius-sm);
             max-height: 12rem;
             overflow-y: auto;
             width: 100%;
             z-index: 100;
-            box-shadow: var(--surface-shadow);
+            box-shadow: 0 12px 32px rgba(0,0,0,.14);
             box-sizing: border-box;
             top: 100%;
             left: 0;
@@ -74,7 +84,47 @@
             color: var(--success);
             white-space: nowrap;
         }
-        
+
+        /* ===== Page banner ===== */
+        .rp-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--rp-radius);
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+        .rp-banner-icon {
+            flex-shrink: 0;
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--rp-brand-soft);
+            color: var(--rp-brand);
+            font-size: 1.25rem;
+        }
+        .rp-banner h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-base);
+            line-height: 1.2;
+            margin: 0;
+        }
+        .rp-banner p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0.15rem 0 0;
+        }
+        @media (max-width: 480px) {
+            .rp-banner { padding: 0.9rem 1rem; gap: 0.75rem; }
+            .rp-banner-icon { width: 40px; height: 40px; font-size: 1.05rem; }
+            .rp-banner h1 { font-size: 1.15rem; }
+            .rp-banner p { font-size: 0.8rem; }
+        }
+
         /* Overlay for Mobile Menu */
         #overlay {
             position: fixed;
@@ -89,77 +139,88 @@
             transition: opacity 0.3s ease-in-out;
         }
         
-        /* Custom button styles - SMALLER VERSION */
+        /* ===== Buttons — Modern ===== */
         .btn-primary {
-            background: linear-gradient(135deg, #3498db, #2980b9);
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
+            padding: 0.55rem 1.1rem;
+            border-radius: var(--rp-radius-sm);
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(52, 152, 219, 0.3);
-            min-height: 2.25rem; /* 36px minimum touch target */
-            min-width: 2.25rem;
+            transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.28);
+            min-height: 2.5rem; /* 40px touch target */
+            min-width: 2.5rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 0.45rem;
+            white-space: nowrap;
         }
-        
+
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2980b9, #2573a7);
+            filter: brightness(1.05);
             transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.38);
         }
-        
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:focus-visible { outline: none; box-shadow: var(--rp-ring), 0 2px 8px rgba(79,70,229,.28); }
+
         .btn-success {
-            background: linear-gradient(135deg, #27ae60, #219653);
+            background: linear-gradient(135deg, #10b981, #059669);
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
+            padding: 0.55rem 1.1rem;
+            border-radius: var(--rp-radius-sm);
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(39, 174, 96, 0.3);
-            min-height: 2.25rem; /* 36px minimum touch target */
-            min-width: 2.25rem;
+            transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28);
+            min-height: 2.5rem;
+            min-width: 2.5rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 0.45rem;
+            white-space: nowrap;
         }
-        
+
         .btn-success:hover {
-            background: linear-gradient(135deg, #219653, #1e8449);
+            filter: brightness(1.05);
             transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(39, 174, 96, 0.4);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.38);
         }
-        
+        .btn-success:active { transform: translateY(0); }
+        .btn-success:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(16,185,129,.22), 0 2px 8px rgba(16,185,129,.28); }
+
         .btn-secondary {
-            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
+            background: var(--surface);
+            color: var(--text-base);
+            border: 1px solid var(--surface-border);
+            padding: 0.55rem 1.1rem;
+            border-radius: var(--rp-radius-sm);
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(149, 165, 166, 0.3);
-            min-height: 2.25rem; /* 36px minimum touch target */
-            min-width: 2.25rem;
+            transition: all .15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,.04);
+            min-height: 2.5rem;
+            min-width: 2.5rem;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 0.45rem;
+            white-space: nowrap;
         }
-        
+
         .btn-secondary:hover {
-            background: linear-gradient(135deg, #7f8c8d, #6c7a7b);
+            background: var(--surface-alt);
+            border-color: var(--rp-brand);
+            color: var(--rp-brand);
             transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(149, 165, 166, 0.4);
         }
         
         .remove-btn {
@@ -194,29 +255,34 @@
             font-size: 0.75rem;
         }
         
-        /* Custom form styles - COMPACT VERSION */
+        /* ===== Form controls — Modern ===== */
         .form-control {
             width: 100%;
-            padding: 0.5rem;
+            padding: 0.55rem 0.7rem;
             background: var(--input-bg);
             color: var(--text-base);
             border: 1px solid var(--input-border);
-            border-radius: 0.25rem;
+            border-radius: var(--rp-radius-sm);
             font-size: 0.875rem;
-            min-height: 2.25rem;
+            min-height: 2.5rem;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--rp-brand);
+            box-shadow: var(--rp-ring);
         }
 
-        /* Custom table styles - COMPACT VERSION */
+        /* ===== Tables — Modern ===== */
         table {
             width: 100%;
             border-collapse: collapse;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-            border-radius: 0.25rem;
+            border-radius: var(--rp-radius-sm);
             overflow: hidden;
         }
 
         th, td {
-            padding: 0.5rem 0.5rem;
+            padding: 0.7rem 0.75rem;
             text-align: left;
             border-bottom: 1px solid var(--surface-border);
             font-size: 0.875rem;
@@ -224,20 +290,21 @@
         }
 
         th {
-            background: linear-gradient(135deg, #3498db, #2c80b9);
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
-        }
-
-        tr:nth-child(even) {
             background: var(--surface-alt);
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid var(--surface-border);
         }
 
-        tr:hover {
-            background: rgba(59,130,246,.06);
+        tbody tr:nth-child(even) {
+            background: color-mix(in srgb, var(--surface-alt) 45%, transparent);
+        }
+
+        tbody tr:hover {
+            background: var(--rp-brand-soft);
         }
         
         /* Admin Panel Specific Styles - COMPACT VERSION */
@@ -257,7 +324,7 @@
             background: var(--surface-alt);
             border: 1px solid var(--surface-border);
             padding: 1rem;
-            border-radius: 0.25rem;
+            border-radius: var(--rp-radius);
             margin-bottom: 1.5rem;
         }
 
@@ -305,18 +372,22 @@
         }
 
         .admin-table {
-            /* overflow-x: auto; */
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--rp-radius);
+            background: var(--surface);
         }
 
         .admin-table table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 1rem;
+            margin-bottom: 0;
         }
 
         .admin-table th,
         .admin-table td {
-            padding: 0.75rem;
+            padding: 0.7rem 0.85rem;
             text-align: left;
             border-bottom: 1px solid var(--surface-border);
             white-space: nowrap;
@@ -326,13 +397,18 @@
 
         .admin-table th {
             background: var(--surface-alt);
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-muted);
             text-align: left;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
         }
 
-        .admin-table tr:hover {
-            background: var(--surface-alt);
+        .admin-table tr:last-child td { border-bottom: none; }
+
+        .admin-table tbody tr:hover {
+            background: var(--rp-brand-soft);
         }
         
         .filter-bar {
@@ -689,8 +765,12 @@
 
         .tab-buttons {
             display: flex;
-            border-bottom: 1px solid var(--surface-border);
+            gap: 0.35rem;
             margin-bottom: 1.5rem;
+            padding: 0.3rem;
+            background: var(--surface-alt);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--rp-radius);
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
@@ -698,39 +778,43 @@
         .tab-buttons::-webkit-scrollbar { display: none; }
 
         .tab-button {
-            padding: 0.75rem 1.25rem;
+            padding: 0.6rem 1.1rem;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
+            border-radius: var(--rp-radius-sm);
             white-space: nowrap;
             flex-shrink: 0;
-            transition: all 0.3s ease;
-            font-weight: 500;
+            transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+            font-weight: 600;
             color: var(--text-muted);
-            min-height: 2.75rem;
+            min-height: 2.6rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9375rem;
-            white-space: nowrap;
+            gap: 0.45rem;
+            font-size: 0.9rem;
             background: none;
             border: none;
         }
 
+        .tab-button i { font-size: 0.85em; opacity: .85; }
+
         .tab-button:hover {
-            color: var(--brand-accent);
-            background: var(--surface-alt);
+            color: var(--rp-brand);
+            background: var(--surface);
         }
 
         .tab-button.active {
-            color: var(--brand-accent);
-            border-bottom: 3px solid var(--brand-accent);
+            color: var(--rp-brand);
+            background: var(--surface);
+            box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 0 0 1px var(--rp-brand-soft) inset;
         }
 
         @media (max-width: 640px) {
-            .tab-button { padding: 0.6rem 0.85rem; font-size: 0.78rem; }
+            .tab-button { padding: 0.5rem 0.8rem; font-size: 0.8rem; }
         }
         @media (max-width: 480px) {
-            .tab-button { padding: 0.55rem 0.7rem; font-size: 0.74rem; }
+            .tab-button { padding: 0.5rem 0.7rem; font-size: 0.76rem; }
+            .tab-button i { display: none; }
         }
 
         .tab-content {
@@ -744,44 +828,99 @@
         .date-filters {
             background: var(--surface-alt);
             border: 1px solid var(--surface-border);
-            padding: 1.5rem;
-            border-radius: 0.5rem;
+            padding: 1.25rem;
+            border-radius: var(--rp-radius);
             margin-bottom: 2rem;
         }
 
         .summary-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
+            gap: 1rem;
             margin-bottom: 2rem;
         }
 
         .card {
             background: var(--surface);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.3s ease;
+            border-radius: var(--rp-radius);
+            padding: 1.25rem 1.35rem;
+            text-align: left;
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
             border: 1px solid var(--surface-border);
-            box-shadow: var(--surface-shadow);
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+            position: relative;
+            overflow: hidden;
+        }
+        /* accent bar */
+        .card::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--rp-brand), var(--rp-brand-2));
+            opacity: .9;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,.10);
+            border-color: color-mix(in srgb, var(--rp-brand) 30%, var(--surface-border));
         }
 
         .card h4 {
-            margin-bottom: 1rem;
-            color: var(--text-base);
+            margin-bottom: 0.6rem;
+            color: var(--text-muted);
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
         }
 
         .card .value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--brand-accent);
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--text-base);
+            line-height: 1.1;
         }
-        
+
+        /* P&L card variant (uses card-label / card-value / card-subtext) */
+        .card-label {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 0.5rem;
+        }
+        .card-value {
+            font-size: 1.55rem;
+            font-weight: 800;
+            color: var(--text-base);
+            line-height: 1.1;
+        }
+        .card-subtext {
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: var(--text-subtle, var(--text-muted));
+        }
+
         .report-section {
             margin-bottom: 2rem;
         }
+        .report-section > h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Rounded scrollable table wrapper */
+        .overflow-x-auto {
+            border: 1px solid var(--surface-border);
+            border-radius: var(--rp-radius);
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .overflow-x-auto table { border-radius: 0; }
+        .overflow-x-auto { overflow-x: auto; }
         
         .chart-container {
             position: relative;
@@ -801,16 +940,19 @@
         
         .top-products-table th,
         .top-products-table td {
-            padding: 0.75rem;
+            padding: 0.7rem 0.75rem;
             text-align: left;
             border-bottom: 1px solid var(--surface-border);
             color: var(--text-base);
         }
 
         .top-products-table th {
-            background: linear-gradient(135deg, #3498db, #2c80b9);
-            font-weight: 600;
-            color: white;
+            background: var(--surface-alt);
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.6px;
         }
         
         .rank-badge {
@@ -1087,15 +1229,15 @@
         }
 
         .pagination-btn:hover:not(:disabled) {
-            background: #3498db;
+            background: var(--rp-brand);
             color: #fff;
-            border-color: #3498db;
+            border-color: var(--rp-brand);
         }
 
         .pagination-btn.pagination-btn-active {
-            background: #3498db;
+            background: var(--rp-brand);
             color: #fff;
-            border-color: #2980b9;
+            border-color: var(--rp-brand-2);
             font-weight: 700;
         }
 
@@ -1125,6 +1267,27 @@
         @media (max-width: 480px) {
             .pagination-wrapper { flex-direction: column; align-items: flex-start; }
         }
+
+        /* ===== Theme-aware surface (replaces hardcoded bg-white) ===== */
+        .rp-surface {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+
+        /* Theme-aware overrides for Tailwind gray text used in headings/cells */
+        .reports-screen .text-gray-800 { color: var(--text-base) !important; }
+        .reports-screen .text-gray-700 { color: var(--text-base) !important; }
+        .reports-screen .text-gray-500 { color: var(--text-muted) !important; }
+
+        /* Section heading accent dot */
+        .report-section > h3::before,
+        .reports-screen > section h3.rp-heading::before { content: none; }
+
+        @media (max-width: 480px) {
+            .reports-screen { padding: 0; }
+            .date-filters { padding: 1rem; }
+        }
     </style>
 </head>
 <body class="font-sans leading-normal tracking-normal">
@@ -1147,15 +1310,7 @@
             <!-- Nav links injected here by renderSidebarLinks() -->
 
             <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
+            <div class="px-4 mt-auto sidebar-pin-area"></div>
         </nav>
 
         <!-- Loading Overlay -->
@@ -1207,25 +1362,30 @@
             </header>
 
             <main class="p-4 md:p-6">
-                <div class="bg-white rounded-lg shadow-md p-4 md:p-6">
+                <!-- Page banner -->
+                <div class="rp-banner">
+                    <span class="rp-banner-icon"><i class="fas fa-chart-line"></i></span>
+                    <div>
+                        <h1>Reports &amp; Analytics</h1>
+                        <p>Sales, purchases, inventory, profit &amp; loss and GST returns — all in one place</p>
+                    </div>
+                </div>
+
+                <div class="rp-surface rounded-lg p-4 md:p-6">
                     <section class="reports-screen">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Reports</h2>
-                        
                         <!-- Tab buttons -->
                         <div class="tab-container">
                             <div class="tab-buttons">
-                                <button class="tab-button active" onclick="openTab(event, 'sales-tab')">Sales Reports</button>
-                                <button class="tab-button" onclick="openTab(event, 'purchase-tab')">Purchase Orders</button>
-                                <button class="tab-button" onclick="openTab(event, 'inventory-tab')">Inventory Reports</button>
-                                <button class="tab-button" onclick="openTab(event, 'pl-tab')">Profit & Loss</button>
-                                <button class="tab-button" onclick="openTab(event, 'gst-tab'); loadGstReport()">GST Returns</button>
+                                <button class="tab-button active" onclick="openTab(event, 'sales-tab')"><i class="fas fa-cart-shopping"></i> Sales Reports</button>
+                                <button class="tab-button" onclick="openTab(event, 'purchase-tab')"><i class="fas fa-truck-ramp-box"></i> Purchase Orders</button>
+                                <button class="tab-button" onclick="openTab(event, 'inventory-tab')"><i class="fas fa-boxes-stacked"></i> Inventory Reports</button>
+                                <button class="tab-button" onclick="openTab(event, 'pl-tab')"><i class="fas fa-scale-balanced"></i> Profit &amp; Loss</button>
+                                <button class="tab-button" onclick="openTab(event, 'gst-tab'); loadGstReport()"><i class="fas fa-file-invoice-dollar"></i> GST Returns</button>
                             </div>
                         </div>
                         
                         <!-- Sales Reports Tab -->
                         <div id="sales-tab" class="tab-content active">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Sales Reports</h3>
-                            
                             <div class="date-filters mb-6">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div class="form-group">
@@ -1237,10 +1397,10 @@
                                         <input type="date" id="end-date" class="form-control">
                                     </div>
                                     <div class="flex items-end">
-                                        <button id="generate-report-btn" class="btn-primary">Generate Report</button>
+                                        <button id="generate-report-btn" class="btn-primary w-full"><i class="fas fa-chart-simple"></i> Generate Report</button>
                                     </div>
                                     <div class="flex items-end">
-                                        <button id="export-sales-excel-btn" class="btn-success">Export Sales to Excel</button>
+                                        <button id="export-sales-excel-btn" class="btn-success w-full"><i class="fas fa-file-excel"></i> Export Sales to Excel</button>
                                     </div>
                                 </div>
                             </div>
@@ -1265,8 +1425,8 @@
                             </div>
                             
                             <!-- Top 10 Selling Products Widget -->
-                            <div class="card mb-6">
-                                <h4>Top 10 Selling Products</h4>
+                            <div class="card mb-6" style="text-align:left;">
+                                <h4><i class="fas fa-trophy" style="color:#f59e0b;"></i> Top 10 Selling Products</h4>
                                 <div class="top-products-container">
                                     <table class="top-products-table w-full">
                                         <thead>
@@ -1287,14 +1447,14 @@
                             </div>
                             
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Sales Chart</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-chart-area" style="color:var(--rp-brand);"></i> Sales Chart</h3>
                                 <div class="chart-container">
                                     <canvas id="salesChart"></canvas>
                                 </div>
                             </div>
-                            
+
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Sales Data</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-table" style="color:var(--rp-brand);"></i> Sales Data</h3>
                                 <div class="overflow-x-auto">
                                     <table id="sales-report-table">
                                         <thead>
@@ -1320,8 +1480,6 @@
                         
                         <!-- Purchase Reports Tab -->
                         <div id="purchase-tab" class="tab-content">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Purchase Orders</h3>
-                            
                             <div class="date-filters mb-6">
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div class="form-group">
@@ -1333,10 +1491,10 @@
                                         <input type="date" id="purchase-end-date" class="form-control">
                                     </div>
                                     <div class="flex items-end">
-                                        <button id="generate-purchase-report-btn" class="btn-primary">Generate Report</button>
+                                        <button id="generate-purchase-report-btn" class="btn-primary w-full"><i class="fas fa-chart-simple"></i> Generate Report</button>
                                     </div>
                                     <div class="flex items-end">
-                                        <button id="export-purchase-excel-btn" class="btn-success">Export Purchase to Excel</button>
+                                        <button id="export-purchase-excel-btn" class="btn-success w-full"><i class="fas fa-file-excel"></i> Export Purchase to Excel</button>
                                     </div>
                                 </div>
                             </div>
@@ -1353,7 +1511,7 @@
                             </div>
                             
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Purchase Data</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-table" style="color:var(--rp-brand);"></i> Purchase Data</h3>
                                 <div class="overflow-x-auto">
                                     <table id="purchase-report-table">
                                         <thead>
@@ -1379,8 +1537,6 @@
                         
                         <!-- Inventory Reports Tab -->
                         <div id="inventory-tab" class="tab-content">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Inventory Reports</h3>
-                            
                             <div class="summary-cards mb-6">
                                 <div class="card">
                                     <h4>Total Products</h4>
@@ -1397,11 +1553,11 @@
                             </div>
                             
                             <div class="mb-4">
-                                <button id="export-inventory-excel-btn" class="btn-success">Export Inventory to Excel</button>
+                                <button id="export-inventory-excel-btn" class="btn-success"><i class="fas fa-file-excel"></i> Export Inventory to Excel</button>
                             </div>
                             
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Low Stock Items</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-triangle-exclamation" style="color:#ef4444;"></i> Low Stock Items</h3>
                                 <div class="overflow-x-auto">
                                     <table id="low-stock-table">
                                         <thead>
@@ -1425,7 +1581,7 @@
                             </div>
                             
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Stock Movement</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-right-left" style="color:var(--rp-brand);"></i> Stock Movement</h3>
                                 <div class="overflow-x-auto">
                                     <table id="stock-movement-table">
                                         <thead>
@@ -1452,8 +1608,6 @@
 
                         <!-- Profit & Loss Tab -->
                         <div id="pl-tab" class="tab-content">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">Profit & Loss Report</h3>
-
                             <div class="date-filters mb-6">
                                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                                     <div class="form-group">
@@ -1465,10 +1619,10 @@
                                         <input type="date" id="pl-end-date" class="form-control">
                                     </div>
                                     <div class="flex items-end gap-2">
-                                        <button onclick="loadProfitLossReport()" class="btn-primary w-full">Generate Report</button>
+                                        <button onclick="loadProfitLossReport()" class="btn-primary w-full"><i class="fas fa-chart-simple"></i> Generate Report</button>
                                     </div>
                                     <div class="flex items-end gap-2">
-                                        <button onclick="exportProfitLossToExcel()" class="btn-success w-full">Export to Excel</button>
+                                        <button onclick="exportProfitLossToExcel()" class="btn-success w-full"><i class="fas fa-file-excel"></i> Export to Excel</button>
                                     </div>
                                 </div>
                             </div>
@@ -1499,7 +1653,7 @@
 
                             <!-- P&L Statement -->
                             <div class="report-section">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">P&L Statement</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-file-invoice" style="color:var(--rp-brand);"></i> P&amp;L Statement</h3>
                                 <div class="overflow-x-auto">
                                     <table class="w-full border-collapse">
                                         <tbody>
@@ -1538,7 +1692,7 @@
 
                             <!-- Daily Breakdown -->
                             <div class="report-section mt-6">
-                                <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Breakdown</h3>
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-calendar-day" style="color:var(--rp-brand);"></i> Daily Breakdown</h3>
                                 <div class="overflow-x-auto">
                                     <table id="pl-daily-table" class="admin-table">
                                         <thead>
@@ -1564,27 +1718,23 @@
 
                         <!-- GST Returns Tab -->
                         <div id="gst-tab" class="tab-content">
-                            <h3 class="text-xl font-semibold text-gray-800 mb-4">GST Returns</h3>
-
                             <!-- Period picker + controls -->
-                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
-                                <div>
-                                    <label style="font-size:13px;font-weight:600;color:#374151;margin-right:6px;">Period (Month)</label>
-                                    <input type="month" id="gst-period"
-                                           style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;"
+                            <div class="date-filters mb-6" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="block text-sm font-medium mb-1" style="color:var(--text-muted);">Period (Month)</label>
+                                    <input type="month" id="gst-period" class="form-control"
+                                           style="min-width:170px;"
                                            onchange="loadGstReport()">
                                 </div>
-                                <button onclick="loadGstReport()"
-                                        style="background:#1a5c1a;color:#fff;border:none;border-radius:6px;
-                                               padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
-                                    Load
+                                <button onclick="loadGstReport()" class="btn-primary">
+                                    <i class="fas fa-rotate"></i> Load
                                 </button>
-                                <button onclick="exportGstExcel()"
-                                        style="background:#166534;color:#fff;border:none;border-radius:6px;
-                                               padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
-                                    ⬇ Download Excel (GSTR-1 + GSTR-3B)
+                                <button onclick="exportGstExcel()" class="btn-success">
+                                    <i class="fas fa-file-excel"></i> Download Excel (GSTR-1 + GSTR-3B)
                                 </button>
-                                <span id="gst-loading" style="display:none;font-size:13px;color:#6b7280;">Loading…</span>
+                                <span id="gst-loading" style="display:none;font-size:13px;color:var(--text-muted);align-self:center;">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading…
+                                </span>
                             </div>
 
                             <div id="gst-error" style="display:none;color:#dc2626;font-size:13px;margin-bottom:12px;"></div>

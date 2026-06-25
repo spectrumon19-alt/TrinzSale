@@ -156,15 +156,12 @@ const SIDEBAR_NAV_LINKS = [
     { href: 'reports.html',     icon: '📊', fa: 'fa-chart-column',          label: 'Reports',     permission: 'reports'     },
     { href: 'gst-reports.html', icon: '🧾', fa: 'fa-file-invoice-dollar',   label: 'GST Reports', permission: 'gst-reports' },
 
-    { group: 'Tools' },
-    { href: 'ocrExcel.html',     icon: '📄', fa: 'fa-file-excel',  label: 'OCR → Excel',  permission: 'ocr-excel' },
-
     { group: 'Admin' },
     { href: 'admin.html',        icon: '⚙️', fa: 'fa-gear',          label: 'Admin Panel',  permission: 'admin'      },
-    // NOTE: Service, Tally Export, Auto Backup, AI Settings, Knowledge Base and
-    // License were removed from the sidebar to reduce clutter. They remain fully
-    // reachable as tiles inside the Admin Panel (admin.html). The Admin Panel is
-    // the single entry point for all administrative tools.
+    // NOTE: Service, Tally Export, Auto Backup, AI Settings, Knowledge Base,
+    // OCR → Excel and License were removed from the sidebar to reduce clutter.
+    // They remain fully reachable as tiles inside the Admin Panel (admin.html).
+    // The Admin Panel is the single entry point for all administrative tools.
 ];
 
 // Inject sidebar nav styles once (CSS-variable-aware, dark-mode safe)
@@ -320,8 +317,65 @@ const SIDEBAR_NAV_LINKS = [
     document.head.appendChild(s);
 })();
 
+// Build <nav id="sidebar"> + surrounding layout scaffolding if not already in HTML.
+// Runs as an IIFE so the nav is in the DOM before any DOMContentLoaded handler fires.
+// Safe on pages that already have the nav — exits immediately.
+// Pages that must NOT get an auto-injected sidebar (auth / standalone screens).
+// Stored lowercase — the guard below compares against a lowercased filename.
+const _NO_SIDEBAR_PAGES = ['login.html', 'eula.html', 'noaccess.html'];
+
+function ensureSidebarShell() {
+    if (document.getElementById('sidebar')) return;
+
+    // Skip auth / standalone pages — they have no app chrome.
+    const _page = (window.location.pathname.split('/').pop() || '').toLowerCase();
+    if (_NO_SIDEBAR_PAGES.indexOf(_page) !== -1) return;
+
+    // Need <body> to exist — if called before body is parsed, defer to DOMContentLoaded
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', ensureSidebarShell);
+        return;
+    }
+
+    // Overlay (for mobile menu backdrop) — lives directly in <body>
+    if (!document.getElementById('overlay')) {
+        const ov = document.createElement('div');
+        ov.id = 'overlay';
+        document.body.insertBefore(ov, document.body.firstChild);
+    }
+
+    // Find or create .main-layout wrapper
+    let layout = document.querySelector('.main-layout');
+    if (!layout) {
+        layout = document.createElement('div');
+        layout.className = 'main-layout flex min-h-screen';
+        while (document.body.firstChild) {
+            layout.appendChild(document.body.firstChild);
+        }
+        document.body.appendChild(layout);
+    }
+
+    // Build the sidebar nav
+    const nav = document.createElement('nav');
+    nav.id = 'sidebar';
+    nav.setAttribute('data-testid', 'sidebar');
+    nav.className = 'w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50';
+    nav.style.width = '220px';
+    nav.innerHTML = `
+        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            </span>
+        </a>
+        <div class="px-4 mt-auto sidebar-pin-area"></div>`;
+    layout.insertBefore(nav, layout.firstChild);
+}
+// Run immediately so sidebar is in DOM before other scripts' DOMContentLoaded handlers
+ensureSidebarShell();
+
 // Render sidebar links dynamically based on the user's permissions.
 function renderSidebarLinks() {
+    ensureSidebarShell();
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
@@ -443,6 +497,7 @@ const PAGE_TO_PERMISSION = {
     'backup.html': 'backup',
     'login-activity.html': 'login-activity',
     'storeSettings.html': 'store-settings',
+    'token-usage.html': 'token-usage',
     'license_activation.html': 'admin'
 };
 

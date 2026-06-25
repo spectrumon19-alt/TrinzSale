@@ -36,7 +36,7 @@ from datetime import date, datetime
 from flask import Blueprint, jsonify, send_file
 from psycopg2.extras import RealDictCursor
 
-from auth import token_required
+from auth import permission_required
 from db import get_db_connection, release_db_connection
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ def _age_ledger(rows, charge_type='credit', authoritative_outstanding=None):
 
 # ── GET /api/credit/overview ──────────────────────────────────────────────────
 @credit_management_bp.route('/credit/overview', methods=['GET'])
-@token_required
+@permission_required('credit')
 def credit_overview(payload):
     """Headline totals for both sides plus the net position."""
     conn = get_db_connection()
@@ -344,7 +344,7 @@ def _empty_summary():
 
 # ── GET /api/credit/customers ─────────────────────────────────────────────────
 @credit_management_bp.route('/credit/customers', methods=['GET'])
-@token_required
+@permission_required('credit')
 def credit_by_customer(payload):
     """Receivables per customer, with reconciliation + FIFO aging buckets."""
     conn = get_db_connection()
@@ -375,7 +375,7 @@ def credit_by_customer(payload):
 
 # ── GET /api/credit/suppliers ─────────────────────────────────────────────────
 @credit_management_bp.route('/credit/suppliers', methods=['GET'])
-@token_required
+@permission_required('credit')
 def credit_by_supplier(payload):
     """Payables per supplier, with reconciliation + FIFO aging buckets."""
     conn = get_db_connection()
@@ -406,7 +406,7 @@ def credit_by_supplier(payload):
 
 # ── GET /api/credit/customers/<id>/ledger ─────────────────────────────────────
 @credit_management_bp.route('/credit/customers/<int:customer_id>/ledger', methods=['GET'])
-@token_required
+@permission_required('credit')
 def customer_ledger(payload, customer_id):
     """Full transaction ledger for one customer (drill-in)."""
     conn = get_db_connection()
@@ -439,7 +439,7 @@ def customer_ledger(payload, customer_id):
 
 # ── GET /api/credit/suppliers/<id>/ledger ─────────────────────────────────────
 @credit_management_bp.route('/credit/suppliers/<int:supplier_id>/ledger', methods=['GET'])
-@token_required
+@permission_required('credit')
 def supplier_ledger(payload, supplier_id):
     """Full transaction ledger for one supplier (drill-in)."""
     conn = get_db_connection()
@@ -493,7 +493,7 @@ def _ledger_payload(acct, name, txns):
 
 # ── GET /api/credit/export ────────────────────────────────────────────────────
 @credit_management_bp.route('/credit/export', methods=['GET'])
-@token_required
+@permission_required('credit')
 def export_credit(payload):
     """Excel workbook: overview, customer breakup, supplier breakup (with aging)."""
     try:

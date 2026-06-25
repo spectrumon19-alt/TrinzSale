@@ -15,30 +15,53 @@
         *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--page-bg); color: var(--text-base); margin: 0; }
 
+        /* ── Local design tokens ── */
+        :root {
+            --pu-brand: #6366f1;
+            --pu-brand-2: #4f46e5;
+            --pu-accent-soft: rgba(99,102,241,.10);
+        }
+
+        /* ── Page banner ── */
+        .pu-banner {
+            position: relative; overflow: hidden;
+            border-radius: 14px; margin-bottom: 0.85rem;
+            padding: 0.9rem 1.1rem;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+        .pu-banner-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+        .pu-banner h1 { margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--text-base); letter-spacing: -.01em; display: flex; align-items: center; gap: .55rem; }
+        .pu-banner p { margin: .15rem 0 0; font-size: .76rem; color: var(--text-muted); }
+        .pu-banner-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--pu-accent-soft); color: var(--pu-brand); display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; }
+
         /* ── Cards ── */
-        .pos-card { background: var(--surface); border-radius: 12px; border: 1px solid var(--surface-border); box-shadow: var(--surface-shadow); overflow: visible; }
-        .card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--surface-border); background: var(--surface-alt); border-radius: 12px 12px 0 0; }
-        .card-head-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.4rem; }
-        .icon-chip { width: 20px; height: 20px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; flex-shrink: 0; }
+        .pos-card { background: var(--surface); border-radius: 14px; border: 1px solid var(--surface-border); box-shadow: 0 1px 3px rgba(0,0,0,.05); overflow: visible; transition: box-shadow .18s, border-color .18s; }
+        .pos-card:hover { box-shadow: 0 6px 20px -8px rgba(0,0,0,.14); }
+        .card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.95rem; border-bottom: 1px solid var(--surface-border); background: linear-gradient(180deg, var(--surface-alt), transparent); border-radius: 14px 14px 0 0; }
+        .card-head-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.45rem; }
+        .icon-chip { width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.68rem; flex-shrink: 0; }
 
         /* ── Tabs ── */
-        .tabs { display: flex; border-bottom: 1px solid var(--surface-border); background: var(--surface-alt); padding: 0 0.5rem; }
-        .tab { padding: 0.65rem 1rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 0.35rem; }
-        .tab:hover { color: var(--text-base); background: rgba(99,102,241,.06); }
-        .tab.active { color: #6366f1; border-bottom-color: #6366f1; background: transparent; }
-        .tab-content { display: none; }
+        .tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--surface-border); background: var(--surface-alt); padding: 0 0.5rem; border-radius: 14px 14px 0 0; }
+        .tab { padding: 0.7rem 1.05rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem; }
+        .tab:hover { color: var(--text-base); background: var(--pu-accent-soft); border-radius: 8px 8px 0 0; }
+        .tab.active { color: var(--pu-brand); border-bottom-color: var(--pu-brand); background: transparent; }
+        .tab-content { display: none; animation: pu-fade .22s ease; }
         .tab-content.active { display: block; }
+        @keyframes pu-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
         /* ── Form fields ── */
-        .field-label { display: block; font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.25rem; }
-        .form-control { width: 100%; padding: 0.45rem 0.7rem; border: 1.5px solid var(--input-border); border-radius: 8px; font-size: 0.82rem; font-family: inherit; color: var(--text-base); background: var(--input-bg); transition: border-color 0.15s, box-shadow 0.15s; min-height: 36px; }
+        .field-label { display: block; font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.3rem; }
+        .form-control { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid var(--input-border); border-radius: 9px; font-size: 0.82rem; font-family: inherit; color: var(--text-base); background: var(--input-bg); transition: border-color 0.15s, box-shadow 0.15s; min-height: 38px; }
         .form-control:focus { outline: none; border-color: var(--input-focus); box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
         .form-control::placeholder { color: var(--text-subtle); font-size: 0.78rem; }
 
         /* ── Search dropdown ── */
-        .search-results { position: absolute; background: var(--surface); border: 1.5px solid var(--surface-border); border-radius: 10px; max-height: 260px; overflow-y: auto; width: 100%; z-index: 300; box-shadow: 0 8px 24px rgba(0,0,0,.15); top: 100%; left: 0; margin-top: 4px; }
-        .search-result-item { padding: 0.55rem 0.875rem; cursor: pointer; border-bottom: 1px solid var(--surface-border); transition: background .1s; }
-        .search-result-item:hover { background: var(--surface-alt); }
+        .search-results { position: absolute; background: var(--surface); border: 1.5px solid var(--surface-border); border-radius: 12px; max-height: 280px; overflow-y: auto; width: 100%; z-index: 300; box-shadow: 0 12px 32px rgba(0,0,0,.18); top: 100%; left: 0; margin-top: 6px; }
+        .search-result-item { padding: 0.6rem 0.95rem; cursor: pointer; border-bottom: 1px solid var(--surface-border); transition: background .1s; }
+        .search-result-item:hover { background: var(--pu-accent-soft); }
         .search-result-item:last-child { border-bottom: none; }
         .search-result-name { font-weight: 600; font-size: 0.8rem; color: var(--text-base); }
         .search-result-details { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
@@ -46,50 +69,64 @@
         .search-result-price { font-weight: 700; color: #10b981; white-space: nowrap; }
 
         /* ── Table ── */
-        .table-wrap { overflow-x: auto; }
+        .table-wrap { overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(99,102,241,.4) transparent; }
+        .table-wrap::-webkit-scrollbar { height: 8px; }
+        .table-wrap::-webkit-scrollbar-thumb { background: rgba(99,102,241,.4); border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; background: var(--surface); }
-        th { background: var(--table-th-bg); color: var(--table-th-col); font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.5rem 0.6rem; border-bottom: 1.5px solid var(--surface-border); white-space: nowrap; text-align: left; }
-        td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--surface-border); font-size: 0.78rem; color: var(--text-base); }
+        th { background: var(--table-th-bg); color: var(--table-th-col); font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.6rem 0.65rem; border-bottom: 1.5px solid var(--surface-border); white-space: nowrap; text-align: left; }
+        td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--surface-border); font-size: 0.78rem; color: var(--text-base); }
         tr:last-child td { border-bottom: none; }
         tr:nth-child(even) td { background: var(--row-even); }
         tr:hover td { background: var(--row-hover); }
 
+        /* ── Empty state ── */
+        .pu-empty { padding: 2.4rem 1rem; text-align: center; color: var(--text-subtle); }
+        .pu-empty-icon { width: 52px; height: 52px; border-radius: 50%; margin: 0 auto .7rem; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; background: var(--pu-accent-soft); color: var(--pu-brand); }
+        .pu-empty strong { display: block; color: var(--text-muted); font-size: .85rem; margin-bottom: .15rem; }
+        .pu-empty span { font-size: .76rem; }
+
         /* ── Buttons ── */
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: 8px; font-family: inherit; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
-        .btn-sm  { padding: 0.3rem 0.7rem;   font-size: 0.73rem; min-height: 30px; }
-        .btn-md  { padding: 0.45rem 0.875rem; font-size: 0.8rem;  min-height: 36px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: 9px; font-family: inherit; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .btn-sm  { padding: 0.32rem 0.7rem;   font-size: 0.73rem; min-height: 30px; }
+        .btn-md  { padding: 0.5rem 0.95rem; font-size: 0.8rem;  min-height: 38px; }
         .btn-full { width: 100%; }
         .btn-primary { background: linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; box-shadow:0 2px 8px rgba(79,70,229,.28); }
-        .btn-primary:hover { background: linear-gradient(135deg,#4f46e5,#4338ca); transform:translateY(-1px); }
+        .btn-primary:hover { background: linear-gradient(135deg,#4f46e5,#4338ca); transform:translateY(-1px); box-shadow:0 4px 14px rgba(79,70,229,.35); }
         .btn-success { background: linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 2px 8px rgba(16,185,129,.28); }
-        .btn-success:hover { background: linear-gradient(135deg,#059669,#047857); transform:translateY(-1px); }
+        .btn-success:hover { background: linear-gradient(135deg,#059669,#047857); transform:translateY(-1px); box-shadow:0 4px 14px rgba(16,185,129,.35); }
         .btn-secondary { background:var(--surface-alt); color:var(--text-muted); border:1.5px solid var(--surface-border); }
         .btn-secondary:hover { background:var(--surface-border); color:var(--text-base); transform:translateY(-1px); }
-        .btn-danger { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; border:none; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-family:inherit; transition:all .15s; min-height:28px; min-width:28px; padding:0.3rem 0.5rem; }
+        .btn-danger { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; border:none; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-family:inherit; transition:all .15s; min-height:28px; min-width:28px; padding:0.3rem 0.5rem; }
         .btn-danger:hover { background:linear-gradient(135deg,#dc2626,#b91c1c); transform:translateY(-1px); }
         .btn-danger svg, .btn-danger i { width:13px; height:13px; font-size:0.7rem; }
 
+        /* ── Sticky action bar ── */
+        .pu-actionbar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-top: .25rem; padding: 0.7rem 0.95rem; background: var(--surface); border: 1px solid var(--surface-border); border-radius: 14px; box-shadow: 0 -4px 20px -10px rgba(0,0,0,.18); }
+        .pu-actionbar .pu-ab-hint { font-size: .74rem; color: var(--text-subtle); display: flex; align-items: center; gap: .4rem; }
+        .pu-actionbar .pu-ab-buttons { display: flex; gap: .5rem; margin-left: auto; }
+
         /* ── Totals box ── */
-        .totals-box { background:var(--surface-alt); border:1px solid var(--surface-border); border-radius:10px; padding:0.75rem 1rem; }
-        .grand-total-row { border-top:2px dashed var(--surface-border); padding-top:0.5rem; margin-top:0.5rem; }
+        .totals-box { background:linear-gradient(180deg, var(--surface-alt), transparent); border:1px solid var(--surface-border); border-radius:12px; padding:0.85rem 1rem; }
+        .grand-total-row { border-top:2px dashed var(--surface-border); padding-top:0.55rem; margin-top:0.55rem; }
 
         /* ── Info panels ── */
-        .info-panel-supplier { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:0.75rem; }
+        .info-panel-supplier { background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:0.8rem; }
         .info-panel-supplier .panel-title { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1e40af; margin-bottom:.5rem; display:flex; align-items:center; gap:.35rem; }
         [data-theme="dark"] .info-panel-supplier { background:#0a1f3d; border-color:#1e3a60; }
         [data-theme="dark"] .info-panel-supplier .panel-title { color:#60a5fa; }
-        .info-panel-credit { background:#fdf4ff; border:1.5px solid #e9d5ff; border-radius:10px; padding:0.75rem; }
+        .info-panel-credit { background:#fdf4ff; border:1.5px solid #e9d5ff; border-radius:12px; padding:0.8rem; }
         .info-panel-credit .panel-title { color:#6d28d9; }
         [data-theme="dark"] .info-panel-credit { background:#180d2e; border-color:#3b1e60; }
 
         /* ── Modals ── */
-        .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; display:none; justify-content:center; align-items:center; }
-        .modal-panel { background:var(--surface); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; }
-        [data-theme="dark"] .modal-panel { box-shadow:0 20px 60px rgba(0,0,0,.55); }
-        .modal-head { display:flex; justify-content:space-between; align-items:center; padding:.875rem 1.25rem; border-bottom:1px solid var(--surface-border); background:var(--surface-alt); }
-        .modal-head h3 { font-size:.88rem; font-weight:700; color:var(--text-base); display:flex; align-items:center; gap:.4rem; margin:0; }
-        .modal-close-btn { width:28px; height:28px; border-radius:50%; background:var(--surface-border); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:.75rem; transition:all .15s; flex-shrink:0; }
-        .modal-close-btn:hover { background:var(--text-subtle); color:var(--text-inverse); }
+        .modal { position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); z-index:1000; display:none; justify-content:center; align-items:center; }
+        .modal-panel { background:var(--surface); border-radius:18px; box-shadow:0 24px 70px rgba(0,0,0,.3); overflow:hidden; animation: pu-pop .2s ease; }
+        @keyframes pu-pop { from { opacity:0; transform: scale(.97) translateY(8px); } to { opacity:1; transform:none; } }
+        [data-theme="dark"] .modal-panel { box-shadow:0 24px 70px rgba(0,0,0,.6); }
+        .modal-head { display:flex; justify-content:space-between; align-items:center; padding:.95rem 1.25rem; border-bottom:1px solid var(--surface-border); background:var(--surface-alt); }
+        .modal-head h3 { font-size:.9rem; font-weight:700; color:var(--text-base); display:flex; align-items:center; gap:.4rem; margin:0; }
+        .modal-close-btn { width:30px; height:30px; border-radius:50%; background:var(--surface-border); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-muted); font-size:.75rem; transition:all .15s; flex-shrink:0; }
+        .modal-close-btn:hover { background:var(--text-subtle); color:var(--text-inverse); transform: rotate(90deg); }
 
         /* ── Status badges ── */
         .badge { display:inline-block; padding:.2rem .55rem; border-radius:20px; font-size:.68rem; font-weight:700; }
@@ -104,7 +141,7 @@
         .pagination-wrapper { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; padding:.75rem 0 .25rem; }
         .pagination-info { font-size:.8rem; color:var(--text-muted); white-space:nowrap; }
         .pagination-controls-inner { display:flex; gap:.2rem; align-items:center; flex-wrap:wrap; }
-        .pagination-btn { min-width:2rem; height:2rem; padding:0 .4rem; border:1px solid var(--surface-border); background:var(--surface); color:var(--text-base); border-radius:.25rem; font-size:.8rem; cursor:pointer; transition:background .15s,color .15s; display:inline-flex; align-items:center; justify-content:center; }
+        .pagination-btn { min-width:2rem; height:2rem; padding:0 .4rem; border:1px solid var(--surface-border); background:var(--surface); color:var(--text-base); border-radius:.4rem; font-size:.8rem; cursor:pointer; transition:background .15s,color .15s; display:inline-flex; align-items:center; justify-content:center; }
         .pagination-btn:hover:not(:disabled) { background:#6366f1; color:#fff; border-color:#6366f1; }
         .pagination-btn.pagination-btn-active { background:#6366f1; color:#fff; border-color:#4f46e5; font-weight:700; }
         .pagination-btn:disabled { opacity:.4; cursor:not-allowed; }
@@ -114,8 +151,17 @@
         /* ── Mobile overlay ── */
         #overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:40; display:none; opacity:0; transition:opacity .3s; }
 
+        @media (max-width: 768px) {
+            .pu-add-grid { grid-template-columns: 1fr 1fr !important; }
+            .pu-add-grid .pu-add-search { grid-column: span 2 !important; }
+            .pu-add-grid .pu-add-action { grid-column: span 2 !important; }
+            .pu-supplier-grid { grid-template-columns: 1fr !important; }
+            .pu-paysum-grid { grid-template-columns: 1fr !important; }
+        }
+
         @media (max-width: 480px) {
             .pagination-wrapper { flex-direction: column; align-items: flex-start; }
+            .pu-banner h1 { font-size: .95rem; }
         }
 
         @media (max-width: 640px) {
@@ -143,15 +189,7 @@
             <!-- Nav links injected here by renderSidebarLinks() -->
 
             <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
+            <div class="px-4 mt-auto sidebar-pin-area"></div>
         </nav>
 
         <!-- Main Content Area -->
@@ -196,11 +234,24 @@
 
             <main style="padding:0.875rem 0.875rem 0.875rem 0.375rem;">
 
+                <!-- Page banner -->
+                <div class="pu-banner">
+                    <div class="pu-banner-row">
+                        <div style="display:flex;align-items:center;gap:.7rem;">
+                            <span class="pu-banner-icon"><i class="fas fa-truck-ramp-box"></i></span>
+                            <div>
+                                <h1>Purchase Management</h1>
+                                <p>Create purchase orders, capture GST &amp; track supplier invoices</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Tab Nav -->
                 <div class="pos-card" style="margin-bottom:0.75rem;">
                     <div class="tabs">
-                        <div class="tab active" data-tab="purchase-order">📥 Purchase Order</div>
-                        <div class="tab" data-tab="purchase-invoice">🧾 Purchase Invoices</div>
+                        <div class="tab active" data-tab="purchase-order"><i class="fas fa-file-circle-plus"></i> Purchase Order</div>
+                        <div class="tab" data-tab="purchase-invoice"><i class="fas fa-file-invoice"></i> Purchase Invoices</div>
                     </div>
                 </div>
 
@@ -216,7 +267,7 @@
                             </span>
                         </div>
                         <div style="padding:0.75rem;">
-                            <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:0.625rem;">
+                            <div class="pu-supplier-grid" style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:0.625rem;">
                                 <div>
                                     <label class="field-label" for="supplier-select">Supplier</label>
                                     <select id="supplier-select" class="form-control">
@@ -257,10 +308,15 @@
 
                     <!-- Add Products -->
                     <div class="pos-card" style="margin-bottom:0.75rem;">
-                       
+                        <div class="card-head">
+                            <span class="card-head-title">
+                                <span class="icon-chip" style="background:rgba(16,185,129,.12);color:#10b981;"><i class="fas fa-cart-plus"></i></span>
+                                Add Products
+                            </span>
+                        </div>
                         <div style="padding:0.75rem;">
-                            <div style="display:grid;grid-template-columns:1fr 1fr 100px 130px auto;gap:0.5rem;align-items:end;">
-                                <div style="position:relative;grid-column:span 2;">
+                            <div class="pu-add-grid" style="display:grid;grid-template-columns:1fr 1fr 100px 130px auto;gap:0.5rem;align-items:end;">
+                                <div class="pu-add-search" style="position:relative;grid-column:span 2;">
                                     <label class="field-label" for="product-search-input"><i class="fas fa-search" style="font-size:.58rem;"></i> Product / SKU</label>
                                     <div style="position:relative;">
                                         <input type="text" id="product-search-input" placeholder="Search by name or SKU…" class="form-control" autocomplete="off">
@@ -275,8 +331,8 @@
                                     <label class="field-label" for="purchase-rate-input">Purchase Rate</label>
                                     <input type="number" id="purchase-rate-input" min="0" step="0.01" placeholder="0.00" class="form-control">
                                 </div>
-                                <div style="padding-bottom:1px;">
-                                    <button id="add-item-btn" class="btn btn-primary btn-md"><i class="fas fa-plus"></i> Add</button>
+                                <div class="pu-add-action" style="padding-bottom:1px;">
+                                    <button id="add-item-btn" class="btn btn-primary btn-md btn-full"><i class="fas fa-plus"></i> Add Item</button>
                                 </div>
                             </div>
                         </div>
@@ -309,7 +365,13 @@
                                 </thead>
                                 <tbody id="purchase-items-body">
                                     <tr>
-                                        <td colspan="11" style="text-align:center;padding:1.5rem;color:var(--text-subtle);">No items added yet</td>
+                                        <td colspan="11" style="padding:0;">
+                                            <div class="pu-empty">
+                                                <div class="pu-empty-icon"><i class="fas fa-box-open"></i></div>
+                                                <strong>No items added yet</strong>
+                                                <span>Search a product above and click <b>Add Item</b> to build this order.</span>
+                                            </div>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -317,7 +379,7 @@
                     </div>
 
                     <!-- Payment + Summary -->
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+                    <div class="pu-paysum-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
 
                         <!-- Payment Method -->
                         <div class="pos-card">
@@ -385,10 +447,13 @@
                         </div>
                     </div>
 
-                    <!-- Actions -->
-                    <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.875rem;">
-                        <button id="clear-btn" class="btn btn-secondary btn-md">Clear</button>
-                        <button id="save-btn" class="btn btn-success btn-md"><i class="fas fa-save"></i> Save Purchase Order</button>
+                    <!-- Sticky Actions -->
+                    <div class="pu-actionbar" style="margin-bottom:0.875rem;">
+                        <span class="pu-ab-hint"><i class="fas fa-circle-info"></i> Review items &amp; totals before saving.</span>
+                        <div class="pu-ab-buttons">
+                            <button id="clear-btn" class="btn btn-secondary btn-md"><i class="fas fa-eraser"></i> Clear</button>
+                            <button id="save-btn" class="btn btn-success btn-md"><i class="fas fa-save"></i> Save Purchase Order</button>
+                        </div>
                     </div>
 
                 </div><!-- /purchase-order-tab -->
@@ -404,9 +469,10 @@
                         </div>
                         <div style="padding:0.75rem;">
                             <div style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;align-items:end;margin-bottom:0.75rem;">
-                                <div>
-                                    <label class="field-label" for="invoice-search">Search</label>
-                                    <input type="text" id="invoice-search" placeholder="Supplier name or invoice number…" class="form-control">
+                                <div style="position:relative;">
+                                    <label class="field-label" for="invoice-search">Search Invoices</label>
+                                    <i class="fas fa-search" style="position:absolute;left:.7rem;top:calc(50% + .55rem);transform:translateY(-50%);font-size:.72rem;color:var(--text-subtle);pointer-events:none;"></i>
+                                    <input type="text" id="invoice-search" placeholder="Supplier name or invoice number…" class="form-control" style="padding-left:2rem;">
                                 </div>
                                 <button class="btn btn-primary btn-md" id="search-invoices-btn"><i class="fas fa-search"></i> Search</button>
                             </div>
@@ -425,7 +491,13 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-subtle);">No invoices found</td></tr>
+                                        <tr><td colspan="8" style="padding:0;">
+                                            <div class="pu-empty">
+                                                <div class="pu-empty-icon"><i class="fas fa-file-invoice"></i></div>
+                                                <strong>No invoices found</strong>
+                                                <span>Saved purchase orders will appear here.</span>
+                                            </div>
+                                        </td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -948,10 +1020,10 @@
                 if (isNaN(balance) || !isFinite(balance)) balance = 0;
                 
                 if (balance > 0) {
-                    balanceText = `₹${balance.toFixed(2)} (Debt)`;
+                    balanceText = `₹${balance.toFixed(2)} (Payable)`;
                     balanceClass = 'font-medium text-red-600';
                 } else if (balance < 0) {
-                    balanceText = `₹${Math.abs(balance).toFixed(2)} (Credit)`;
+                    balanceText = `₹${Math.abs(balance).toFixed(2)} (Advance Paid)`;
                     balanceClass = 'font-medium text-green-600';
                 } else {
                     balanceText = `₹${balance.toFixed(2)}`;
@@ -1070,10 +1142,10 @@
                         if (isNaN(currentBalance)) currentBalance = 0;
                         
                         if (currentBalance > 0) {
-                            balanceText = `₹${currentBalance.toFixed(2)} (Debt)`;
+                            balanceText = `₹${currentBalance.toFixed(2)} (Payable)`;
                             balanceClass = 'font-medium text-red-600';
                         } else if (currentBalance < 0) {
-                            balanceText = `₹${Math.abs(currentBalance).toFixed(2)} (Credit)`;
+                            balanceText = `₹${Math.abs(currentBalance).toFixed(2)} (Advance Paid)`;
                             balanceClass = 'font-medium text-green-600';
                         } else {
                             balanceText = `₹${currentBalance.toFixed(2)}`;
@@ -1766,7 +1838,7 @@
             if (!purchaseItemsBody) return;
             
             if (purchaseItems.length === 0) {
-                purchaseItemsBody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-gray-500">No items added yet</td></tr>';
+                purchaseItemsBody.innerHTML = '<tr><td colspan="11" style="padding:0;"><div class="pu-empty"><div class="pu-empty-icon"><i class="fas fa-box-open"></i></div><strong>No items added yet</strong><span>Search a product above and click <b>Add Item</b> to build this order.</span></div></td></tr>';
                 updatePurchaseTotals();
                 return;
             }
@@ -1899,7 +1971,7 @@
             const total = piRows.length;
 
             if (total === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No purchase invoices found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:0;"><div class="pu-empty"><div class="pu-empty-icon"><i class="fas fa-file-invoice"></i></div><strong>No purchase invoices found</strong><span>Saved purchase orders will appear here.</span></div></td></tr>';
                 renderPurchaseInvoicesPagination(0);
                 return;
             }

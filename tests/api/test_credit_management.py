@@ -150,10 +150,13 @@ class TestCreditAuth:
         assert client.get("/api/credit/customers/1/ledger").status_code == 401
         assert client.get("/api/credit/suppliers/1/ledger").status_code == 401
 
-    def test_cashier_can_read_overview(self, client, cashier_headers):
-        # Endpoints are @token_required (any authenticated user), not admin-only.
+    def test_cashier_without_credit_permission_is_denied(self, client, cashier_headers):
+        # Endpoints are gated by @permission_required('credit'): a cashier who has
+        # not been granted the 'credit' screen permission must be denied (403),
+        # preventing bulk exfiltration of the receivables/payables ledgers.
+        # Admins/Managers bypass the check (covered by the admin_headers tests below).
         resp = client.get("/api/credit/overview", headers=cashier_headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 403
 
 
 # ───────────────────────── overview ──────────────────────────────────────────

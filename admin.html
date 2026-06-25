@@ -34,12 +34,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
     <style>
-        #overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;opacity:0;transition:opacity 0.3s; }
-        .main-col { display:flex;flex-direction:column;min-width:0;flex:1 1 0%; }
-        @media (min-width:768px) { .main-col { margin-left:220px; } }
-        @media (min-width:768px) { .main-col.sidebar-hidden { margin-left:0; } }
-        main { flex:1; }
-
         /* ── Admin page shell ──────────────────────── */
         .admin-shell { padding:1rem;display:flex;flex-direction:column;gap:1.25rem; }
         .admin-page-title { font-size:1rem;font-weight:700;color:var(--text-base); }
@@ -130,33 +124,8 @@
 <body class="font-sans leading-normal tracking-normal">
 
     <!-- Mobile Menu Overlay (Click closes menu) -->
-    <div id="overlay"></div> 
-
     <div class="main-layout flex min-h-screen">
-        <!-- Sidebar/Navigation -->
-        <nav id="sidebar" data-testid="sidebar"
-             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
-             style="width:220px;">
-
-            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
-                </span>
-            </a>
-
-            <!-- Nav links injected here by renderSidebarLinks() -->
-
-            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </nav>
+        <!-- Sidebar injected by ensureSidebarShell() in auth-utils.js -->
 
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
@@ -248,7 +217,7 @@
                                 <div class="tile-icon orange"><i class="fas fa-sign-in-alt"></i></div>
                                 <div class="tile-body"><div class="tile-title">Login Activity</div><div class="tile-desc">Monitor user logins</div></div>
                             </a>
-                            <a href="token-usage.html" class="admin-tile" data-min-level="2" data-permission="ai-settings">
+                            <a href="token-usage.html" class="admin-tile" data-min-level="2" data-permission="token-usage">
                                 <div class="tile-icon purple"><i class="fas fa-microchip"></i></div>
                                 <div class="tile-body"><div class="tile-title">Token Usage</div><div class="tile-desc">AI consumption by user &amp; model</div></div>
                             </a>
@@ -551,11 +520,12 @@
                         .perm-item-status.off { background:#f3f4f6; color:#9ca3af; }
 
                         /* Category section */
-                        .perm-category { border:1px solid #e5e7eb;border-radius:10px;overflow:hidden; }
-                        .perm-category-head { display:flex;align-items:center;gap:8px;padding:8px 14px;background:#f9fafb;border-bottom:1px solid #e5e7eb; }
-                        .perm-item { display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #f3f4f6;transition:background .15s; }
+                        .perm-category { border:1px solid var(--surface-border);border-radius:10px;overflow:hidden; }
+                        .perm-category-head { display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface-alt);border-bottom:1px solid var(--surface-border); }
+                        .perm-category-head .perm-cat-title { color:var(--text-muted); }
+                        .perm-item { display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--surface-border);transition:background .15s; }
                         .perm-item:last-child { border-bottom:none; }
-                        .perm-item:hover { background:#463e69; }
+                        .perm-item:hover { background:var(--row-hover); }
                         </style>
 
                     </div><!-- /permissions-panel -->
@@ -850,8 +820,28 @@
             { label: 'Customer & Credit',icon: 'fa-credit-card',  color: '#059669', screens: ['credit'] },
             { label: 'Catalog & Supply', icon: 'fa-boxes',        color: '#d97706', screens: ['supplier-management','product-management'] },
             { label: 'AI & Tools',       icon: 'fa-robot',        color: '#6366f1', screens: ['ai-chat','ocr-excel','ai-settings'] },
-            { label: 'Administration',   icon: 'fa-cog',          color: '#dc2626', screens: ['admin','service','user-management','data-upload','qry2db','backup','tally-export','login-activity','store-settings'] },
+            { label: 'Administration',   icon: 'fa-cog',          color: '#dc2626', screens: ['admin','service','user-management','data-upload','qry2db','backup','tally-export','login-activity','store-settings','token-usage'] },
         ];
+
+        // Fallback bucket for any backend screen not assigned to a category above.
+        // Guarantees the grid never silently drops a permission-controlled screen.
+        const PERM_UNCATEGORIZED = { label: 'Other', icon: 'fa-ellipsis-h', color: '#6b7280' };
+
+        // Returns PERM_CATEGORIES plus a synthesized "Other" category holding every
+        // screen the backend defines that no static category claims. This keeps the
+        // UI in lockstep with PERMISSION_SCREENS even when new screens are added
+        // server-side without a matching front-end category.
+        function permCategoriesWithFallback() {
+            const claimed = new Set();
+            PERM_CATEGORIES.forEach(c => c.screens.forEach(id => claimed.add(id)));
+            const orphanIds = (permScreens || [])
+                .map(s => s.id)
+                .filter(id => !claimed.has(id));
+            if (!orphanIds.length) return PERM_CATEGORIES;
+            return PERM_CATEGORIES.concat([
+                Object.assign({}, PERM_UNCATEGORIZED, { screens: orphanIds })
+            ]);
+        }
 
         // Role → visual style
         function roleStyle(role) {
@@ -994,7 +984,7 @@
             // Per-category chips
             const catsEl = document.getElementById('ps-categories');
             catsEl.innerHTML = '';
-            PERM_CATEGORIES.forEach(cat => {
+            permCategoriesWithFallback().forEach(cat => {
                 const screens  = permScreens.filter(s => cat.screens.includes(s.id));
                 if (!screens.length) return;
                 const catGrant = screens.filter(s => currentPermissions[s.id] === true).length;
@@ -1011,7 +1001,7 @@
             // Update category count badges inside the grid
             document.querySelectorAll('[data-cat-badge]').forEach(badge => {
                 const catId    = badge.getAttribute('data-cat-badge');
-                const cat      = PERM_CATEGORIES.find(c => c.label === catId);
+                const cat      = permCategoriesWithFallback().find(c => c.label === catId);
                 if (!cat) return;
                 const screens  = permScreens.filter(s => cat.screens.includes(s.id));
                 const catGrant = screens.filter(s => currentPermissions[s.id] === true).length;
@@ -1042,7 +1032,7 @@
                 wrapper.appendChild(banner);
             }
 
-            PERM_CATEGORIES.forEach(cat => {
+            permCategoriesWithFallback().forEach(cat => {
                 const catScreens = permScreens.filter(s => cat.screens.includes(s.id));
                 if (!catScreens.length) return;
 
@@ -1051,7 +1041,7 @@
                 section.innerHTML = `
                     <div class="perm-category-head">
                         <i class="fas ${cat.icon} text-xs" style="color:${cat.color}"></i>
-                        <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide" style="flex:1;">${cat.label}</span>
+                        <span class="perm-cat-title text-xs font-semibold uppercase tracking-wide" style="flex:1;">${cat.label}</span>
                         <span class="perm-cat-badge" data-cat-badge="${cat.label}">0 / ${catScreens.length}</span>
                     </div>`;
 

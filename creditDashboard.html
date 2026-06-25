@@ -23,12 +23,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
     <style>
-        .main-col{display:flex;flex-direction:column;min-width:0;flex:1 1 0%;}
-        @media(min-width:768px){.main-col{margin-left:220px;}}
-        @media(min-width:768px){.main-col.sidebar-hidden{margin-left:0;}}
-        main{flex:1;}
-        #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;opacity:0;transition:opacity .3s;}
-
         /* ── KPI cards ─────────────────────────────────────────────── */
         .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.85rem;margin-bottom:1rem;}
         .kpi-card{position:relative;border-radius:14px;padding:1rem 1.1rem;color:#fff;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.12);}
@@ -108,27 +102,8 @@
     </style>
 </head>
 <body class="font-sans leading-normal tracking-normal">
-    <div id="overlay"></div>
-
     <div class="main-layout flex min-h-screen">
-        <nav id="sidebar" data-testid="sidebar"
-             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
-             style="width:220px;">
-            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
-                </span>
-            </a>
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </nav>
+        <!-- Sidebar injected by ensureSidebarShell() in auth-utils.js -->
 
         <div id="loading-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.5);">
             <div style="background:var(--surface);border-radius:10px;padding:1.5rem 2rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;box-shadow:0 8px 32px rgba(0,0,0,.2);">
@@ -288,6 +263,9 @@
             document.getElementById('ledger-modal').addEventListener('click', e => { if (e.target.id === 'ledger-modal') closeLedger(); });
             document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLedger(); });
 
+            // Ensure sidebar shell + links render (independent of auth-utils.js timing)
+            if (typeof ensureSidebarShell === 'function') ensureSidebarShell();
+            if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
             if (typeof initializeSidebarPin === 'function') initializeSidebarPin();
             window.sidebarInitialized = true;
 
@@ -332,13 +310,13 @@
             const grid = document.getElementById('kpi-grid');
             grid.innerHTML = `
                 <div class="kpi-card kpi-recv">
-                    <div class="kpi-label">Receivables (owed to you)</div>
+                    <div class="kpi-label">Receivables (To Collect)</div>
                     <div class="kpi-value">${fmt(r.total_outstanding)}</div>
                     <div class="kpi-sub">${r.customer_count} customer${r.customer_count!==1?'s':''} outstanding</div>
                     <i class="fas fa-hand-holding-dollar kpi-ico"></i>
                 </div>
                 <div class="kpi-card kpi-pay">
-                    <div class="kpi-label">Payables (you owe)</div>
+                    <div class="kpi-label">Payables (To Pay)</div>
                     <div class="kpi-value">${fmt(p.total_outstanding)}</div>
                     <div class="kpi-sub">${p.supplier_count} supplier${p.supplier_count!==1?'s':''} outstanding</div>
                     <i class="fas fa-file-invoice-dollar kpi-ico"></i>
@@ -346,7 +324,7 @@
                 <div class="kpi-card ${netPos ? 'kpi-net-pos' : 'kpi-net-neg'}">
                     <div class="kpi-label">Net Position</div>
                     <div class="kpi-value">${fmt(Math.abs(net))}</div>
-                    <div class="kpi-sub">${netPos ? 'Net owed to you' : 'Net you owe'}</div>
+                    <div class="kpi-sub">${netPos ? 'Net Receivable' : 'Net Payable'}</div>
                     <i class="fas fa-scale-balanced kpi-ico"></i>
                 </div>
                 <div class="kpi-card kpi-info">

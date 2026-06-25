@@ -132,13 +132,17 @@ def get_dashboard_kpis(payload):
             if row.get('invoice_date'):
                 row['invoice_date'] = row['invoice_date'].strftime('%d %b %Y %H:%M')
 
-        # ── Outstanding credit ───────────────────────────────────────────────
+        # ── Outstanding credit (receivables) ─────────────────────────────────
+        # Tally convention (see routes/credit_management.py): a customer who OWES
+        # the shop carries a NEGATIVE balance (a credit sale posts a 'debit').
+        # Outstanding receivable = -SUM(balance) over the debtor rows (balance < 0).
+        # Positive balances are customer ADVANCES, not money owed to us.
         cur.execute("""
             SELECT
-                COUNT(*)                           AS credit_count,
-                COALESCE(SUM(current_balance), 0)  AS total_outstanding
+                COUNT(*)                            AS credit_count,
+                COALESCE(-SUM(current_balance), 0)  AS total_outstanding
             FROM credit_customers
-            WHERE current_balance > 0
+            WHERE current_balance < 0
         """)
         credit = cur.fetchone()
 

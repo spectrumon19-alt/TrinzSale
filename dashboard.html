@@ -284,13 +284,30 @@
             display:flex; flex-direction:column; height:680px;
         }
         .ai-chat-head {
+            position:relative; overflow:hidden;
             padding:14px 18px;
-            background:linear-gradient(135deg,#2c2d5c,#8b5cf6);
+            background:radial-gradient(120% 140% at 0% 0%,#4f46e5 0%,#6d28d9 55%,#7c3aed 100%);
             display:flex; align-items:center; gap:12px; flex-shrink:0;
         }
-        .ai-chat-head-icon { font-size:1.4rem; }
-        .ai-chat-head-title { color:#fff; font-size:.95rem; font-weight:700; }
-        .ai-chat-head-sub   { color:rgba(255,255,255,.75); font-size:.72rem; }
+        .ai-chat-head::after {
+            content:""; position:absolute; right:-30px; top:-50px;
+            width:160px; height:160px; border-radius:50%;
+            background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%); pointer-events:none;
+        }
+        .ai-chat-head-icon {
+            position:relative; z-index:1; width:42px; height:42px; border-radius:12px; flex-shrink:0;
+            background:radial-gradient(120% 120% at 30% 20%,#1e2a52,#0b1124);
+            display:flex; align-items:center; justify-content:center;
+            box-shadow:0 2px 9px rgba(0,0,0,.3),0 0 0 1px rgba(129,140,248,.4) inset;
+        }
+        .ai-chat-head-icon img { width:30px; height:30px; object-fit:contain; filter:drop-shadow(0 1px 4px rgba(99,102,241,.55)); }
+        .ai-chat-head-icon .ai-online {
+            position:absolute; bottom:-2px; right:-2px; width:12px; height:12px; border-radius:50%;
+            background:#22c55e; border:2px solid #5b3bd6; box-shadow:0 0 0 0 rgba(34,197,94,.6); animation:ai-head-pulse 1.8s infinite;
+        }
+        @keyframes ai-head-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+        .ai-chat-head-title { position:relative; z-index:1; color:#fff; font-size:.98rem; font-weight:800; letter-spacing:-.01em; line-height:1.15; }
+        .ai-chat-head-sub   { position:relative; z-index:1; color:rgba(255,255,255,.8); font-size:.72rem; display:flex; align-items:center; gap:5px; margin-top:1px; }
         .ai-msgs {
             flex:1; overflow-y:auto; padding:16px; display:flex;
             flex-direction:column; gap:12px; scroll-behavior:smooth;
@@ -374,8 +391,14 @@
         #ai-send:not(:disabled):hover { transform:scale(1.06); }
         #ai-send svg { width:17px; height:17px; fill:none; stroke:#fff; stroke-width:2.2; }
 
-        .ai-empty { text-align:center; padding:24px 16px; }
-        .ai-empty-icon { font-size:2.5rem; margin-bottom:8px; opacity:.5; }
+        .ai-empty { text-align:center; padding:24px 16px; display:flex; flex-direction:column; align-items:center; }
+        .ai-empty-icon {
+            width:72px; height:72px; border-radius:20px; margin-bottom:12px;
+            background:radial-gradient(120% 120% at 30% 20%,#1e2a52,#0b1124);
+            display:flex; align-items:center; justify-content:center;
+            box-shadow:0 8px 22px rgba(67,56,202,.35),0 0 0 1px rgba(129,140,248,.3) inset;
+        }
+        .ai-empty-icon img { width:50px; height:50px; object-fit:contain; filter:drop-shadow(0 1px 6px rgba(99,102,241,.5)); }
         .ai-empty-title { font-size:.9rem; font-weight:700; color:var(--text-base); margin-bottom:4px; }
         .ai-empty-sub { font-size:.78rem; color:var(--text-muted); }
 
@@ -418,15 +441,7 @@
                 </span>
             </a>
             <!-- Nav links injected by renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
+            <div class="px-4 mt-auto sidebar-pin-area"></div>
         </nav>
 
         <!-- Loading Overlay -->
@@ -735,15 +750,20 @@
                         <!-- Chat Column -->
                         <div class="ai-chat-card">
                             <div class="ai-chat-head">
-                                <div class="ai-chat-head-icon">🤖</div>
-                                <div>
+                                <div class="ai-chat-head-icon">
+                                    <img src="assets/Abhi_AI.png" alt="Abhi AI" onerror="this.onerror=null;this.outerHTML='<span style=&quot;font-weight:900;font-size:1.3rem;color:#a5b4fc;&quot;>A</span>'">
+                                    <span class="ai-online"></span>
+                                </div>
+                                <div style="min-width:0;">
                                     <div class="ai-chat-head-title">AI Business Assistant</div>
-                                    <div class="ai-chat-head-sub">Ask anything in plain English — get data, charts &amp; Excel exports</div>
+                                    <div class="ai-chat-head-sub"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;"></span> Ask anything in plain English — get data, charts &amp; Excel exports</div>
                                 </div>
                             </div>
                             <div class="ai-msgs" id="ai-msgs">
                                 <div class="ai-empty" id="ai-empty">
-                                    <div class="ai-empty-icon">✨</div>
+                                    <div class="ai-empty-icon">
+                                        <img src="assets/Abhi_AI.png" alt="Abhi AI" onerror="this.onerror=null;this.outerHTML='<span style=&quot;font-weight:900;font-size:2rem;color:#a5b4fc;&quot;>A</span>'">
+                                    </div>
                                     <div class="ai-empty-title">Your AI Data Analyst</div>
                                     <div class="ai-empty-sub">Ask a business question and get instant insights with exportable data.</div>
                                 </div>

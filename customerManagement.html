@@ -222,13 +222,11 @@
         .tx-debit  { color: #10b981; }
     </style>
 </head>
-<body class="flex min-h-screen">
-    <!-- Sidebar (injected by auth-utils.js) -->
-    <nav id="sidebar"
-         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
-         style="width:220px;"></nav>
+<body class="font-sans leading-normal tracking-normal">
+  <div class="main-layout flex min-h-screen">
+    <!-- Sidebar injected by ensureSidebarShell() in auth-utils.js -->
 
-    <div class="flex-1 flex flex-col md:ml-[220px]" style="min-width:0;overflow-x:hidden;">
+    <div class="main-col flex-1" style="min-width:0;overflow-x:hidden;">
         <!-- Header -->
         <header id="pos-header">
             <div class="flex items-center gap-3">
@@ -368,6 +366,7 @@
             </div>
         </div>
     </div>
+  </div>
 
     <!-- Toast -->
     <div id="toast"></div>
@@ -389,6 +388,10 @@
     ═══════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', () => {
         requireAuth();
+        // Ensure sidebar shell + links render (independent of auth-utils.js timing)
+        if (typeof ensureSidebarShell === 'function') ensureSidebarShell();
+        if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
+        if (typeof initializeSidebarPin === 'function') initializeSidebarPin();
         startClock();
         loadStats();
         loadCustomers(1);

@@ -946,6 +946,20 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5470; }
 }
 
 /* ============================================================
+   SHARED LAYOUT  (all pages — do NOT repeat in per-page <style>)
+   ============================================================ */
+#overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 40; display: none; opacity: 0; transition: opacity 0.3s;
+}
+.main-col {
+    display: flex; flex-direction: column; min-width: 0; flex: 1 1 0%;
+}
+@media (min-width: 768px) { .main-col { margin-left: 220px; } }
+@media (min-width: 768px) { .main-col.sidebar-hidden { margin-left: 0; } }
+main { flex: 1; }
+
+/* ============================================================
    SHARED SIDEBAR  (all pages)
    ============================================================ */
 #sidebar {

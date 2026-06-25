@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,128 +6,277 @@
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Access Denied - TrintzPOS</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
-        .no-access-container {
-            max-width: 500px;
-            margin: 100px auto;
+        /* ── Scoped tokens ───────────────────────────────────────────── */
+        :root {
+            --na-danger:       #ef4444;
+            --na-danger-deep:  #dc2626;
+            --na-danger-soft:  rgba(239, 68, 68, 0.10);
+            --na-danger-ring:  rgba(239, 68, 68, 0.18);
+        }
+
+        /* ── Page shell ──────────────────────────────────────────────── */
+        /* Override the global body flex-column so this standalone page can
+           reliably centre its card instead of stacking children top-down. */
+        body {
+            display: block !important;
+            min-height: 100vh;
+        }
+
+        .na-stage {
+            box-sizing: border-box;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Soft ambient backdrop — two faint colour washes, theme-aware */
+        .na-stage::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(620px circle at 18% 12%, var(--na-danger-soft), transparent 60%),
+                radial-gradient(680px circle at 85% 90%, rgba(59, 130, 246, 0.07), transparent 60%);
+            pointer-events: none;
+        }
+
+        /* ── Card ────────────────────────────────────────────────────── */
+        .na-card {
+            position: relative;
+            width: 100%;
+            max-width: 460px;
             background: var(--surface);
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
             border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 2.75rem 2.5rem 2.25rem;
+            text-align: center;
+            box-shadow: var(--surface-shadow);
+            animation: na-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
-        .no-access-container h1 {
-            color: #e74c3c;
-            margin-bottom: 20px;
+        @keyframes na-rise {
+            from { opacity: 0; transform: translateY(14px) scale(0.985); }
+            to   { opacity: 1; transform: translateY(0)    scale(1);     }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .na-card, .na-icon-wrap { animation: none; }
+        }
+
+        /* Thin accent line at the top edge of the card */
+        .na-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 64px;
+            height: 4px;
+            border-radius: 0 0 4px 4px;
+            background: linear-gradient(90deg, var(--na-danger), var(--na-danger-deep));
+        }
+
+        /* ── Icon badge ──────────────────────────────────────────────── */
+        .na-icon-wrap {
+            width: 92px;
+            height: 92px;
+            margin: 0 auto 1.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--na-danger-soft);
+            box-shadow: 0 0 0 10px var(--na-danger-ring);
+            animation: na-pulse 2.8s ease-in-out infinite;
+        }
+
+        .na-icon-wrap i {
             font-size: 2.5rem;
+            color: var(--na-danger);
         }
 
-        .no-access-container p {
+        @keyframes na-pulse {
+            0%, 100% { box-shadow: 0 0 0 10px var(--na-danger-ring); }
+            50%      { box-shadow: 0 0 0 16px transparent; }
+        }
+
+        /* ── Text ────────────────────────────────────────────────────── */
+        .na-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--na-danger-deep);
+            background: var(--na-danger-soft);
+            padding: 0.3rem 0.7rem;
+            border-radius: 999px;
+            margin-bottom: 1rem;
+        }
+
+        .na-card h1 {
+            margin: 0 0 0.65rem;
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
             color: var(--text-base);
-            font-size: 1.2rem;
-            margin-bottom: 30px;
+        }
+
+        .na-card p {
+            margin: 0 auto;
+            max-width: 34ch;
+            font-size: 0.98rem;
             line-height: 1.6;
+            color: var(--text-muted);
         }
-        
-        .error-icon {
-            font-size: 4rem;
-            color: #e74c3c;
-            margin-bottom: 20px;
+
+        .na-user-note {
+            margin-top: 1rem;
+            font-size: 0.82rem;
+            color: var(--text-subtle);
         }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
-            font-size: 16px;
+        .na-user-note #username { font-weight: 600; color: var(--text-muted); }
+
+        /* ── Actions ─────────────────────────────────────────────────── */
+        .na-actions {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+
+        .na-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            min-height: 46px;
+            padding: 0.7rem 1.25rem;
+            font-size: 0.95rem;
             font-weight: 600;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
             text-decoration: none;
-            display: inline-block;
+            border: 1px solid transparent;
+            transition: transform 0.12s ease, box-shadow 0.2s ease,
+                        background 0.2s ease, border-color 0.2s ease;
         }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2980b9, #2573a7);
+        .na-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--brand-accent-shadow);
+        }
+
+        .na-btn-primary {
+            color: #fff;
+            background: linear-gradient(135deg, var(--brand-accent), var(--brand-accent-hover));
+            box-shadow: 0 4px 14px var(--brand-accent-shadow);
+        }
+        .na-btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 8px 20px var(--brand-accent-shadow);
         }
-        
-        /* Mobile responsive styles */
-        @media (max-width: 768px) {
-            .no-access-container {
-                margin: 50px auto;
-                padding: 30px;
-                max-width: 90%;
-            }
-            
-            .no-access-container h1 {
-                font-size: 2rem;
-            }
-            
-            .no-access-container p {
-                font-size: 1rem;
-            }
+
+        .na-btn-ghost {
+            color: var(--text-muted);
+            background: var(--surface-alt);
+            border-color: var(--surface-border);
         }
-        
+        .na-btn-ghost:hover {
+            transform: translateY(-1px);
+            color: var(--text-base);
+            border-color: var(--text-subtle);
+        }
+
+        .na-help {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--surface-border);
+            font-size: 0.82rem;
+            color: var(--text-subtle);
+        }
+        .na-help i { color: var(--na-danger); margin-right: 0.35rem; }
+
+        /* ── Responsive ──────────────────────────────────────────────── */
         @media (max-width: 480px) {
-            .no-access-container {
-                margin: 30px auto;
-                padding: 20px;
+            .na-card {
+                padding: 2.25rem 1.5rem 1.85rem;
+                border-radius: 18px;
             }
-            
-            .no-access-container h1 {
-                font-size: 1.8rem;
-            }
-            
-            .error-icon {
-                font-size: 3rem;
-            }
+            .na-icon-wrap { width: 80px; height: 80px; }
+            .na-icon-wrap i { font-size: 2.1rem; }
+            .na-card h1 { font-size: 1.5rem; }
+            .na-card p { font-size: 0.92rem; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="no-access-container">
-            <div class="error-icon">⚠️</div>
-            <h1>Access Denied</h1>
-            <p>You do not have permission to access this page. Please contact your administrator for assistance.</p>
-            <button id="dashboard-link" class="btn-primary">Go to Dashboard</button>
-        </div>
+    <div class="na-stage">
+        <div class="na-card" role="alert" aria-labelledby="na-title">
+            <div class="na-icon-wrap">
+                <i class="fas fa-lock" aria-hidden="true"></i>
+            </div>
 
-        <!-- Footer Container -->
-            <div id="footer-container"></div>
+            <span class="na-eyebrow"><i class="fas fa-shield-halved" aria-hidden="true"></i>Restricted</span>
+
+            <h1 id="na-title">Access Denied</h1>
+            <p>You don't have permission to view this page. Please contact your administrator to request access.</p>
+
+            <p class="na-user-note" id="na-user-note" style="display:none;">
+                Signed in as <span id="username"></span>
+            </p>
+
+            <div class="na-actions">
+                <button id="dashboard-link" class="na-btn na-btn-primary">
+                    <i class="fas fa-gauge-high" aria-hidden="true"></i>
+                    Go to Dashboard
+                </button>
+                <a href="javascript:history.back()" class="na-btn na-btn-ghost">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                    Go Back
+                </a>
+            </div>
+
+            <div class="na-help">
+                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                Need access? Ask your administrator to grant this screen in <strong>Access Permissions</strong>.
+            </div>
+        </div>
     </div>
+
+    <!-- Footer Container -->
+    <div id="footer-container"></div>
 
     <script src="auth-utils.js"></script>
     <script src="component-utils.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Check authentication but allow access to noAccess.html even if not authenticated
-            // This page is specifically for showing access denied messages
-            
-            // Update username display if user is authenticated
+            // This page is intentionally reachable even when unauthenticated —
+            // it only shows an access-denied message.
+
+            // Surface the signed-in username when available.
             const user = getCurrentUser();
-            if (user) {
-                const usernameElements = document.querySelectorAll('#username');
-                usernameElements.forEach(element => {
-                    if (element) {
-                        element.textContent = user.username;
-                    }
+            if (user && user.username) {
+                document.querySelectorAll('#username').forEach(function (el) {
+                    el.textContent = user.username;
                 });
+                const note = document.getElementById('na-user-note');
+                if (note) note.style.display = 'block';
             }
-            
-            // Set up dashboard link
+
+            // Primary action → dashboard.
             const dashboardLink = document.getElementById('dashboard-link');
             if (dashboardLink) {
                 dashboardLink.addEventListener('click', function() {
-                    // Redirect to dashboard
                     window.location.href = 'dashboard.html';
                 });
             }

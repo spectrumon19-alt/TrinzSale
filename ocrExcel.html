@@ -221,13 +221,11 @@
         .tbl-toolbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.625rem 0; }
     </style>
 </head>
-<body class="flex min-h-screen">
+<body class="font-sans leading-normal tracking-normal">
+  <div class="main-layout flex min-h-screen">
+    <!-- Sidebar injected by ensureSidebarShell() in auth-utils.js -->
 
-    <nav id="sidebar"
-         class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
-         style="width:220px;"></nav>
-
-    <div class="flex-1 flex flex-col md:ml-[220px]">
+    <div class="main-col flex-1" style="overflow-x:hidden;">
 
         <!-- Header -->
         <header id="pos-header">
@@ -506,6 +504,7 @@
 
         </main>
     </div>
+  </div>
 
     <!-- Toast -->
     <div id="toast"></div>
@@ -583,13 +582,17 @@
     ═══════════════════════════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', () => {
         requireAuth();
+        // Ensure sidebar shell + links render (independent of auth-utils.js timing)
+        if (typeof ensureSidebarShell === 'function') ensureSidebarShell();
+        if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
+        if (typeof initializeSidebarPin === 'function') initializeSidebarPin();
         loadAIStatus();
         startClock();
         // Pre-fill date
         document.getElementById('cfg-date').value =
             new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
         const mt = document.getElementById('menu-toggle');
-        if (mt) mt.addEventListener('click', toggleSidebar);
+        if (mt) mt.addEventListener('click', toggleMenu);
         // Live config preview
         ['cfg-company','cfg-title','cfg-date'].forEach(id =>
             document.getElementById(id).addEventListener('input', updateConfigPreview));

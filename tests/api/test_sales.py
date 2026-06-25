@@ -237,7 +237,7 @@ class TestStockManagement:
 class TestInvoiceNumberFormat:
 
     INVOICE_PATTERN = re.compile(r"D\d{2}P\d{3}_\d{6}")
-    RECEIPT_PATTERN = re.compile(r"R_\d{8}_\d{3}")
+    RECEIPT_PATTERN = re.compile(r"R\d{8}\d{3}")
 
     def test_invoice_number_matches_format(self, client, cashier_headers, test_product):
         resp = client.post("/api/sales", json={
@@ -264,7 +264,7 @@ class TestInvoiceNumberFormat:
         data = parse_json(resp)
         rcpt = data.get("receipt_number", "")
         assert self.RECEIPT_PATTERN.match(rcpt), (
-            f"Receipt number '{rcpt}' must match R_{{YYYYMMDD}}_{{NNN}}"
+            f"Receipt number '{rcpt}' must match R{{YYYYMMDD}}{{NNN}}"
         )
 
     def test_receipt_sequence_increments_within_same_day(self, client, cashier_headers, test_product, db_conn):

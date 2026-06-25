@@ -35,14 +35,6 @@
             --cm-radius:14px;
         }
 
-        /* ── Layout (matches other pages) ─────────────────────────────── */
-        .main-col{display:flex;flex-direction:column;min-width:0;flex:1 1 0%;}
-        @media(min-width:768px){.main-col{margin-left:220px;}}
-        @media(min-width:768px){.main-col.sidebar-hidden{margin-left:0;}}
-        main{flex:1;}
-
-        #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:none;opacity:0;transition:opacity .3s;}
-
         /* Balance colours (semantic) */
         .negative-balance{color:var(--cm-owe);font-weight:700;}   /* customer owes you */
         .positive-balance{color:var(--cm-adv);font-weight:700;}   /* advance / in credit */
@@ -161,43 +153,92 @@
         .vd-txn-scroll::-webkit-scrollbar-thumb:hover{background:rgba(99,102,241,.65);}
         .vd-txn-scroll::-webkit-scrollbar-corner{background:transparent;}
 
+        /* ── KPI summary cards ─────────────────────────────────────────── */
+        .kpi-row{
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+            gap:.8rem;margin-bottom:1.1rem;
+        }
+        .kpi-card{
+            position:relative;overflow:hidden;border-radius:var(--cm-radius);
+            padding:1rem 1.1rem;background:var(--surface);
+            border:1px solid var(--surface-border);
+            box-shadow:0 1px 3px rgba(0,0,0,.05);
+            transition:transform .14s,box-shadow .14s,border-color .14s;
+        }
+        .kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.10);}
+        .kpi-card::before{
+            content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+            background:var(--kpi-accent,var(--cm-brand));
+        }
+        .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem;}
+        .kpi-label{font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);}
+        .kpi-icon{
+            width:34px;height:34px;border-radius:10px;flex-shrink:0;
+            display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;
+            background:var(--kpi-icon-bg,rgba(99,102,241,.12));color:var(--kpi-accent,var(--cm-brand));
+        }
+        .kpi-value{font-size:1.45rem;font-weight:800;color:var(--text-base);line-height:1.1;letter-spacing:-.01em;}
+        .kpi-sub{font-size:.68rem;color:var(--text-subtle);margin-top:.2rem;}
+        .kpi-card.k-recv{--kpi-accent:var(--cm-owe);--kpi-icon-bg:var(--cm-owe-bg);}
+        .kpi-card.k-adv{--kpi-accent:var(--cm-adv);--kpi-icon-bg:var(--cm-adv-bg);}
+        .kpi-card.k-net{--kpi-accent:var(--cm-brand);--kpi-icon-bg:rgba(99,102,241,.12);}
+        .kpi-card.k-cust{--kpi-accent:#0891b2;--kpi-icon-bg:rgba(8,145,178,.12);}
+
+        /* ── Content card wrapper (replaces inline grey box) ───────────── */
+        .cm-surface{
+            background:var(--surface);border:1px solid var(--surface-border);
+            border-radius:var(--cm-radius);padding:1.1rem 1.2rem;
+            box-shadow:var(--surface-shadow,0 1px 3px rgba(0,0,0,.05));
+        }
+
+        /* ── Page header bar with primary action ───────────────────────── */
+        .cm-headerbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem;}
+
+        /* ── Collapsible register panel ────────────────────────────────── */
+        .cm-collapse{overflow:hidden;transition:max-height .3s ease,opacity .25s ease,margin .25s ease;max-height:0;opacity:0;margin:0;}
+        .cm-collapse.open{max-height:640px;opacity:1;margin-bottom:1rem;}
+
+        /* ── Table chrome ──────────────────────────────────────────────── */
+        .cm-table-wrap{
+            overflow-x:auto;border-radius:var(--cm-radius);
+            border:1px solid var(--surface-border);box-shadow:0 1px 3px rgba(0,0,0,.04);
+            scrollbar-width:thin;scrollbar-color:rgba(99,102,241,.4) transparent;
+        }
+        .cm-table-wrap::-webkit-scrollbar{height:8px;}
+        .cm-table-wrap::-webkit-scrollbar-thumb{background:rgba(99,102,241,.4);border-radius:8px;}
+        .credit-table tbody tr:hover{background:rgba(99,102,241,.05);}
+        .credit-table tbody tr:hover .cust-avatar{box-shadow:0 0 0 3px rgba(99,102,241,.18);}
+        .cust-avatar{transition:box-shadow .14s;}
+        .credit-table td .cust-name{font-size:.84rem;}
+
+        /* ── Empty state ───────────────────────────────────────────────── */
+        .cm-empty{padding:2.6rem 1rem;text-align:center;color:var(--text-muted);}
+        .cm-empty .cm-empty-icon{
+            width:56px;height:56px;border-radius:50%;margin:0 auto .8rem;
+            display:flex;align-items:center;justify-content:center;font-size:1.4rem;
+            background:rgba(99,102,241,.10);color:var(--cm-brand);
+        }
+        .cm-empty h4{font-size:.92rem;font-weight:700;color:var(--text-base);margin:0 0 .25rem;}
+        .cm-empty p{font-size:.78rem;margin:0;}
+
+        /* ── Skeleton shimmer for loading rows ─────────────────────────── */
+        .sk{display:inline-block;height:.7rem;border-radius:6px;background:linear-gradient(90deg,var(--surface-alt) 25%,rgba(99,102,241,.10) 37%,var(--surface-alt) 63%);background-size:400% 100%;animation:sk 1.2s ease infinite;}
+        @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
         /* Responsive: hide lower-priority columns on small screens */
         @media(max-width:680px){
             .credit-table .col-hide-sm{display:none;}
             .btn-primary,.btn-secondary,.btn-success{padding:.5rem .7rem;font-size:.75rem;}
+            .kpi-value{font-size:1.25rem;}
+            main{padding:.6rem .7rem!important;}
         }
     </style>
 </head>
 <body class="font-sans leading-normal tracking-normal">
 
     <!-- Mobile Menu Overlay (Click closes menu) -->
-    <div id="overlay"></div> 
-
     <div class="main-layout flex min-h-screen">
-        <!-- Sidebar/Navigation -->
-        <nav id="sidebar" data-testid="sidebar"
-             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
-             style="width:220px;">
-
-            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
-                </span>
-            </a>
-
-            <!-- Nav links injected here by renderSidebarLinks() -->
-
-            <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-        </nav>
+        <!-- Sidebar injected by ensureSidebarShell() in auth-utils.js -->
 
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.5);">
@@ -233,80 +274,128 @@
                 </div>
             </header>
 
-            <main style="padding:.75rem 1rem;">
-                <div style="background:var(--surface);border:1px solid var(--surface-border);border-radius:10px;padding:1rem;box-shadow:var(--surface-shadow,0 2px 8px rgba(0,0,0,.07));">
+            <main style="padding:1rem 1.1rem;">
+
+                <!-- KPI summary cards -->
+                <div class="kpi-row">
+                    <div class="kpi-card k-recv">
+                        <div class="kpi-top">
+                            <span class="kpi-label">Receivables</span>
+                            <span class="kpi-icon"><i class="fas fa-hand-holding-dollar"></i></span>
+                        </div>
+                        <div class="kpi-value" id="kpi-receivables">₹0.00</div>
+                        <div class="kpi-sub" id="kpi-receivables-sub">Owed to you</div>
+                    </div>
+                    <div class="kpi-card k-adv">
+                        <div class="kpi-top">
+                            <span class="kpi-label">Advances</span>
+                            <span class="kpi-icon"><i class="fas fa-piggy-bank"></i></span>
+                        </div>
+                        <div class="kpi-value" id="kpi-advances">₹0.00</div>
+                        <div class="kpi-sub" id="kpi-advances-sub">Customer credit balance</div>
+                    </div>
+                    <div class="kpi-card k-net">
+                        <div class="kpi-top">
+                            <span class="kpi-label">Net Position</span>
+                            <span class="kpi-icon"><i class="fas fa-scale-balanced"></i></span>
+                        </div>
+                        <div class="kpi-value" id="kpi-net">₹0.00</div>
+                        <div class="kpi-sub" id="kpi-net-sub">Receivables − Advances</div>
+                    </div>
+                    <div class="kpi-card k-cust">
+                        <div class="kpi-top">
+                            <span class="kpi-label">Customers</span>
+                            <span class="kpi-icon"><i class="fas fa-users"></i></span>
+                        </div>
+                        <div class="kpi-value" id="kpi-customers">0</div>
+                        <div class="kpi-sub" id="kpi-customers-sub">Total registered</div>
+                    </div>
+                </div>
+
+                <div class="cm-surface">
                     <section class="admin-panel">
-                        <div class="page-header">
-                            <h1 class="page-title">Credit Management</h1>
-                            <p class="page-subtitle">Manage customer credit accounts, balances &amp; statements</p>
+
+                        <!-- Header bar: title + primary action -->
+                        <div class="cm-headerbar">
+                            <div class="page-header" style="margin-bottom:0;">
+                                <h1 class="page-title">Credit Accounts</h1>
+                                <p class="page-subtitle">Manage customer credit, balances &amp; statements</p>
+                            </div>
+                            <button type="button" id="toggle-register-btn" class="btn-primary">
+                                <i class="fas fa-user-plus"></i> New Customer
+                            </button>
                         </div>
 
-                        <!-- Customer Registration Form -->
-                        <div class="form-card">
-                            <h2><span class="ico"><i class="fas fa-user-plus"></i></span> Register New Customer</h2>
-                            <form id="customer-form">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                                    <div class="form-group">
-                                        <label for="customer-name" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer Name *</label>
-                                        <input type="text" id="customer-name" class="form-control" required placeholder="Enter customer full name">
+                        <!-- Customer Registration Form (collapsible) -->
+                        <div id="register-collapse" class="cm-collapse">
+                            <div class="form-card" style="margin-bottom:0;border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.03);">
+                                <h2 style="justify-content:space-between;">
+                                    <span style="display:flex;align-items:center;gap:.5rem;"><span class="ico"><i class="fas fa-user-plus"></i></span> Register New Customer</span>
+                                    <button type="button" id="close-register-btn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
+                                </h2>
+                                <form id="customer-form">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                        <div class="form-group">
+                                            <label for="customer-name" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer Name *</label>
+                                            <input type="text" id="customer-name" class="form-control" required placeholder="Enter customer full name">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customer-mobile" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Mobile Number *</label>
+                                            <input type="tel" id="customer-mobile" class="form-control" required placeholder="Enter 10-digit mobile number">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customer-email" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Email Address</label>
+                                            <input type="email" id="customer-email" class="form-control" placeholder="customer@example.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customer-id" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer ID <span class="text-gray-500">(Auto-generated if left blank)</span></label>
+                                            <input type="text" id="customer-id" class="form-control" disabled>
+                                            <small class="text-gray-500">Auto-generated by system</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="customer-address" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Address</label>
+                                            <textarea id="customer-address" class="form-control" rows="2" placeholder="Enter customer address"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="initial-balance" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Initial Balance (₹)</label>
+                                            <input type="number" id="initial-balance" class="form-control" step="0.01" value="0" placeholder="0.00">
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="customer-mobile" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Mobile Number *</label>
-                                        <input type="tel" id="customer-mobile" class="form-control" required placeholder="Enter 10-digit mobile number">
+                                    <div class="flex justify-end gap-2">
+                                        <button type="button" id="cancel-register-btn" class="btn-secondary">Cancel</button>
+                                        <button type="submit" class="btn-primary">
+                                            <i class="fas fa-user-plus"></i> Register Customer
+                                        </button>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="customer-email" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Email Address</label>
-                                        <input type="email" id="customer-email" class="form-control" placeholder="customer@example.com">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customer-id" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Customer ID <span class="text-gray-500">(Auto-generated if left blank)</span></label>
-                                        <input type="text" id="customer-id" class="form-control" disabled>
-                                        <small class="text-gray-500">Auto-generated by system</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="customer-address" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Address</label>
-                                        <textarea id="customer-address" class="form-control" rows="2" placeholder="Enter customer address"></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="initial-balance" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Initial Balance (₹)</label>
-                                        <input type="number" id="initial-balance" class="form-control" step="0.01" value="0" placeholder="0.00">
-                                    </div>
-                                </div>
-                                <div class="flex justify-end">
-                                    <button type="submit" class="btn-primary">
-                                        <i class="fas fa-user-plus mr-2"></i> Register Customer
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                        
-                        <!-- Toolbar: Search + Date + Export -->
-                        <div class="form-card" style="padding:.85rem 1rem;">
-                            <div class="cm-toolbar" style="margin-bottom:0;">
-                                <!-- Search -->
-                                <div class="grow" style="position:relative;">
-                                    <i class="fas fa-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--text-subtle);pointer-events:none;"></i>
-                                    <input type="text" id="search-customer" class="form-control" style="padding-left:2rem;" placeholder="Search by name, mobile, or ID…">
-                                    <button id="clear-search-btn" class="hidden" style="position:absolute;right:.55rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.85rem;">
-                                        <i class="fas fa-times-circle"></i>
-                                    </button>
-                                </div>
-                                <!-- Date range -->
-                                <input type="date" id="start-date" class="form-control" style="width:auto;min-width:140px;" title="From date">
-                                <span style="color:var(--text-subtle);font-size:.78rem;">to</span>
-                                <input type="date" id="end-date"   class="form-control" style="width:auto;min-width:140px;" title="To date">
-                                <!-- Action buttons -->
-                                <button id="apply-date-filter" class="btn-secondary" title="Apply date filter"><i class="fas fa-filter"></i> Filter</button>
-                                <button id="clear-date-filter" class="btn-secondary" title="Clear date filter"><i class="fas fa-times"></i></button>
-                                <button id="search-btn"  class="btn-primary" title="Search"><i class="fas fa-search"></i> Search</button>
-                                <button id="refresh-btn" class="btn-secondary" title="Refresh list"><i class="fas fa-sync-alt"></i></button>
-                                <button id="export-all-report"      class="btn-success" title="Export all to CSV"><i class="fas fa-file-export"></i> Export All</button>
-                                <button id="export-selected-report" class="btn-primary" disabled title="Export selected"><i class="fas fa-file-export"></i> Selected</button>
+                                </form>
                             </div>
                         </div>
 
+                        <!-- Toolbar: Search + Date + Export -->
+                        <div class="cm-toolbar">
+                            <!-- Search -->
+                            <div class="grow" style="position:relative;">
+                                <i class="fas fa-search" style="position:absolute;left:.7rem;top:50%;transform:translateY(-50%);font-size:.75rem;color:var(--text-subtle);pointer-events:none;"></i>
+                                <input type="text" id="search-customer" class="form-control" style="padding-left:2rem;" placeholder="Search by name, mobile, or ID…">
+                                <button id="clear-search-btn" class="hidden" style="position:absolute;right:.55rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.85rem;">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                            </div>
+                            <!-- Date range -->
+                            <input type="date" id="start-date" class="form-control" style="width:auto;min-width:140px;" title="From date">
+                            <span style="color:var(--text-subtle);font-size:.78rem;">to</span>
+                            <input type="date" id="end-date"   class="form-control" style="width:auto;min-width:140px;" title="To date">
+                            <!-- Action buttons -->
+                            <button id="apply-date-filter" class="btn-secondary" title="Apply date filter"><i class="fas fa-filter"></i> Filter</button>
+                            <button id="clear-date-filter" class="btn-secondary" title="Clear date filter"><i class="fas fa-times"></i></button>
+                            <button id="search-btn"  class="btn-primary" title="Search"><i class="fas fa-search"></i> Search</button>
+                            <button id="refresh-btn" class="btn-secondary" title="Refresh list"><i class="fas fa-sync-alt"></i></button>
+                            <button id="export-all-report"      class="btn-success" title="Export all to CSV"><i class="fas fa-file-export"></i> Export All</button>
+                            <button id="export-selected-report" class="btn-primary" disabled title="Export selected"><i class="fas fa-file-export"></i> Selected</button>
+                        </div>
+
                         <!-- Customer List -->
-                        <div style="overflow-x:auto;border-radius:var(--cm-radius);border:1px solid var(--surface-border);box-shadow:0 1px 3px rgba(0,0,0,.04);">
+                        <div class="cm-table-wrap">
                             <table class="credit-table">
                                 <thead>
                                     <tr>
@@ -323,16 +412,16 @@
                                 <tbody id="customer-list">
                                     <!-- Customer data will be populated here -->
                                     <tr>
-                                        <td colspan="8" class="text-center py-6 text-gray-500">
-                                            <i class="fas fa-spinner fa-spin mr-2"></i> Loading customers...
+                                        <td colspan="8" style="padding:0;">
+                                            <div class="cm-empty"><i class="fas fa-spinner fa-spin" style="font-size:1.2rem;color:var(--cm-brand);"></i><p style="margin-top:.6rem;">Loading customers…</p></div>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         <!-- Pagination -->
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.7rem;flex-wrap:wrap;gap:.5rem;">
                             <span style="font-size:.75rem;color:var(--text-muted);">Showing <span id="page-info">0</span> of <span id="total-customers">0</span> customers</span>
                             <div style="display:flex;gap:.4rem;">
                                 <button id="prev-page" class="btn-secondary btn-icon" disabled><i class="fas fa-chevron-left"></i></button>
@@ -372,11 +461,14 @@
                     </div>
                     <div class="mb-4">
                         <label for="transaction-type" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Transaction Type *</label>
-                        <select id="transaction-type" class="form-control" required>
+                        <select id="transaction-type" class="form-control" required onchange="updateCustTxnTip()">
                             <option value="">Select transaction type</option>
-                            <option value="credit">Credit (Increase balance)</option>
-                            <option value="debit">Debit (Decrease balance)</option>
+                            <option value="debit">Sale on credit / Charge (Receivable ↑)</option>
+                            <option value="credit">Payment received (Receivable ↓)</option>
                         </select>
+                        <div id="cust-txn-tip" style="margin-top:.5rem;padding:.6rem .75rem;background:var(--surface-alt);border-left:4px solid var(--brand-accent);border-radius:.375rem;color:var(--text-muted);font-size:.78rem;line-height:1.4;">
+                            💡 Like Tally: the customer is a <strong>Debtor</strong>. A <strong>credit sale / charge</strong> increases what they owe you (Receivable). A <strong>payment received</strong> reduces it.
+                        </div>
                     </div>
                     <div class="mb-4">
                         <label for="transaction-amount" style="display:block;font-size:.8rem;font-weight:600;color:var(--text-base);margin-bottom:4px;">Amount (₹) *</label>
@@ -495,7 +587,32 @@
             
             // Update form UI
             updateFormUI();
-            
+
+            // ── New Customer collapsible panel ────────────────────────────
+            const registerCollapse = document.getElementById('register-collapse');
+            const openRegister = () => {
+                if (!registerCollapse) return;
+                registerCollapse.classList.add('open');
+                const nameEl = document.getElementById('customer-name');
+                if (nameEl) setTimeout(() => nameEl.focus(), 120);
+                registerCollapse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            };
+            const closeRegister = () => { if (registerCollapse) registerCollapse.classList.remove('open'); };
+            const toggleRegister = () => {
+                if (registerCollapse && registerCollapse.classList.contains('open')) closeRegister();
+                else openRegister();
+            };
+            const tglBtn = document.getElementById('toggle-register-btn');
+            const closeBtn = document.getElementById('close-register-btn');
+            const cancelBtn = document.getElementById('cancel-register-btn');
+            if (tglBtn)   tglBtn.addEventListener('click', toggleRegister);
+            if (closeBtn) closeBtn.addEventListener('click', closeRegister);
+            if (cancelBtn) cancelBtn.addEventListener('click', function() {
+                if (customerForm) customerForm.reset();
+                updateFormUI();
+                closeRegister();
+            });
+
             // Set up form submission
             if (customerForm) {
                 customerForm.addEventListener('submit', handleCustomerRegistration);
@@ -584,9 +701,12 @@
             // Initialize date fields with default values (last 30 days)
             initializeDateFields();
             
+            // Ensure sidebar shell + links render (independent of auth-utils.js timing)
+            if (typeof ensureSidebarShell === 'function') ensureSidebarShell();
+            if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
             initializeSidebarPin();
             window.sidebarInitialized = true;
-            
+
             // Load initial data
             loadCustomers();
             
@@ -689,18 +809,20 @@
                 // Filter and render
                 applyFilters();
                 renderCustomerList();
-                
+                renderKpis();
+
             } catch (error) {
                 console.error('Error:', error);
                 if (customerList) {
                     customerList.innerHTML = `
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-red-500">
-                                Error: ${error.message}
-                                <br><br>
-                                <button onclick="location.reload()" class="btn-primary">Reload Page</button>
-                            </td>
-                        </tr>
+                        <tr><td colspan="8" style="padding:0;">
+                            <div class="cm-empty">
+                                <div class="cm-empty-icon" style="background:var(--cm-owe-bg);color:var(--cm-owe);"><i class="fas fa-triangle-exclamation"></i></div>
+                                <h4>Couldn't load customers</h4>
+                                <p style="margin-bottom:.9rem;">${error.message}</p>
+                                <button onclick="location.reload()" class="btn-primary"><i class="fas fa-rotate-right"></i> Reload Page</button>
+                            </div>
+                        </td></tr>
                     `;
                 }
             } finally {
@@ -847,10 +969,14 @@
                 // Reset form
                 customerForm.reset();
                 document.getElementById('initial-balance').value = '0';
-                
+
+                // Collapse the registration panel
+                const rc = document.getElementById('register-collapse');
+                if (rc) rc.classList.remove('open');
+
                 // Reload customer list
                 loadCustomers();
-                
+
                 // Show success message
                 alert(`Customer registered successfully!\nCustomer ID: ${result.customer.customer_code}`);
             } catch (error) {
@@ -918,18 +1044,47 @@
         }
 
         // Render customer list with pagination
+        // Compute & render the KPI summary cards from the full customer list.
+        // Balance semantics: NEGATIVE = customer owes you (receivable);
+        // POSITIVE = advance / customer in credit.
+        function renderKpis() {
+            const fmt = n => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            let receivables = 0, advances = 0, oweCount = 0, advCount = 0;
+            (customers || []).forEach(c => {
+                const b = Number(c.balance) || 0;
+                if (b < 0)      { receivables += Math.abs(b); oweCount++; }
+                else if (b > 0) { advances    += b;            advCount++; }
+            });
+            const net = receivables - advances;
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+            set('kpi-receivables', fmt(receivables));
+            set('kpi-receivables-sub', oweCount + (oweCount === 1 ? ' customer owes' : ' customers owe'));
+            set('kpi-advances', fmt(advances));
+            set('kpi-advances-sub', advCount + (advCount === 1 ? ' customer in credit' : ' customers in credit'));
+            set('kpi-net', (net < 0 ? '-' : '') + fmt(Math.abs(net)));
+            set('kpi-net-sub', net >= 0 ? 'Net Receivable' : 'Net advance held');
+            set('kpi-customers', String((customers || []).length));
+
+            // Tint the net value by direction
+            const netEl = document.getElementById('kpi-net');
+            if (netEl) netEl.style.color = net > 0 ? 'var(--cm-owe)' : net < 0 ? 'var(--cm-adv)' : 'var(--text-base)';
+        }
+
         function renderCustomerList() {
-            
+
             // Validate that filteredCustomers exists
             if (!filteredCustomers || !Array.isArray(filteredCustomers)) {
                 console.error('Filtered customers data is invalid:', filteredCustomers);
                 if (customerList) {
                     customerList.innerHTML = `
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-red-500">
-                                Error: Invalid customer data. Please refresh the page.
-                            </td>
-                        </tr>
+                        <tr><td colspan="8" style="padding:0;">
+                            <div class="cm-empty">
+                                <div class="cm-empty-icon" style="background:var(--cm-owe-bg);color:var(--cm-owe);"><i class="fas fa-triangle-exclamation"></i></div>
+                                <h4>Couldn't load customers</h4>
+                                <p>Invalid customer data. Please refresh the page.</p>
+                            </div>
+                        </td></tr>
                     `;
                 } else {
                     console.error('customerList DOM element not found!');
@@ -943,13 +1098,22 @@
             
             if (pageCustomers.length === 0) {
                 if (customerList) {
-                    customerList.innerHTML = `
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-gray-500">
-                                ${searchInput && searchInput.value || startDateInput && startDateInput.value || endDateInput && endDateInput.value ? 'No customers found matching your filters.' : 'No customers registered yet.'}
-                            </td>
-                        </tr>
-                    `;
+                    const isFiltered = (searchInput && searchInput.value) || (startDateInput && startDateInput.value) || (endDateInput && endDateInput.value);
+                    customerList.innerHTML = isFiltered ? `
+                        <tr><td colspan="8" style="padding:0;">
+                            <div class="cm-empty">
+                                <div class="cm-empty-icon"><i class="fas fa-magnifying-glass"></i></div>
+                                <h4>No matching customers</h4>
+                                <p>Try a different search term or clear your filters.</p>
+                            </div>
+                        </td></tr>` : `
+                        <tr><td colspan="8" style="padding:0;">
+                            <div class="cm-empty">
+                                <div class="cm-empty-icon"><i class="fas fa-user-group"></i></div>
+                                <h4>No customers yet</h4>
+                                <p>Click <strong>New Customer</strong> above to register your first credit account.</p>
+                            </div>
+                        </td></tr>`;
                 }
                 updatePagination();
                 return;
@@ -969,7 +1133,7 @@
                 // POSITIVE = advance / customer in credit; ZERO = settled.
                 const bal = Number(customer.balance) || 0;
                 let balClass = 'zero-balance', tagClass = 'settled', tagText = 'Settled';
-                if (bal < 0)       { balClass = 'negative-balance'; tagClass = 'owe'; tagText = 'Owes you'; }
+                if (bal < 0)       { balClass = 'negative-balance'; tagClass = 'owe'; tagText = 'Receivable'; }
                 else if (bal > 0)  { balClass = 'positive-balance'; tagClass = 'adv'; tagText = 'Advance'; }
 
                 const name = customer.name || '';
@@ -983,9 +1147,9 @@
                     <td>
                         <div class="cust-cell">
                             <span class="cust-avatar">${initials}</span>
-                            <div>
+                            <div style="min-width:0;">
                                 <div class="cust-name">${name}</div>
-                                <div class="cust-mobile col-hide-sm" style="display:none;"></div>
+                                <div class="cust-mobile">${customer.code || customer.id || ''}${customer.mobile ? ' · ' + customer.mobile : ''}</div>
                             </div>
                         </div>
                     </td>
@@ -1097,6 +1261,20 @@
             }
         }
 
+        // Tally-style guidance for the customer (Debtor) transaction type.
+        function updateCustTxnTip() {
+            const tip = document.getElementById('cust-txn-tip');
+            if (!tip) return;
+            const t = (document.getElementById('transaction-type') || {}).value;
+            if (t === 'debit') {
+                tip.innerHTML = '💡 <strong>Sale on credit / Charge:</strong> increases what the customer owes you (Receivable ↑).';
+            } else if (t === 'credit') {
+                tip.innerHTML = '💡 <strong>Payment received:</strong> reduces what the customer owes you (Receivable ↓).';
+            } else {
+                tip.innerHTML = '💡 Like Tally: the customer is a <strong>Debtor</strong>. A <strong>credit sale / charge</strong> increases what they owe you (Receivable). A <strong>payment received</strong> reduces it.';
+            }
+        }
+
         // Open transaction modal
         async function openTransactionModal(customerId) {
             try {
@@ -1121,7 +1299,7 @@
                 document.getElementById('customer-name-modal').textContent = customer.name;
                 const cbal = Number(customer.current_balance) || 0;
                 const balanceModal = document.getElementById('current-balance-modal');
-                balanceModal.textContent = `₹${Math.abs(cbal).toFixed(2)}${cbal < 0 ? ' (Owes you)' : cbal > 0 ? ' (Advance)' : ''}`;
+                balanceModal.textContent = `₹${Math.abs(cbal).toFixed(2)}${cbal < 0 ? ' (Receivable)' : cbal > 0 ? ' (Advance)' : ''}`;
                 balanceModal.className = 'balance-display ' +
                     (cbal < 0 ? 'negative-balance' : cbal > 0 ? 'positive-balance' : 'zero-balance');
                 
@@ -1129,7 +1307,8 @@
                 document.getElementById('transaction-type').value = '';
                 document.getElementById('transaction-amount').value = '';
                 document.getElementById('transaction-note').value = '';
-                
+                updateCustTxnTip();
+
                 // Show modal
                 transactionModal.classList.remove('hidden');
             } catch (error) {
@@ -1198,7 +1377,8 @@
                 
                 // Update the specific customer's balance in the customer list without reloading the entire list
                 updateCustomerBalanceInList(customerId, result.new_balance);
-                
+                renderKpis();
+
                 // Show success message
                 alert('Balance updated successfully!');
             } catch (error) {
@@ -1273,7 +1453,7 @@
                 if (bal < 0) {
                     balEl.style.color  = '#dc2626';
                     balIcon.style.background = '#dc2626';
-                    balBadge.textContent = 'Owes you';
+                    balBadge.textContent = 'Receivable';
                     balBadge.style.cssText = 'font-size:.7rem;font-weight:700;padding:3px 12px;border-radius:20px;background:#fee2e2;color:#dc2626;';
                 } else if (bal > 0) {
                     balEl.style.color  = '#16a34a';
@@ -1394,7 +1574,7 @@
                 csvContent += `Mobile: ${customer.mobile}\n`;
                 csvContent += `Email: ${customer.email || 'N/A'}\n`;
                 csvContent += `Address: ${customer.address || 'N/A'}\n`;
-                csvContent += `Current Balance: ₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Owes you)' : customer.current_balance > 0 ? ' (Advance)' : ''}\n\n`;
+                csvContent += `Current Balance: ₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Receivable)' : customer.current_balance > 0 ? ' (Advance)' : ''}\n\n`;
                 
                 if (transactions.length === 0) {
                     csvContent += 'No transactions found for the selected date range.\n';
@@ -1481,7 +1661,7 @@
                 csvContent += 'Customer ID,Customer Name,Mobile,Email,Current Balance\n';
                 
                 customersToExport.forEach(customer => {
-                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Owes you)' : customer.current_balance > 0 ? ' (Advance)' : ''}`;
+                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Receivable)' : customer.current_balance > 0 ? ' (Advance)' : ''}`;
                     csvContent += `"${customer.customer_uuid}","${customer.name}","${customer.mobile}","${customer.email || ''}","${balanceText}"\n`;
                 });
                 
@@ -1631,7 +1811,7 @@
                 csvContent += 'Customer ID,Customer Name,Mobile,Email,Current Balance\n';
                 
                 customersToExport.forEach(customer => {
-                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Owes you)' : customer.current_balance > 0 ? ' (Advance)' : ''}`;
+                    const balanceText = `₹${Math.abs(customer.current_balance).toFixed(2)}${customer.current_balance < 0 ? ' (Receivable)' : customer.current_balance > 0 ? ' (Advance)' : ''}`;
                     csvContent += `"${customer.customer_uuid}","${customer.name}","${customer.mobile}","${customer.email || ''}","${balanceText}"\n`;
                 });
                 
@@ -1775,6 +1955,7 @@
                     customers = customers.filter(c => String(c.id) !== String(customerId));
                     applyFilters();
                     renderCustomerList();
+                    renderKpis();
                 } else {
                     const data = await res.json().catch(() => ({}));
                     alert('Delete failed: ' + (data.message || data.error || `HTTP ${res.status}`));

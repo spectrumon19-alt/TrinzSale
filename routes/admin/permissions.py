@@ -177,34 +177,47 @@ def update_user_permissions(payload, user_id):
 @token_required
 def check_user_permission(payload, user_id):
     """Check if a user has access to a specific screen.
-    Admins always have access. For others, check user_permissions table."""
+
+    Policy (must match the permission_required decorator and the sidebar):
+      • Admin / Super Admin / Manager  → always allowed (privileged tier).
+      • Everyone else                  → DENY-BY-DEFAULT: access only if an
+        explicit user_permissions row grants it (has_access = TRUE).
+
+    A non-admin user may only check their OWN permissions; checking another
+    user's access requires an admin-tier role (prevents permission probing)."""
     screen = request.args.get('screen')
     if not screen:
         return jsonify({'message': 'Screen parameter is required'}), 400
+
+    # Authorization: non-admins can only check themselves.
+    is_admin_tier = payload.get('role') in ('Admin', 'Super Admin', 'Manager')
+    if not is_admin_tier and payload.get('user_id') != user_id:
+        return jsonify({'message': 'Access denied'}), 403
     
-    # Admins always have access
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    
+
     try:
         cur.execute("SELECT role FROM users WHERE user_id = %s", (user_id,))
         user = cur.fetchone()
         if not user:
             return jsonify({'has_access': False}), 200
-        
-        if user['role'] == 'Admin':
+
+        # Privileged tier always has access (matches permission_required).
+        if user['role'] in ('Admin', 'Super Admin', 'Manager'):
             return jsonify({'has_access': True}), 200
-        
+
         cur.execute("""
-            SELECT has_access FROM user_permissions 
+            SELECT has_access FROM user_permissions
             WHERE user_id = %s AND page_id = %s
         """, (user_id, screen))
         perm = cur.fetchone()
-        
-        # If no record exists, default to accessible
-        has_access = perm['has_access'] if perm else True
+
+        # DENY-BY-DEFAULT: no explicit grant → no access.
+        has_access = bool(perm and perm['has_access'])
         return jsonify({'has_access': has_access}), 200
     except Exception as e:
-        return jsonify({'has_access': True, 'error': str(e)}), 200
+        # Fail closed: on error, deny rather than silently grant access.
+        return jsonify({'has_access': False, 'error': str(e)}), 200
     finally:
         cur.close()

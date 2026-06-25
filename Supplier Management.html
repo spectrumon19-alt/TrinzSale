@@ -588,15 +588,7 @@
             <!-- Nav links injected here by renderSidebarLinks() -->
 
             <!-- .px-4.mt-auto — required anchor for renderSidebarLinks() -->
-            <div class="px-4 mt-auto sidebar-pin-area">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium" style="color:#94a3b8;">Pin Sidebar</span>
-                    <label class="sidebar-toggle">
-                        <input type="checkbox" id="pin-sidebar-toggle" class="toggle-checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
+            <div class="px-4 mt-auto sidebar-pin-area"></div>
         </nav>
 
         <!-- Loading Overlay -->
@@ -811,8 +803,8 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
                             <select id="edit-transaction-type" class="form-control">
-                                <option value="credit">Credit (We owe supplier)</option>
-                                <option value="debit">Debit (We paid supplier)</option>
+                                <option value="credit">Credit (Adds to Payable)</option>
+                                <option value="debit">Debit (Payment Made)</option>
                             </select>
                         </div>
                         <div class="mb-4">
@@ -1096,10 +1088,10 @@
                 let balanceText = '₹0.00';
                 let balanceClass = 'text-gray-700';
                 if (balance > 0) {
-                    balanceText = `₹${balance.toFixed(2)} (Debt)`;
+                    balanceText = `₹${balance.toFixed(2)} (Payable)`;
                     balanceClass = 'text-red-600'; // Debt we owe
                 } else if (balance < 0) {
-                    balanceText = `₹${Math.abs(balance).toFixed(2)} (Credit)`;
+                    balanceText = `₹${Math.abs(balance).toFixed(2)} (Advance Paid)`;
                     balanceClass = 'text-green-600'; // Credit balance
                 }
                 
@@ -1405,10 +1397,10 @@
             if (isNaN(balance) || !isFinite(balance)) balance = 0;
             
             if (balance > 0) {
-                balanceText = `₹${balance.toFixed(2)} (Debt)`;
+                balanceText = `₹${balance.toFixed(2)} (Payable)`;
                 balanceClass = 'font-medium text-red-600';
             } else if (balance < 0) {
-                balanceText = `₹${Math.abs(balance).toFixed(2)} (Credit)`;
+                balanceText = `₹${Math.abs(balance).toFixed(2)} (Advance Paid)`;
                 balanceClass = 'font-medium text-green-600';
             } else {
                 balanceText = `₹${balance.toFixed(2)}`;

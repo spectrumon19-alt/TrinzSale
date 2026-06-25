@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from db import get_db_connection, release_db_connection
-from auth import token_required, admin_required, permission_required, hash_password
+from auth import token_required, admin_required, permission_required, strict_permission_required, hash_password
 from psycopg2.extras import RealDictCursor
 import os
 from datetime import datetime
@@ -31,7 +31,7 @@ def _ensure_token_usage_table(conn):
 
 
 @admin_tokens_bp.route('/admin/token-usage/summary', methods=['GET'])
-@admin_required
+@strict_permission_required('token-usage')
 def token_usage_summary(payload):
     """KPI summary + daily chart + by-user + by-model/provider breakdown."""
     days = request.args.get('days', 30, type=int)
@@ -150,7 +150,7 @@ def token_usage_summary(payload):
 
 
 @admin_tokens_bp.route('/admin/token-usage/purge', methods=['DELETE'])
-@admin_required
+@strict_permission_required('token-usage')
 def purge_token_usage(payload):
     days = request.args.get('days', 90, type=int)
     if days < 1:

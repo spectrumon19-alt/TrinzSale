@@ -188,23 +188,19 @@
     </style>
 </head>
 <body class="font-sans leading-normal tracking-normal">
-<div class="flex h-screen">
-    <!-- Sidebar -->
-    <nav id="sidebar" class="bg-gray-800 text-white w-64 space-y-2 py-4 px-2 fixed h-full overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200 z-50">
-        <div class="flex justify-center mb-4"><div class="bg-white rounded-lg p-1"><img src="assets/logo.png" alt="TrintzPOS" style="height:40px;width:auto;object-fit:contain;display:block;"></div></div>
-        <a href="dashboard.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">🏠 Dashboard</a>
-        <a href="index.html"     class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">🛒 Sales</a>
-        <a href="returns.html"   class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">🔄 Returns</a>
-        <a href="purchase.html"  class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">📥 Purchase</a>
-        <a href="inventory.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">📦 Inventory</a>
-        <a href="reports.html"   class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">📊 Reports</a>
-        <a href="admin.html"     class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">⚙️ Admin</a>
-        <hr class="border-gray-600 my-2">
-        <a href="token-usage.html" class="block py-2 px-3 rounded bg-indigo-700 text-sm font-semibold">🤖 Token Usage</a>
+<div class="main-layout flex min-h-screen">
+    <!-- Sidebar shell — links populated by renderSidebarLinks() in auth-utils.js -->
+    <nav id="sidebar" class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50" style="width:220px;">
+        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
+            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
+                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            </span>
+        </a>
+        <div class="px-4 mt-auto sidebar-pin-area"></div>
     </nav>
 
     <!-- Main content -->
-    <div class="flex-1 flex flex-col overflow-hidden md:ml-64">
+    <div class="main-col flex-1 flex flex-col overflow-hidden">
         <!-- Top bar -->
         <header class="bg-white dark:bg-gray-900 shadow-sm flex items-center justify-between px-5 py-3 z-10 gap-3" style="border-bottom:1px solid var(--surface-border);">
             <div class="flex items-center gap-3">
@@ -354,10 +350,35 @@
     </div>
 </div>
 
+<!-- App chrome: dynamic permission-filtered sidebar -->
+<script src="config.js"></script>
+<script src="auth-utils.js"></script>
+<script src="component-utils.js"></script>
+<script src="sidebar-utils.js"></script>
+
 <script>
 /* ── Auth guard ─────────────────────────────────────────────────────────── */
 const TOKEN = localStorage.getItem('pos_token');
 if (!TOKEN) { location.href = 'login.html'; }
+
+/* Permission guard (strict): Super Admin always allowed; every other role —
+   including Admin/Manager — needs the 'token-usage' screen explicitly granted.
+   This mirrors the backend strict_permission_required('token-usage') gate so a
+   restricted user can't reach the page even by typing the URL directly. */
+(function enforceTokenUsageAccess() {
+    try {
+        const role = (typeof getCurrentUser === 'function' && getCurrentUser() || {}).role;
+        if (role === 'Super Admin') return;            // unrestricted tier
+        const raw = localStorage.getItem('pos_permissions');
+        const perms = raw ? JSON.parse(raw) : null;
+        const allowed = !!(perms && (perms._admin === true || perms['token-usage'] === true));
+        if (!allowed) { location.replace('noAccess.html'); }
+    } catch (e) {
+        // Fail closed — on any error, deny rather than expose the page.
+        location.replace('noAccess.html');
+    }
+})();
+
 const API = (window.API_BASE_URL || '').replace(/\/$/, '');
 
 function logout() {
@@ -665,6 +686,9 @@ function renderRecent(rows) {
 
 /* ── Bootstrap ──────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
+    // Render the permission-filtered app sidebar (shared chrome).
+    if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
+
     // Set username in header
     try {
         const payload = JSON.parse(atob(TOKEN.split('.')[1]));
