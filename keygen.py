@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-License Key Generator for TrintzPOS
+License Key Generator for TrintzERP
 Generates secure license keys with expiry dates and optional hardware binding.
 """
 
@@ -257,7 +257,7 @@ class LicenseKeyGenerator:
                 writer.writerows(export_data)
 
 def main():
-    parser = argparse.ArgumentParser(description="TrintzPOS License Key Generator")
+    parser = argparse.ArgumentParser(description="TrintzERP License Key Generator")
     parser.add_argument("--generate", action="store_true", help="Generate a new license key")
     parser.add_argument("--count", type=int, default=1, help="Number of licenses to generate")
     parser.add_argument("--days", type=int, default=30, help="License expiry in days")

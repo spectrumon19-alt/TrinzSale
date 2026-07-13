@@ -27,7 +27,7 @@ You probably downloaded the **wrong type** of credentials from Google Cloud.
   "project_id": "...",
   "private_key_id": "...",
   "private_key": "-----BEGIN PRIVATE KEY-----...",
-  "client_email": "trintzpos@trintzpos-backup.iam.gserviceaccount.com",
+  "client_email": "trintzerp@trintzerp-backup.iam.gserviceaccount.com",
   "client_id": "117...",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
@@ -42,7 +42,7 @@ You probably downloaded the **wrong type** of credentials from Google Cloud.
 {
   "installed": {
     "client_id": "123456789.apps.googleusercontent.com",
-    "project_id": "trintzpos-backup",
+    "project_id": "trintzerp-backup",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
@@ -99,10 +99,10 @@ Your file probably says:
 ```json
 {
   "type": "service_account",  ← THIS IS WRONG!
-  "project_id": "trintzpos-backup",
+  "project_id": "trintzerp-backup",
   "private_key_id": "...",
   "private_key": "-----BEGIN PRIVATE KEY-----",
-  "client_email": "trintzpos@trintzpos-backup.iam.gserviceaccount.com",
+  "client_email": "trintzerp@trintzerp-backup.iam.gserviceaccount.com",
   "client_id": "117...",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
@@ -119,7 +119,7 @@ Your file should say:
 {
   "installed": {  ← THIS MEANS IT'S CORRECT!
     "client_id": "123456789.apps.googleusercontent.com",
-    "project_id": "trintzpos-backup",
+    "project_id": "trintzerp-backup",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
@@ -138,7 +138,7 @@ Visit: https://console.cloud.google.com
 
 ### **Step 2: Select Your Project**
 - At top: Click project dropdown
-- Select: `trintzpos-backup` (or your project)
+- Select: `trintzerp-backup` (or your project)
 
 ### **Step 3: Go to Credentials**
 - Left sidebar → Click **Credentials**
@@ -227,7 +227,7 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001
 {
   "installed": {
     "client_id": "123456789.apps.googleusercontent.com",
-    "project_id": "trintzpos-backup",
+    "project_id": "trintzerp-backup",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",

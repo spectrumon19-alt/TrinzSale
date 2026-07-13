@@ -88,6 +88,92 @@ KEY FACTS:
   else DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '9 months'.
 - Always filter sales_invoices by status = 'Completed' unless asked otherwise.
 - Gross margin = (exclusive_gst_amount - purchase_rate * quantity) / exclusive_gst_amount * 100.
+
+WORKED EXAMPLES (question → correct SQL):
+
+Q: "What were total sales today?"
+SELECT COALESCE(SUM(total_amount), 0) AS total_sales,
+       COUNT(*) AS invoice_count
+FROM sales_invoices
+WHERE status = 'Completed' AND invoice_date::date = CURRENT_DATE
+LIMIT 500;
+
+Q: "Top 5 selling products this month"
+SELECT p.name AS product_name,
+       SUM(sii.quantity) AS units_sold,
+       SUM(sii.total_line_amount) AS revenue
+FROM sales_invoice_items sii
+JOIN sales_invoices si ON si.invoice_id = sii.invoice_id
+JOIN products p ON p.product_id = sii.product_id
+WHERE si.status = 'Completed'
+  AND si.invoice_date >= DATE_TRUNC('month', CURRENT_DATE)
+GROUP BY p.name
+ORDER BY units_sold DESC
+LIMIT 5;
+
+Q: "Which customers owe us the most money?" (receivables — note the sign convention)
+SELECT COALESCE(name, '-') AS customer_name,
+       COALESCE(mobile, '-') AS mobile,
+       -current_balance AS amount_owed
+FROM credit_customers
+WHERE current_balance < 0
+ORDER BY current_balance ASC
+LIMIT 500;
+
+Q: "How much do we owe our suppliers?" (payables — opposite sign convention from customers)
+SELECT COALESCE(supplier_name, '-') AS supplier_name,
+       current_balance AS amount_payable
+FROM suppliers
+WHERE current_balance > 0
+ORDER BY current_balance DESC
+LIMIT 500;
+
+Q: "GST collected this financial year"
+SELECT COALESCE(SUM(total_gst), 0) AS total_gst_collected
+FROM sales_invoices
+WHERE status = 'Completed'
+  AND invoice_date >= (
+    CASE WHEN EXTRACT(month FROM CURRENT_DATE) >= 4
+      THEN DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '3 months'
+      ELSE DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '9 months'
+    END)
+LIMIT 500;
+
+Q: "Sales made on credit this week, by customer"
+SELECT COALESCE(customer_name, '-') AS customer_name,
+       COALESCE(customer_mobile, '-') AS mobile,
+       SUM(total_amount) AS credit_sales_total
+FROM sales_invoices
+WHERE status = 'Completed'
+  AND mode_of_payment = 'Credit'
+  AND invoice_date >= DATE_TRUNC('week', CURRENT_DATE)
+GROUP BY customer_name, customer_mobile
+ORDER BY credit_sales_total DESC
+LIMIT 500;
+
+Q: "Products low on stock (below 10 units)"
+SELECT p.name AS product_name,
+       COALESCE(p.sku, '-') AS sku,
+       i.stock_quantity
+FROM inventory i
+JOIN products p ON p.product_id = i.product_id
+WHERE i.stock_quantity < 10 AND p.status = 'Active'
+ORDER BY i.stock_quantity ASC
+LIMIT 500;
+
+Q: "Gross margin by product last month"
+SELECT p.name AS product_name,
+       ROUND(AVG((sii.exclusive_gst_amount - p.purchase_rate * sii.quantity)
+            / NULLIF(sii.exclusive_gst_amount, 0) * 100), 2) AS gross_margin_pct
+FROM sales_invoice_items sii
+JOIN sales_invoices si ON si.invoice_id = sii.invoice_id
+JOIN products p ON p.product_id = sii.product_id
+WHERE si.status = 'Completed'
+  AND si.invoice_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+  AND si.invoice_date <  DATE_TRUNC('month', CURRENT_DATE)
+GROUP BY p.name
+ORDER BY gross_margin_pct DESC
+LIMIT 500;
 """
 
 SYSTEM_SQL = (
@@ -171,11 +257,13 @@ def _get_active_ai_config() -> dict:
 
 
 def _call_llm(system: str, user_msg: str, max_tokens: int = 1024,
-              feature: str = 'chat', user_id=None, username: str = '') -> str:
+              feature: str = 'chat', user_id=None, username: str = '',
+              cacheable: bool = False) -> str:
     from routes.ai_settings import call_provider
     config = _get_active_ai_config()
     return call_provider(config, system, user_msg, max_tokens,
-                         feature=feature, user_id=user_id, username=username)
+                         feature=feature, user_id=user_id, username=username,
+                         cacheable=cacheable)
 
 
 def _strip_sql(raw: str) -> str:
@@ -214,8 +302,12 @@ def _nl_to_sql(question: str, history: list, user_id=None, username: str = '') -
     for attempt in range(2):
         extra = ("\n\nOutput ONLY the raw SQL — no markdown, no explanation, no preamble. "
                  "Start your response with SELECT or WITH.") if attempt else ""
+        # SYSTEM_SQL is a frozen constant (schema + few-shot examples) sent
+        # unchanged on every call — mark it cacheable so Anthropic reuses the
+        # cached prefix instead of reprocessing ~2-3K tokens each time.
         raw = _call_llm(SYSTEM_SQL, base_prompt + extra, max_tokens=1024,
-                        feature='sql-query', user_id=user_id, username=username)
+                        feature='sql-query', user_id=user_id, username=username,
+                        cacheable=True)
         logger.debug('SQL gen attempt %d raw: %.300s', attempt + 1, raw)
         sql = _strip_sql(raw)
         if re.search(r'\bSELECT\b', sql, re.IGNORECASE):
@@ -228,7 +320,8 @@ def _nl_to_sql(question: str, history: list, user_id=None, username: str = '') -
     )
 
 
-def _format_answer(question: str, sql: str, columns: list, rows: list) -> str:
+def _format_answer(question: str, sql: str, columns: list, rows: list,
+                    user_id=None, username: str = '') -> str:
     sample = rows[:20]
     def _default(o):
         if isinstance(o, (date, datetime)):
@@ -241,7 +334,8 @@ def _format_answer(question: str, sql: str, columns: list, rows: list) -> str:
         f"Total rows returned: {len(rows)}\n"
         f"Sample data (up to 20 rows): {data_json}"
     )
-    return _call_llm(SYSTEM_FORMAT, prompt, max_tokens=400)
+    return _call_llm(SYSTEM_FORMAT, prompt, max_tokens=400,
+                     feature='chat', user_id=user_id, username=username)
 
 
 # ── POST /api/chat ─────────────────────────────────────────────────────────────
@@ -283,7 +377,8 @@ def chat(current_user):
         total_rows   = len(rows)
         has_more     = total_rows > 500
         display_rows = rows[:500]
-        answer       = _format_answer(question, sql, columns, display_rows)
+        answer       = _format_answer(question, sql, columns, display_rows,
+                                      user_id=uid, username=uname)
 
         def _serial(o):
             if isinstance(o, (date, datetime)):

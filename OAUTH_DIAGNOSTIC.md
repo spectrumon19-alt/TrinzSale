@@ -128,11 +128,11 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001
 
 **Save the file**
 
-### **STEP 5: Restart TrintzPOS**
+### **STEP 5: Restart TrintzERP**
 
 Kill the running process:
 ```bash
-# Press Ctrl+C in the terminal running TrintzPOS
+# Press Ctrl+C in the terminal running TrintzERP
 ```
 
 Start it again:
@@ -142,7 +142,7 @@ python app.py
 
 ### **STEP 6: Re-authorize**
 
-1. Go to TrintzPOS
+1. Go to TrintzERP
 2. Click "Authorize with Google"
 3. You should get a different response (not the 403 error)
 
@@ -205,7 +205,7 @@ You probably only created a Service Account.
 ```
 Google Cloud: Service Account
 .env: Old values (or wrong service account creds)
-TrintzPOS: Trying to use service account
+TrintzERP: Trying to use service account
 Error: ❌ "Service Accounts do not have storage quota"
 ```
 
@@ -213,7 +213,7 @@ Error: ❌ "Service Accounts do not have storage quota"
 ```
 Google Cloud: OAuth 2.0 Client ID
 .env: client_id + client_secret from OAuth JSON
-TrintzPOS: Using OAuth
+TrintzERP: Using OAuth
 Result: ✅ Uploads to your Google Drive
 ```
 
@@ -225,7 +225,7 @@ Result: ✅ Uploads to your Google Drive
 - [ ] JSON has `"installed"` or `"web"` field
 - [ ] Extracted client_id and client_secret
 - [ ] Updated .env with NEW values
-- [ ] Restarted TrintzPOS app
+- [ ] Restarted TrintzERP app
 - [ ] Re-authorized with Google
 - [ ] No more 403 errors
 - [ ] Test backup succeeds

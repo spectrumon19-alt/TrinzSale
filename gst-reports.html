@@ -5,8 +5,8 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrintzPOS - GST Reports</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>TrintzERP - GST Reports</title>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         /* ── Overlay ─────────────────────────────────────────────────────────── */
@@ -158,9 +158,11 @@
         <nav id="sidebar" data-testid="sidebar"
              class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
              style="width:220px;">
-            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            <a href="dashboard.html" class="snav-brand">
+                <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+                <span class="snav-brand-text">
+                    <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
+                    <span class="snav-brand-sub">Retail &amp; Billing</span>
                 </span>
             </a>
             <div class="px-4 mt-auto sidebar-pin-area"></div>
@@ -187,7 +189,7 @@
                         </svg>
                     </button>
                     <div>
-                        <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> GST Reports</p>
+                        <p class="hd-title"><span class="brand-word">Trintz<span class="brand-erp">ERP</span></span> <span style="color:#6366f1;font-weight:300;">|</span> GST Reports</p>
                         <p class="hd-sub" id="live-datetime">Loading…</p>
                     </div>
                 </div>

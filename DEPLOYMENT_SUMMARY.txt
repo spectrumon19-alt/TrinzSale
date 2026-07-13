@@ -1,8 +1,8 @@
 ================================================================================
-                    TRINTZPOS RENDER DEPLOYMENT READY
+                    TRINTZERP RENDER DEPLOYMENT READY
 ================================================================================
 
-PROJECT: TrintzPOS — Professional POS & Licensing System
+PROJECT: TrintzERP — Professional POS & Licensing System
 STATUS: ✅ Ready for Render.com Deployment
 DATE: 2026-06-02
 VERSION: Production-Ready with P&L Reports & Excel Export
@@ -35,14 +35,14 @@ RECENT ENHANCEMENTS:
 
 1. PUSH CODE TO GITHUB
    $ git add -A
-   $ git commit -m "Deploy TrintzPOS to Render with P&L reports"
+   $ git commit -m "Deploy TrintzERP to Render with P&L reports"
    $ git push origin main
 
 2. CREATE RENDER WEB SERVICE
    - Go to https://render.com
    - Click "New +" → "Web Service"
    - Select your GitHub repository
-   - Name: trintzpos
+   - Name: trintzerp
    - Environment: Python 3
    - Build Command: pip install -r requirements.txt
    - Start Command: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --preload wsgi:application
@@ -97,7 +97,7 @@ REQUIRED (Set in Render Dashboard):
   
   BREVO_API_KEY=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
   BREVO_SENDER_EMAIL=spectrumon19@gmail.com
-  BREVO_SENDER_NAME=TrintzPOS Support
+  BREVO_SENDER_NAME=TrintzERP Support
   BREVO_SMTP_USER=aaa6fb001@smtp-brevo.com
   BREVO_SMTP_PASSWORD=xsmtpsib-ce9e3ec480e6368ee757ec1cb07b965d3db8769a32ae664a0b86765ef4fd2238-YbqYgalqcq8MEgJg
 
@@ -160,7 +160,7 @@ Python Requirements: https://docs.render.com/python
 Environment Variables: https://docs.render.com/environment-variables
 Health Checks: https://docs.render.com/health-checks
 
-TrintzPOS Docs:
+TrintzERP Docs:
 - RENDER_DEPLOYMENT.md (full guide)
 - DEPLOY_CHECKLIST.md (step-by-step checklist)
 - predeploy.py (automated checks)

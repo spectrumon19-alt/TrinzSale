@@ -1,5 +1,5 @@
 """
-TrintzPOS Launcher — entry point for the packaged (PyInstaller) build.
+TrintzERP Launcher — entry point for the packaged (PyInstaller) build.
 
 Runs Flask in a background thread in the SAME PROCESS so no .py files
 are ever written to disk or accessible as source. The GUI window acts as
@@ -40,7 +40,7 @@ def check_or_prompt_license(root: tk.Tk) -> bool:
     while True:
         key = simpledialog.askstring(
             "License Activation",
-            f"TrintzPOS is not activated.\n{status['message']}\n\nEnter your license key:",
+            f"TrintzERP is not activated.\n{status['message']}\n\nEnter your license key:",
             parent=root,
         )
         if key is None:
@@ -98,11 +98,11 @@ def start_flask_thread() -> bool:
 
 def main():
     root = tk.Tk()
-    root.title("TrintzPOS")
+    root.title("TrintzERP")
     root.geometry("440x230")
     root.resizable(False, False)
 
-    tk.Label(root, text="TrintzPOS", font=("Segoe UI", 20, "bold")).pack(pady=12)
+    tk.Label(root, text="TrintzERP", font=("Segoe UI", 20, "bold")).pack(pady=12)
     status_lbl = tk.Label(root, text="Checking license...", font=("Segoe UI", 11))
     status_lbl.pack(pady=4)
     tk.Label(root, text="The POS will open in your default browser.", font=("Segoe UI", 10), fg="#555").pack(pady=2)

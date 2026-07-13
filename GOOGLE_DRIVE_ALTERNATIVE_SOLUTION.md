@@ -38,9 +38,9 @@ Instead of trying to share a specific folder, **use your personal Google Drive r
 
 ---
 
-### **Step 2: Update TrintzPOS Settings**
+### **Step 2: Update TrintzERP Settings**
 
-1. **Go to TrintzPOS → Backup Settings**
+1. **Go to TrintzERP → Backup Settings**
 
 2. **Change Folder ID to:**
    ```
@@ -82,7 +82,7 @@ Instead of trying to share a specific folder, **use your personal Google Drive r
 
 ### **Option 1: Use Drive Root (Simplest)**
 
-1. **Go to TrintzPOS Backup Settings**
+1. **Go to TrintzERP Backup Settings**
 2. **Change Folder ID to:** `root`
 3. **Save**
 4. **Test Connection** → Should pass
@@ -100,7 +100,7 @@ If you want backups in a specific folder:
    - Go to https://drive.google.com
    - Right-click in "My Drive" area
    - Click **"New folder"**
-   - Name it: `TrintzPOS Backups`
+   - Name it: `TrintzERP Backups`
    - Create folder
 
 2. **Get New Folder ID**
@@ -108,7 +108,7 @@ If you want backups in a specific folder:
    - Look at URL: `https://drive.google.com/drive/folders/[THIS_IS_ID]`
    - Copy the folder ID
 
-3. **Update TrintzPOS Settings**
+3. **Update TrintzERP Settings**
    - Go to Backup Settings
    - Change Folder ID to: (paste the new folder ID)
    - Save
@@ -120,7 +120,7 @@ If you want backups in a specific folder:
    - Set permission to: **Editor**
    - Share
 
-5. **Test in TrintzPOS**
+5. **Test in TrintzERP**
    - Click "Test Google Drive Connection"
    - Click "Backup Now"
    - Should upload ✅
@@ -137,7 +137,7 @@ New:     root
 ```
 
 **Steps:**
-1. TrintzPOS → Backup Settings
+1. TrintzERP → Backup Settings
 2. Change Folder ID to: `root`
 3. Save
 4. Backup Now

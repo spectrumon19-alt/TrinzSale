@@ -1,5 +1,5 @@
 """
-routes/knowledge.py — RAG Knowledge Base for TrintzPOS
+routes/knowledge.py — RAG Knowledge Base for TrintzERP
 
 Endpoints (all under /api prefix via Blueprint):
   GET    /api/knowledge/documents              — list documents (admin)
@@ -815,7 +815,9 @@ def knowledge_chat(current_user):
     # 4. Call LLM — reuse config already fetched above (no extra DB roundtrip)
     try:
         from routes.ai_settings import call_provider
-        answer = call_provider(config, system_prompt, question, max_tokens=600)
+        answer = call_provider(config, system_prompt, question, max_tokens=600,
+                               feature='chat', user_id=current_user.get('user_id'),
+                               username=current_user.get('username', ''))
     except Exception as e:
         logger.error("LLM call failed in knowledge chat: %s", e)
         return jsonify({'error': f'LLM call failed: {e}'}), 500

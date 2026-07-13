@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrintzPOS - Logout</title>
+    <title>TrintzERP - Logout</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         .logout-container {
@@ -82,26 +82,23 @@
 <body>
     <div class="container">
         <!-- Navigation -->
-        <nav class="main-nav">
-            <div class="nav-container">
-                <div class="nav-logo">
-                    <img src="assets/logo.png" alt="Trintz Data Labs" style="height:36px;width:auto;object-fit:contain;display:block;">
-                </div>
-                <ul class="nav-tabs" id="nav-tabs">
-                    <li class="nav-item">
-                        <a href="index.html" class="nav-link" data-page="sales">
-                            <i class="nav-icon">🛒</i>
-                            <span class="nav-text">Sales</span>
-                        </a>
-                    </li>
-                    <!-- Other tabs will be added dynamically based on user role -->
-                </ul>
-                <div class="nav-user">
-                    <span class="user-greeting">Welcome, <span id="nav-username">Guest</span></span>
-                    <button id="nav-logout-btn" class="nav-logout-btn">Logout</button>
-                </div>
+        <header id="pos-header">
+            <div class="flex items-center gap-3">
+                <p class="hd-title"><span class="brand-word">Trintz<span class="brand-erp">ERP</span></span></p>
             </div>
-        </nav>
+            <div class="flex items-center gap-3">
+                <p id="headerUserInfo" class="text-xs hidden sm:block" style="color:var(--text-subtle);">
+                    Hi, <span id="nav-username" class="font-bold" style="color:var(--text-base);">Guest</span>
+                </p>
+                <button id="nav-logout-btn" data-testid="logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
+                </button>
+            </div>
+        </header>
 
         <main>
             <div class="logout-container">

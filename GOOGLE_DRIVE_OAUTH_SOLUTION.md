@@ -143,7 +143,7 @@ When clicked:
 
 ## 📋 Complete OAuth Setup Guide
 
-### **For Your TrintzPOS:**
+### **For Your TrintzERP:**
 
 1. **Enable OAuth in Google Cloud**
    - Credentials type: Web application
@@ -224,7 +224,7 @@ When clicked:
 **Your Scenario:**
 ```
 You have a Google Drive folder:
-├─ Name: "TrintzPOS Backups"
+├─ Name: "TrintzERP Backups"
 ├─ Shared: "Anyone with link can edit"
 ├─ Your access: Full control
 ├─ Folder ID: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
@@ -295,14 +295,14 @@ def refresh_oauth_token():
 1. Create any Google Drive folder
 2. Set "Anyone with link" permission
 3. Share link with yourself
-4. Login once in TrintzPOS
+4. Login once in TrintzERP
 5. Backups upload automatically ✅
 
 ---
 
 ## 🚀 Ready to Implement?
 
-I can add OAuth support to TrintzPOS:
+I can add OAuth support to TrintzERP:
 
 **Changes needed:**
 1. Add Google OAuth flow to backup routes
@@ -332,4 +332,4 @@ I can add OAuth support to TrintzPOS:
 **Setup Time:** 20 minutes
 **Result:** Reliable cloud backups for free!
 
-Want me to implement OAuth support in TrintzPOS? 🎯
+Want me to implement OAuth support in TrintzERP? 🎯

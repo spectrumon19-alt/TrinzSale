@@ -2,13 +2,13 @@
 
 ## 🎯 What is a Redirect URI?
 
-A **Redirect URI** is the URL where Google sends you back after you authorize TrintzPOS to access your Google Drive.
+A **Redirect URI** is the URL where Google sends you back after you authorize TrintzERP to access your Google Drive.
 
 It's like:
 ```
 You → Click "Authorize with Google"
       ↓
-Google asks: "Can TrintzPOS access your Drive?"
+Google asks: "Can TrintzERP access your Drive?"
       ↓
 You click: "Yes, allow"
       ↓
@@ -26,10 +26,10 @@ http://localhost:5001/api/backup/oauth/callback
 
 **When to use:** When testing on your computer
 **How it works:** 
-- Run TrintzPOS locally on port 5001
+- Run TrintzERP locally on port 5001
 - Authorize with Google
 - Google redirects to: `http://localhost:5001/api/backup/oauth/callback`
-- TrintzPOS processes the response
+- TrintzERP processes the response
 
 ---
 
@@ -43,13 +43,13 @@ https://git-6ryt.onrender.com/api/backup/oauth/callback
 - Your app is deployed on Render
 - Authorize with Google
 - Google redirects to your Render domain
-- TrintzPOS processes the response
+- TrintzERP processes the response
 
 ---
 
 ### **Sample 3: Custom Domain (Your Own Domain)**
 ```
-https://trintzpos.yourcompany.com/api/backup/oauth/callback
+https://trintzerp.yourcompany.com/api/backup/oauth/callback
 https://backup.myserver.com/api/backup/oauth/callback
 https://app.yourdomain.com/api/backup/oauth/callback
 ```
@@ -68,7 +68,7 @@ http://localhost:8080/api/backup/oauth/callback
 http://localhost:9000/api/backup/oauth/callback
 ```
 
-**When to use:** If TrintzPOS runs on a different port
+**When to use:** If TrintzERP runs on a different port
 **Note:** Change `5001` to your actual port number
 
 ---
@@ -95,7 +95,7 @@ http://localhost:5001/api/auth/google/redirect
 | **Render** | `https://git-6ryt.onrender.com/api/backup/oauth/callback` |
 | **Heroku** | `https://your-app.herokuapp.com/api/backup/oauth/callback` |
 | **AWS** | `https://your-domain.us-east-1.elasticbeanstalk.com/api/backup/oauth/callback` |
-| **Custom Domain** | `https://trintzpos.yourcompany.com/api/backup/oauth/callback` |
+| **Custom Domain** | `https://trintzerp.yourcompany.com/api/backup/oauth/callback` |
 
 ---
 
@@ -114,8 +114,8 @@ Redirect URI: http://localhost:5001/api/backup/oauth/callback
 4. Redirect URI: `https://git-6ryt.onrender.com/api/backup/oauth/callback`
 
 ### **For Custom Domain:**
-1. Your domain: `https://trintzpos.mycompany.com`
-2. Redirect URI: `https://trintzpos.mycompany.com/api/backup/oauth/callback`
+1. Your domain: `https://trintzerp.mycompany.com`
+2. Redirect URI: `https://trintzerp.mycompany.com/api/backup/oauth/callback`
 
 ---
 
@@ -222,7 +222,7 @@ Fix: Copy exact URI from Google Cloud
 ### **Problem: "localhost doesn't work"**
 ```
 Cause: Using wrong port
-Fix: Make sure TrintzPOS runs on port 5001
+Fix: Make sure TrintzERP runs on port 5001
     Or update URI to match your port
 ```
 
@@ -260,7 +260,7 @@ https://git-6ryt.onrender.com/api/backup/oauth/callback
 
 ```
 USER AUTHORIZES:
-Step 1: TrintzPOS redirects to Google
+Step 1: TrintzERP redirects to Google
         https://accounts.google.com/o/oauth2/v2/auth?
           client_id=YOUR_ID&
           redirect_uri=http://localhost:5001/api/backup/oauth/callback&
@@ -274,7 +274,7 @@ Step 3: Google redirects BACK to your app with code
           code=4/0AY0e-g...&
           state=...
 
-Step 4: TrintzPOS exchanges code for token
+Step 4: TrintzERP exchanges code for token
         (happens behind the scenes)
 
 Step 5: Token stored in database ✅
@@ -310,7 +310,7 @@ GOOGLE_OAUTH_CLIENT_SECRET=GOCSPX-xxxxx
 GOOGLE_OAUTH_REDIRECT_URI=https://git-6ryt.onrender.com/api/backup/oauth/callback
 ```
 
-### **Authorization Request (from TrintzPOS):**
+### **Authorization Request (from TrintzERP):**
 ```
 GET https://accounts.google.com/o/oauth2/v2/auth?
   client_id=123456789.apps.googleusercontent.com&
@@ -335,7 +335,7 @@ GET http://localhost:5001/api/backup/oauth/callback?
 |---|---|
 | Local URI | `http://localhost:5001/api/backup/oauth/callback` |
 | Render URI | `https://git-6ryt.onrender.com/api/backup/oauth/callback` |
-| Custom Domain | `https://trintzpos.company.com/api/backup/oauth/callback` |
+| Custom Domain | `https://trintzerp.company.com/api/backup/oauth/callback` |
 | Protocol | `http://` (local) or `https://` (production) |
 | Host | `localhost:5001` or `your-domain.com` |
 | Path | Always: `/api/backup/oauth/callback` |

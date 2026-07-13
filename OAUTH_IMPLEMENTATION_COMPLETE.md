@@ -2,7 +2,7 @@
 
 ## 🎯 What Was Implemented
 
-Complete OAuth 2.0 integration for Google Drive backups in TrintzPOS.
+Complete OAuth 2.0 integration for Google Drive backups in TrintzERP.
 
 **Result:** Users can now backup to ANY Google Drive folder they have access to - completely FREE!
 

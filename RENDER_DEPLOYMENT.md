@@ -1,11 +1,11 @@
-# TrintzPOS — Render.com Deployment Guide
+# TrintzERP — Render.com Deployment Guide
 
 ## Quick Start
 
 ### Step 1: Push Code to GitHub
 ```bash
 git add -A
-git commit -m "Deploy TrintzPOS with P&L reports to Render"
+git commit -m "Deploy TrintzERP with P&L reports to Render"
 git push origin main
 ```
 
@@ -18,7 +18,7 @@ git push origin main
 1. Click **New +** → **Web Service**
 2. Select your GitHub repository
 3. Set the following:
-   - **Name**: `trintzpos` (or your preferred name)
+   - **Name**: `trintzerp` (or your preferred name)
    - **Environment**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --preload wsgi:application`
@@ -41,7 +41,7 @@ DB_PORT=13430
 ```
 BREVO_API_KEY=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
 BREVO_SENDER_EMAIL=spectrumon19@gmail.com
-BREVO_SENDER_NAME=TrintzPOS Support
+BREVO_SENDER_NAME=TrintzERP Support
 BREVO_SMTP_USER=aaa6fb001@smtp-brevo.com
 BREVO_SMTP_PASSWORD=xsmtpsib-ce9e3ec480e6368ee757ec1cb07b965d3db8769a32ae664a0b86765ef4fd2238-YbqYgalqcq8MEgJg
 ```
@@ -73,9 +73,9 @@ If any check fails, deployment is blocked.
 ### Access Your App
 Your app will be available at:
 ```
-https://trintzpos.onrender.com
+https://trintzerp.onrender.com
 ```
-(Replace "trintzpos" with your service name)
+(Replace "trintzerp" with your service name)
 
 ### Initial Login
 1. Go to `https://your-app.onrender.com/login.html`

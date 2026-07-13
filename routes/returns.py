@@ -29,10 +29,26 @@ def _next_return_number(cur):
     return f'RET-{today}-{count + 1:04d}'
 
 
-def _calc_line(rate, qty, discount_pct, gst_rate):
-    # rate_at_sale is GST-inclusive (mirrors sales.py calculate_invoice_item).
-    # total_line_amount = qty * rate, discounted; ex-GST is back-calculated.
-    total         = round(rate * qty * (1 - discount_pct / 100), 2)
+def _calc_line(rate, qty, discount_pct, gst_rate, rebate_amount=0, original_qty=None,
+               stored_line_total=None):
+    # Refund is derived from the ACTUAL charged line total that was stored at
+    # sale time (total_line_amount). That figure is already net of every discount
+    # mechanism — per-item discount_percentage (legacy), flat rebate_amount, AND
+    # the whole-bill discount% (which sales.py bakes into each item row). Using it
+    # as the single source of truth means returns can never over- or under-refund,
+    # regardless of which discounts applied. We prorate it per unit over the
+    # original line qty so a partial return refunds only its share.
+    if stored_line_total is not None and original_qty:
+        charged_unit = float(stored_line_total) / float(original_qty)
+    else:
+        # Fallback (e.g. very old rows with no stored total): reconstruct from
+        # rate/discount%/rebate as before.
+        gross_unit = rate * (1 - (discount_pct or 0) / 100)
+        per_unit_rebate = (float(rebate_amount) / float(original_qty)) \
+            if (rebate_amount and original_qty) else 0.0
+        charged_unit = max(0.0, gross_unit - per_unit_rebate)
+
+    total         = round(charged_unit * qty, 2)
     excl_gst      = round(total / (1 + gst_rate / 100), 2)
     gst_amount    = round(total - excl_gst, 2)
     sgst          = round(gst_amount / 2, 2)
@@ -193,6 +209,8 @@ def create_return(payload):
             cur.execute("""
                 SELECT sii.item_id, sii.product_id, sii.rate_at_sale,
                        sii.gst_rate_at_sale, sii.discount_percentage,
+                       COALESCE(sii.rebate_amount, 0) AS rebate_amount,
+                       sii.total_line_amount,
                        sii.quantity AS original_qty,
                        p.name AS product_name, p.sku, p.pack_size,
                        COALESCE((
@@ -217,7 +235,10 @@ def create_return(payload):
             calc = _calc_line(
                 float(orig['rate_at_sale']), qty,
                 float(orig['discount_percentage']),
-                float(orig['gst_rate_at_sale'])
+                float(orig['gst_rate_at_sale']),
+                rebate_amount=float(orig['rebate_amount']),
+                original_qty=int(orig['original_qty']),
+                stored_line_total=float(orig['total_line_amount'])
             )
             subtotal     += calc['exclusive_gst_amount']
             total_gst    += calc['total_gst']

@@ -21,30 +21,30 @@ Click "Authorize with Google" button
     ↓
 Google login page appears
     ↓
-You grant permission: "TrintzPOS can access my Google Drive"
+You grant permission: "TrintzERP can access my Google Drive"
     ↓
 Permission granted ✅
 ```
 
-**Result:** TrintzPOS gets a special token (like a permanent key) to access your Google Drive
+**Result:** TrintzERP gets a special token (like a permanent key) to access your Google Drive
 
 ---
 
 ### **Step 2: Token Gets Stored Securely**
 
 ```
-Google gives TrintzPOS:
+Google gives TrintzERP:
 ├─ Access Token (temporary, expires in ~1 hour)
 ├─ Refresh Token (permanent, used to get new access tokens)
 └─ User Email (for reference)
 
-TrintzPOS stores in database:
+TrintzERP stores in database:
 ├─ Encrypted tokens
 ├─ Your email
 └─ Expiry time
 ```
 
-**Result:** TrintzPOS can now access your Google Drive anytime without asking again
+**Result:** TrintzERP can now access your Google Drive anytime without asking again
 
 ---
 
@@ -73,13 +73,13 @@ File appears in the folder ✅
 ```
 Day 1 (2:00 AM):
   Backup starts
-  ├─ Create: trintzpos_backup_20260605_020000.sql.gz
+  ├─ Create: trintzerp_backup_20260605_020000.sql.gz
   ├─ Upload to: https://drive.google.com/drive/folders/1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
   └─ ✅ File appears in folder
     
 Day 2 (2:00 AM):
   Backup starts again
-  ├─ Create: trintzpos_backup_20260606_020000.sql.gz
+  ├─ Create: trintzerp_backup_20260606_020000.sql.gz
   ├─ Token refreshed automatically (if expired)
   ├─ Upload to SAME folder
   └─ ✅ Another file in folder
@@ -131,20 +131,20 @@ Google Drive Folder
 ### **After Setup (Day 1)**
 ```
 Google Drive Folder: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
-├─ trintzpos_backup_20260605_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260605_020000.sql.gz (250 MB)
 └─ (more files added tomorrow)
 ```
 
 ### **After Setup (Day 7)**
 ```
 Google Drive Folder: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
-├─ trintzpos_backup_20260605_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260606_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260607_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260608_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260609_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260610_020000.sql.gz (250 MB)
-└─ trintzpos_backup_20260611_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260605_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260606_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260607_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260608_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260609_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260610_020000.sql.gz (250 MB)
+└─ trintzerp_backup_20260611_020000.sql.gz (250 MB)
 ```
 
 **Result:** Week of backups, all in YOUR Google Drive!
@@ -155,7 +155,7 @@ Google Drive Folder: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
 
 ### **Step 1: Authorization**
 ```
-Google asks you: "Let TrintzPOS access your Drive?"
+Google asks you: "Let TrintzERP access your Drive?"
 You: "Yes, I authorize"
 
 Security: Google verifies it's really you
@@ -166,14 +166,14 @@ Security: Google verifies it's really you
 
 ### **Step 2: Token Storage**
 ```
-TrintzPOS stores token in database:
+TrintzERP stores token in database:
 ├─ Location: PostgreSQL database
 ├─ Encryption: Encrypted at rest
 ├─ Access: Admin-only
 └─ Logging: All access is logged
 
 Security:
-├─ Only TrintzPOS can use token ✅
+├─ Only TrintzERP can use token ✅
 ├─ Not exposed in logs ✅
 ├─ Not accessible via API ✅
 └─ Can be revoked anytime ✅
@@ -200,7 +200,7 @@ Security:
 
 ### **1. One-Time Authorization** (2 minutes)
 ```
-Admin visits TrintzPOS → Backup Settings
+Admin visits TrintzERP → Backup Settings
           ↓
 Click "Authorize with Google"
           ↓
@@ -237,7 +237,7 @@ Every day at 2:00 AM:
 ### **When You Authorize**
 
 ```
-TrintzPOS                Google                       You
+TrintzERP                Google                       You
     |                      |                          |
     |--[Authorize]-------->|                          |
     |                      |--[Send to login]-------->|
@@ -250,7 +250,7 @@ TrintzPOS                Google                       You
 ### **When Backup Runs (Every Day)**
 
 ```
-TrintzPOS                Google Drive                 Your Folder
+TrintzERP                Google Drive                 Your Folder
     |                      |                          |
 Backup created
     |                      |                          |
@@ -270,15 +270,15 @@ Log complete ✅            |                          |
 
 ### **File Structure**
 ```
-Folder: TrintzPOS Backups (1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E)
+Folder: TrintzERP Backups (1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E)
 │
-├─ 2026-06-05 → trintzpos_backup_20260605_020000.sql.gz
-├─ 2026-06-06 → trintzpos_backup_20260606_020000.sql.gz
-├─ 2026-06-07 → trintzpos_backup_20260607_020000.sql.gz
-├─ 2026-06-08 → trintzpos_backup_20260608_020000.sql.gz
-├─ 2026-06-09 → trintzpos_backup_20260609_020000.sql.gz
-├─ 2026-06-10 → trintzpos_backup_20260610_020000.sql.gz
-└─ 2026-06-11 → trintzpos_backup_20260611_020000.sql.gz
+├─ 2026-06-05 → trintzerp_backup_20260605_020000.sql.gz
+├─ 2026-06-06 → trintzerp_backup_20260606_020000.sql.gz
+├─ 2026-06-07 → trintzerp_backup_20260607_020000.sql.gz
+├─ 2026-06-08 → trintzerp_backup_20260608_020000.sql.gz
+├─ 2026-06-09 → trintzerp_backup_20260609_020000.sql.gz
+├─ 2026-06-10 → trintzerp_backup_20260610_020000.sql.gz
+└─ 2026-06-11 → trintzerp_backup_20260611_020000.sql.gz
 
 Total: ~1.75 GB (7 days × 250 MB)
 ```
@@ -341,7 +341,7 @@ STEP 1: Authorization (One time)
   You → Click "Authorize with Google"
      → Google login
      → Grant permission
-     ✅ TrintzPOS can now access this folder
+     ✅ TrintzERP can now access this folder
 
 STEP 2: Configuration (One time)
   You → Enter folder ID: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E

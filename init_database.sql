@@ -1,5 +1,5 @@
 -- ============================================================
--- TrintzPOS — COMPLETE DATABASE INITIALISATION SCRIPT
+-- TrintzERP — COMPLETE DATABASE INITIALISATION SCRIPT
 -- ============================================================
 -- Idempotent: safe to run on a fresh database or re-run on an
 -- existing one (uses CREATE TABLE IF NOT EXISTS everywhere).
@@ -150,7 +150,8 @@ CREATE TABLE IF NOT EXISTS sales_invoice_items (
     sgst                 DECIMAL(10,2) NOT NULL,
     cgst                 DECIMAL(10,2) NOT NULL,
     total_line_amount    DECIMAL(10,2) NOT NULL,
-    discount_percentage  DECIMAL(5,2)  DEFAULT 0.00
+    discount_percentage  DECIMAL(5,2)  DEFAULT 0.00,
+    rebate_amount        DECIMAL(10,2) DEFAULT 0.00
 );
 
 -- Atomic invoice number sequence (prevents race-condition duplicates)
@@ -572,6 +573,10 @@ ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS qr_data          TEXT;
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS einvoice_status  VARCHAR(20) DEFAULT 'pending';
 ALTER TABLE trusted_devices ADD COLUMN IF NOT EXISTS last_ip         VARCHAR(64);
 
+-- Per-item flat rebate amount (₹ off line total, pre-GST). Separate from
+-- discount_percentage so historical invoices keep their original meaning.
+ALTER TABLE sales_invoice_items ADD COLUMN IF NOT EXISTS rebate_amount DECIMAL(10,2) DEFAULT 0.00;
+
 -- EULA acceptance tracking
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at  TIMESTAMP;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_ip  VARCHAR(45);
@@ -662,7 +667,7 @@ CREATE INDEX IF NOT EXISTS idx_sql_audit_run_at ON sql_query_audit(run_at DESC);
 -- ============================================================
 -- VERIFY
 -- ============================================================
-SELECT 'TrintzPOS database initialised successfully!' AS status;
+SELECT 'TrintzERP database initialised successfully!' AS status;
 
 SELECT table_name
 FROM   information_schema.tables

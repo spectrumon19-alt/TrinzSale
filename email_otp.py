@@ -67,7 +67,7 @@ def _api_send(to_email: str, to_name: str, subject: str, html: str) -> bool:
     """Send one transactional email via Brevo HTTP API (port 443, never blocked)."""
     api_key      = os.environ.get("BREVO_API_KEY", "")
     sender_email = os.environ.get("BREVO_SENDER_EMAIL", "")
-    sender_name  = os.environ.get("BREVO_SENDER_NAME", "TrintzPOS")
+    sender_name  = os.environ.get("BREVO_SENDER_NAME", "TrintzERP")
 
     if not api_key:
         logger.warning("[DEV] BREVO_API_KEY not set — skipping email delivery.")
@@ -126,7 +126,7 @@ def send_registration_otp(to_email: str, to_name: str, otp: str) -> bool:
 <div style="max-width:480px;margin:auto;background:#fff;border-radius:8px;
             box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden">
   <div style="background:linear-gradient(135deg,#2c3e50,#3498db);padding:28px 32px">
-    <h2 style="color:#fff;margin:0;font-size:20px">TrintzPOS</h2>
+    <h2 style="color:#fff;margin:0;font-size:20px">TrintzERP</h2>
     <p style="color:#bde0ff;margin:6px 0 0;font-size:13px">Professional Point of Sale Solution</p>
   </div>
   <div style="padding:32px">
@@ -158,7 +158,7 @@ def send_registration_otp(to_email: str, to_name: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    ok = _api_send(to_email, to_name, "TrintzPOS - Email Verification Code", html)
+    ok = _api_send(to_email, to_name, "TrintzERP - Email Verification Code", html)
     if ok:
         logger.info("Registration OTP sent to %s", to_email)
     return ok
@@ -177,7 +177,7 @@ def send_login_otp(to_email: str, to_name: str, otp: str) -> bool:
 <div style="max-width:480px;margin:auto;background:#fff;border-radius:8px;
             box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden">
   <div style="background:linear-gradient(135deg,#2c3e50,#e67e22);padding:28px 32px">
-    <h2 style="color:#fff;margin:0;font-size:20px">TrintzPOS</h2>
+    <h2 style="color:#fff;margin:0;font-size:20px">TrintzERP</h2>
     <p style="color:#fde8c8;margin:6px 0 0;font-size:13px">Professional Point of Sale Solution</p>
   </div>
   <div style="padding:32px">
@@ -209,7 +209,7 @@ def send_login_otp(to_email: str, to_name: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    ok = _api_send(to_email, to_name, "TrintzPOS - Login Verification Code", html)
+    ok = _api_send(to_email, to_name, "TrintzERP - Login Verification Code", html)
     if ok:
         logger.info("Login OTP sent to %s", to_email)
     return ok
@@ -228,7 +228,7 @@ def send_password_reset_otp(to_email: str, to_name: str, otp: str) -> bool:
 <div style="max-width:480px;margin:auto;background:#fff;border-radius:8px;
             box-shadow:0 2px 8px rgba(0,0,0,.08);overflow:hidden">
   <div style="background:linear-gradient(135deg,#c0392b,#e74c3c);padding:28px 32px">
-    <h2 style="color:#fff;margin:0;font-size:20px">TrintzPOS</h2>
+    <h2 style="color:#fff;margin:0;font-size:20px">TrintzERP</h2>
     <p style="color:#fad7d7;margin:6px 0 0;font-size:13px">Password Reset Request</p>
   </div>
   <div style="padding:32px">
@@ -261,7 +261,7 @@ def send_password_reset_otp(to_email: str, to_name: str, otp: str) -> bool:
 </body>
 </html>"""
 
-    ok = _api_send(to_email, to_name, "TrintzPOS - Password Reset Code", html)
+    ok = _api_send(to_email, to_name, "TrintzERP - Password Reset Code", html)
     if ok:
         logger.info("Password reset OTP sent to %s", to_email)
     return ok

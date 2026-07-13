@@ -1,5 +1,5 @@
 ╔════════════════════════════════════════════════════════════════╗
-║            TRINTZPOS REPOSITORY CLEANUP REPORT                 ║
+║            TRINTZERP REPOSITORY CLEANUP REPORT                 ║
 ║                      Date: 2026-06-03                          ║
 ╚════════════════════════════════════════════════════════════════╝
 
@@ -22,8 +22,8 @@ DOCUMENTATION REMOVED
 ✓ AI Implementation.txt   (Old implementation notes)
 ✓ deleteUserQuery.txt     (Old database query)
 ✓ recreateSuperAdmin.txt  (Old admin setup notes)
-✓ trintzpos_manual.pdf    (Outdated manual - 114KB)
-✓ trintzpos_manual.txt    (Outdated manual - 74KB)
+✓ trintzerp_manual.pdf    (Outdated manual - 114KB)
+✓ trintzerp_manual.txt    (Outdated manual - 74KB)
 ✓ how to run Keygen.txt   (Old documentation)
 
 REPOSITORY STATUS AFTER CLEANUP

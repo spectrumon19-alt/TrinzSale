@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrintzPOS - Sales</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>TrintzERP - Sales</title>
+    <script src="assets/vendor/tailwind.js"></script>
+    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -612,9 +612,11 @@
              class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
              style="width:220px;">
 
-            <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-                <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                    <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+            <a href="dashboard.html" class="snav-brand">
+                <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+                <span class="snav-brand-text">
+                    <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
+                    <span class="snav-brand-sub">Retail &amp; Billing</span>
                 </span>
             </a>
 
@@ -652,7 +654,7 @@
                     </button>
                     <div>
                         <p class="hd-title">
-                            TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Sales
+                            TrintzERP <span style="color:#6366f1;font-weight:300;">|</span> Sales
                         </p>
                         <p class="hd-sub" id="live-datetime">Loading…</p>
                     </div>
@@ -701,7 +703,7 @@
                             </span>
                         </div>
                         <div style="padding:0.75rem;">
-                            <div style="display:grid;grid-template-columns:1fr 1fr 88px 88px;gap:0.5rem;align-items:end;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr 88px;gap:0.5rem;align-items:end;">
                                 <div style="position:relative;grid-column:span 2;">
                                     <div style="position:relative;">
                                         <input type="text" id="product-search-input" data-testid="product-search-input"
@@ -717,13 +719,6 @@
                                     </label>
                                     <input type="number" id="quantity-input" data-testid="quantity-input"
                                         min="1" value="1" class="form-control">
-                                </div>
-                                <div>
-                                    <label class="field-label" for="discount-input">
-                                        <i class="fas fa-percent" style="font-size:0.58rem;"></i> Disc%
-                                    </label>
-                                    <input type="number" id="discount-input" data-testid="discount-input"
-                                        min="0" max="100" value="0" step="0.1" class="form-control">
                                 </div>
                             </div>
                             <div style="margin-top:0.625rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
@@ -765,15 +760,14 @@
                                         <th style="text-align:center;">Qty</th>
                                         <th style="text-align:right;">Rate</th>
                                         <th style="text-align:right;">Taxable</th>
-                                        <th style="text-align:right;">SGST</th>
-                                        <th style="text-align:right;">CGST</th>
                                         <th style="text-align:right;">Amount</th>
+                                        <th style="text-align:center;">Rebate</th>
                                         <th style="text-align:center;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="invoice-items-body" data-testid="invoice-items-body">
                                     <tr>
-                                        <td colspan="11" style="text-align:center;padding:2.5rem 1rem;">
+                                        <td colspan="10" style="text-align:center;padding:2.5rem 1rem;">
                                             <i class="fas fa-cart-plus" style="font-size:1.5rem;opacity:0.2;display:block;margin-bottom:0.5rem;color:var(--text-subtle);"></i>
                                             <span style="color:var(--text-subtle);font-size:0.82rem;">No items added yet</span>
                                         </td>
@@ -965,6 +959,14 @@
                             <span style="font-size:0.8rem;color:var(--text-muted);">Total GST</span>
                             <span id="total-gst" data-testid="total-gst"
                                   style="font-size:0.82rem;font-weight:600;color:var(--text-base);">₹0.00</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;">
+                            <label for="discount-input" style="font-size:0.8rem;color:var(--text-muted);">
+                                <i class="fas fa-percent" style="font-size:0.6rem;"></i> Bill Discount %
+                            </label>
+                            <input type="number" id="discount-input" data-testid="discount-input"
+                                   min="0" max="100" value="0" step="0.1"
+                                   style="width:72px;text-align:right;font-size:0.82rem;font-weight:600;padding:0.2rem 0.4rem;border:1px solid var(--surface-border);border-radius:6px;background:var(--surface);color:var(--text-base);">
                         </div>
                         <div class="grand-total-row" style="display:flex;justify-content:space-between;align-items:center;">
                             <span style="font-size:0.88rem;font-weight:700;color:var(--text-base);">Grand Total</span>

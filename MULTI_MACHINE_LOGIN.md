@@ -1,7 +1,7 @@
 # Multi-Machine Login Support
 
 ## Overview
-Users can now login to TrintzPOS from ANY machine with a single valid license. License validation happens **server-side only**, ensuring professional enterprise-grade implementation.
+Users can now login to TrintzERP from ANY machine with a single valid license. License validation happens **server-side only**, ensuring professional enterprise-grade implementation.
 
 ## How It Works
 

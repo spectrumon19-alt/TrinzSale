@@ -1,4 +1,4 @@
-# TrintzPOS - Improvement Roadmap
+# TrintzERP - Improvement Roadmap
 
 ## Current State Analysis
 - **38 HTML Pages** - Comprehensive feature set

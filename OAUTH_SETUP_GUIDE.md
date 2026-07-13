@@ -2,7 +2,7 @@
 
 ## ✅ OAuth Implementation Complete!
 
-TrintzPOS now supports **OAuth-based Google Drive backups** - allowing you to backup to ANY Google Drive folder you have access to.
+TrintzERP now supports **OAuth-based Google Drive backups** - allowing you to backup to ANY Google Drive folder you have access to.
 
 ---
 
@@ -34,7 +34,7 @@ TrintzPOS now supports **OAuth-based Google Drive backups** - allowing you to ba
 
 2. **Create/Select Project:**
    - Click "Select a Project" → "New Project"
-   - Name: `TrintzPOS Backup`
+   - Name: `TrintzERP Backup`
    - Create
 
 3. **Enable Google Drive API:**
@@ -69,7 +69,7 @@ TrintzPOS now supports **OAuth-based Google Drive backups** - allowing you to ba
 
 ---
 
-### **Step 2: Configure TrintzPOS Environment (.env)**
+### **Step 2: Configure TrintzERP Environment (.env)**
 
 Add these to your `.env` file:
 
@@ -184,8 +184,8 @@ window.addEventListener('load', checkOAuthStatus);
 
 ### **First Time Setup**
 
-1. **Go to TrintzPOS Backup Settings**
-   - Navigate to **TrintzPOS | Backup**
+1. **Go to TrintzERP Backup Settings**
+   - Navigate to **TrintzERP | Backup**
 
 2. **Authorize Google Drive**
    - Click **"Authorize with Google"** button

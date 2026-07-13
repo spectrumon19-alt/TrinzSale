@@ -407,14 +407,48 @@ def add_credit_transaction(payload, customer_id):
                 return jsonify({'message': 'Customer not found'}), 404
             
             previous_balance = float(customer['current_balance'])
-            
+
             # Calculate new balance
             amount = float(data.get('amount'))
             if data.get('transaction_type') == 'credit':
                 new_balance = previous_balance + amount
             else:
                 new_balance = previous_balance - amount
-            
+
+            # ── Idempotency guard ──────────────────────────────────────────────
+            # Reject an identical transaction submitted within a short window
+            # (same customer, type, amount, invoice_no, note) — this stops a
+            # double-click / retry from inserting duplicate ledger rows and
+            # compounding the balance. Returns the existing row instead of a new
+            # insert so the client still succeeds.
+            cur.execute("""
+                SELECT transaction_id, transaction_type, amount, invoice_no, note,
+                       previous_balance, created_at
+                FROM credit_transactions
+                WHERE customer_id = %s
+                  AND transaction_type = %s
+                  AND amount = %s
+                  AND COALESCE(invoice_no, '') = COALESCE(%s, '')
+                  AND COALESCE(note, '')       = COALESCE(%s, '')
+                  AND created_at >= NOW() - INTERVAL '10 seconds'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (
+                customer_id, data.get('transaction_type'), amount,
+                data.get('invoice_no') or None, data.get('note') or None
+            ))
+            dup = cur.fetchone()
+            if dup:
+                dup['amount'] = float(dup['amount'])
+                # The customer's current balance already reflects the first insert;
+                # return it as-is (do NOT apply the amount a second time).
+                return jsonify({
+                    'message': 'Transaction added successfully',
+                    'transaction': dup,
+                    'new_balance': previous_balance,
+                    'duplicate_ignored': True
+                }), 200
+
             # Insert transaction
             cur.execute("""
                 INSERT INTO credit_transactions (
@@ -629,7 +663,7 @@ def send_credit_email(payload, customer_id):
             f'<td style="padding:4px 8px;font-weight:700;color:{bal_color};">{bal_str}</td></tr>'
             '</table>'
             '<p style="color:#64748b;font-size:12px;">The attached CSV contains your full transaction history.</p>'
-            '<p style="margin-top:16px;">Regards,<br><strong>TrintzPOS</strong></p>'
+            '<p style="margin-top:16px;">Regards,<br><strong>TrintzERP</strong></p>'
             '</div>'
         )
 

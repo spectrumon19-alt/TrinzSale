@@ -1,8 +1,8 @@
-# TrintzPOS Security Hardening Guide
+# TrintzERP Security Hardening Guide
 
 ## 🎯 Complete Explanation Only - No Implementation
 
-This guide explains security concepts and best practices for TrintzPOS without implementation details.
+This guide explains security concepts and best practices for TrintzERP without implementation details.
 
 ---
 
@@ -291,7 +291,7 @@ Attackers injecting JavaScript that runs in user's browser
 <div>John<script>alert('Hacked')</script>Store</div>
 ```
 
-#### **How It Applies to TrintzPOS:**
+#### **How It Applies to TrintzERP:**
 
 **A. User-Generated Content**
 ```
@@ -318,7 +318,7 @@ Tricking a user into making unwanted requests
 
 #### **Example Attack:**
 ```
-User logged into TrintzPOS in one tab
+User logged into TrintzERP in one tab
 User visits evil-site.com in another tab
 evil-site.com contains: <img src="https://pos.com/api/sales" 
    data="delete_all_products">
@@ -501,7 +501,7 @@ GST compliance requires:
 ├─ When it was made
 ├─ What changed
 ├─ Cannot be modified (immutable log)
-└─ TrintzPOS needs this for legal compliance
+└─ TrintzERP needs this for legal compliance
 ```
 
 ---

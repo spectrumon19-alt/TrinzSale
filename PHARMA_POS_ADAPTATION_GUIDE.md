@@ -1,8 +1,8 @@
 # Pharma POS Adaptation Guide - Complete Explanation
 
-## 🎯 Can We Use TrintzPOS for Pharmacy/Medicine Sales?
+## 🎯 Can We Use TrintzERP for Pharmacy/Medicine Sales?
 
-**Answer: YES! ✅ TrintzPOS is PERFECT for pharmacy business**
+**Answer: YES! ✅ TrintzERP is PERFECT for pharmacy business**
 
 The current POS system is designed for retail/wholesale, but pharma has only **slightly different requirements**. Most features are already there, just need some adjustments.
 
@@ -664,7 +664,7 @@ Timeline: 2 weeks
 
 ---
 
-## 🎯 Current TrintzPOS Suitability
+## 🎯 Current TrintzERP Suitability
 
 ### **Already Suitable For:**
 ```
@@ -715,7 +715,7 @@ Typical scenario:
 ├─ Health consultations (some stores)
 └─ Loyalty programs
 
-TrintzPOS fit: ✅ PERFECT
+TrintzERP fit: ✅ PERFECT
 Changes needed: All 11 changes above
 ```
 
@@ -728,7 +728,7 @@ Typical scenario:
 ├─ In-patient/out-patient tracking
 └─ Controlled substance management (strict)
 
-TrintzPOS fit: ✅ GOOD (with enhancements)
+TrintzERP fit: ✅ GOOD (with enhancements)
 Changes needed: All 11 + controlled substance tracking
 ```
 
@@ -741,7 +741,7 @@ Typical scenario:
 ├─ Centralized purchasing
 ├─ Unified inventory
 
-TrintzPOS fit: ✅ GOOD (with enhancements)
+TrintzERP fit: ✅ GOOD (with enhancements)
 Changes needed: All 11 + multi-location support + warehouse management
 ```
 
@@ -754,7 +754,7 @@ Typical scenario:
 ├─ Pharmacist consultation (online)
 └─ Return management
 
-TrintzPOS fit: ✅ PARTIAL
+TrintzERP fit: ✅ PARTIAL
 Changes needed: All 11 + integration with delivery systems + online verification
 ```
 
@@ -767,7 +767,7 @@ Typical scenario:
 ├─ Logistics management
 └─ Quality control
 
-TrintzPOS fit: ✅ GOOD
+TrintzERP fit: ✅ GOOD
 Changes needed: All 11 + B2B pricing + credit management + logistics
 ```
 
@@ -797,7 +797,7 @@ Requirements:
 ├─ Schedule H/X substances restricted
 └─ Regular government audits
 
-TrintzPOS must support:
+TrintzERP must support:
 ✅ All 11 changes above
 ✅ GST filing (already has)
 ✅ Immutable records (for audit)
@@ -806,7 +806,7 @@ TrintzPOS must support:
 
 ---
 
-## 🎓 Summary: Can We Use TrintzPOS for Pharmacy?
+## 🎓 Summary: Can We Use TrintzERP for Pharmacy?
 
 ### **Short Answer: YES, with enhancements ✅**
 
@@ -893,7 +893,7 @@ Professional pharmacy POS:
 
 ## Summary
 
-**TrintzPOS is SUITABLE for pharmacy business** because:
+**TrintzERP is SUITABLE for pharmacy business** because:
 
 1. **Strong retail foundation** - Already handles sales, inventory, customers
 2. **Flexible architecture** - Can add pharmacy-specific features

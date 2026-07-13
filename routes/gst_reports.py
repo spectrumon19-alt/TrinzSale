@@ -428,7 +428,7 @@ def export_gst_excel(payload):
     ws1.set_column('C:G', 16)
 
     ws1.write('A1', f'GSTR-1 — Outward Supplies Summary   Period: {period}', title)
-    ws1.write('A2', 'TrintzPOS — Auto-generated')
+    ws1.write('A2', 'TrintzERP — Auto-generated')
     ws1.set_row(3, 18)
 
     headers = ['GST Rate %', 'Invoice Count', 'Taxable Value (₹)',
@@ -553,7 +553,7 @@ def export_gst_excel(payload):
     ws3.set_column('A:A', 42); ws3.set_column('B:E', 16)
 
     ws3.write('A1', f'GSTR-3B — Monthly Self-Assessment Return   Period: {period}', title)
-    ws3.write('A2', 'TrintzPOS — Auto-generated')
+    ws3.write('A2', 'TrintzERP — Auto-generated')
 
     row = 3
     def section(label):

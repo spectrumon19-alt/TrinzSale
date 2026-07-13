@@ -48,7 +48,7 @@ https://console.cloud.google.com
 #### 1.2 Create New Project
 - Click: **"Select a Project"**
 - Click: **"New Project"**
-- Name: `TrintzPOS`
+- Name: `TrintzERP`
 - Create
 
 #### 1.3 Enable Google Drive API
@@ -61,7 +61,7 @@ https://console.cloud.google.com
 - Click: **Create Credentials**
 - Choose: **OAuth client ID**
 - Application type: **Web application**
-- Name: `TrintzPOS Backup`
+- Name: `TrintzERP Backup`
 
 #### 1.5 Add Authorized Redirect URIs
 Add these URLs:
@@ -96,7 +96,7 @@ Copy:
 
 ---
 
-### **STEP 2: Configure TrintzPOS Environment**
+### **STEP 2: Configure TrintzERP Environment**
 
 #### 2.1 Open .env File
 ```
@@ -127,7 +127,7 @@ Adds OAuth columns to database:
 
 #### 3.2 Run Migration (Local)
 ```bash
-psql -U postgres -d trintzpos < migrate_add_oauth_to_backup_settings.sql
+psql -U postgres -d trintzerp < migrate_add_oauth_to_backup_settings.sql
 ```
 
 #### 3.3 Run Migration (Render)
@@ -140,7 +140,7 @@ psql -U postgres -d trintzpos < migrate_add_oauth_to_backup_settings.sql
 
 ---
 
-### **STEP 4: Start TrintzPOS and Authorize**
+### **STEP 4: Start TrintzERP and Authorize**
 
 #### 4.1 Start the App
 ```bash
@@ -153,7 +153,7 @@ python app.py
 http://localhost:5001
 ```
 
-#### 4.3 Login to TrintzPOS
+#### 4.3 Login to TrintzERP
 - Use your admin credentials
 - Navigate to: **Backup** section
 
@@ -203,7 +203,7 @@ From your URL: `https://drive.google.com/drive/u/1/folders/1zjnwYo3OXgnpDDru6wOU
 
 **Folder ID:** `1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E`
 
-#### 5.2 Open Backup Settings in TrintzPOS
+#### 5.2 Open Backup Settings in TrintzERP
 - Navigate to: **Backup**
 - Look for: **Backup Settings** or **Configure Backup**
 
@@ -223,7 +223,7 @@ Enable Automatic Backups: ON
 ### **STEP 6: Test the Backup**
 
 #### 6.1 Run Manual Backup
-- In TrintzPOS Backup page
+- In TrintzERP Backup page
 - Click: **"Backup Now"** button
 - Wait for upload (1-5 minutes)
 
@@ -232,7 +232,7 @@ Expected success message:
 ```json
 {
   "success": true,
-  "filename": "trintzpos_backup_20260605_143022.sql.gz",
+  "filename": "trintzerp_backup_20260605_143022.sql.gz",
   "size_bytes": 262144000,
   "destination": "oauth",
   "gdrive_id": "1ABC2DEF3GHI4JKL5MNO6PQR7STU8VWX",
@@ -248,8 +248,8 @@ Look for:
 
 #### 6.3 Verify in Google Drive
 - Open: https://drive.google.com/drive/u/1/folders/1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
-- Look for file: `trintzpos_backup_YYYYMMDD_HHMMSS.sql.gz`
-- Example: `trintzpos_backup_20260605_143022.sql.gz`
+- Look for file: `trintzerp_backup_YYYYMMDD_HHMMSS.sql.gz`
+- Example: `trintzerp_backup_20260605_143022.sql.gz`
 
 **If file appears:** 🎉 SUCCESS! Backups are uploading!
 
@@ -282,11 +282,11 @@ You do: NOTHING (automatic)
 
 ### **File Accumulation**
 ```
-Day 1: trintzpos_backup_20260605_020000.sql.gz
-Day 2: trintzpos_backup_20260606_020000.sql.gz
-Day 3: trintzpos_backup_20260607_020000.sql.gz
+Day 1: trintzerp_backup_20260605_020000.sql.gz
+Day 2: trintzerp_backup_20260606_020000.sql.gz
+Day 3: trintzerp_backup_20260607_020000.sql.gz
 ...
-Day 30: trintzpos_backup_20260704_020000.sql.gz
+Day 30: trintzerp_backup_20260704_020000.sql.gz
 
 After 30 days:
 Day 1 backup deleted (retention policy)
@@ -300,13 +300,13 @@ Day 31 backup added
 ```
 Folder: 1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
 │
-├─ trintzpos_backup_20260605_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260606_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260607_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260608_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260609_020000.sql.gz (250 MB)
-├─ trintzpos_backup_20260610_020000.sql.gz (250 MB)
-└─ trintzpos_backup_20260611_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260605_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260606_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260607_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260608_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260609_020000.sql.gz (250 MB)
+├─ trintzerp_backup_20260610_020000.sql.gz (250 MB)
+└─ trintzerp_backup_20260611_020000.sql.gz (250 MB)
 
 Total: 1.75 GB (7 days of backups)
 Retention: 30 days (auto-cleanup)
@@ -451,15 +451,15 @@ Authorization: Bearer YOUR_TOKEN
 ```
 Step 1: You click "Authorize with Google"
          ↓
-Step 2: Google asks: "Can TrintzPOS access your Drive?"
+Step 2: Google asks: "Can TrintzERP access your Drive?"
          ↓
 Step 3: You say: "Yes, I allow it"
          ↓
-Step 4: Google gives TrintzPOS a permanent token
+Step 4: Google gives TrintzERP a permanent token
          ↓
-Step 5: TrintzPOS stores token safely
+Step 5: TrintzERP stores token safely
          ↓
-Step 6: Every day, TrintzPOS uses token to upload
+Step 6: Every day, TrintzERP uses token to upload
          ↓
 Step 7: Token auto-refreshes before expiring
          ↓

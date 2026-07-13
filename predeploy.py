@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TrintzPOS — Pre-deployment checks for Render.
+TrintzERP — Pre-deployment checks for Render.
 Runs automatically before each deploy. Exit code 1 blocks the deploy.
 
 Checks performed:
@@ -176,7 +176,7 @@ def check_and_init_db(params):
 def main():
     sep = '=' * 60
     print(sep, flush=True)
-    print('TrintzPOS — Pre-deployment checks', flush=True)
+    print('TrintzERP — Pre-deployment checks', flush=True)
     print(sep, flush=True)
 
     results = {}

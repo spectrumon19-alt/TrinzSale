@@ -38,7 +38,7 @@ Send backups to: `https://drive.google.com/drive/u/1/folders/1zjnwYo3OXgnpDDru6w
 
 ---
 
-## STEP 2: Configure TrintzPOS (.env file) (2 minutes)
+## STEP 2: Configure TrintzERP (.env file) (2 minutes)
 
 ### 2.1 Open `.env` file
 Location: `c:\Users\abhis\OneDrive\Desktop\t\pos\qa\git-main\.env`
@@ -70,7 +70,7 @@ Connect to your database and run:
 
 **For Local PostgreSQL:**
 ```bash
-psql -U postgres -d trintzpos < migrate_add_oauth_to_backup_settings.sql
+psql -U postgres -d trintzerp < migrate_add_oauth_to_backup_settings.sql
 ```
 
 **For Render:**
@@ -82,7 +82,7 @@ psql -U postgres -d trintzpos < migrate_add_oauth_to_backup_settings.sql
 
 ---
 
-## STEP 4: Start TrintzPOS and Authorize (5 minutes)
+## STEP 4: Start TrintzERP and Authorize (5 minutes)
 
 ### 4.1 Start the Application
 ```bash
@@ -114,7 +114,7 @@ http://localhost:5001
 ## STEP 5: Configure Backup Settings (2 minutes)
 
 ### 5.1 Go to Backup Settings
-- In TrintzPOS → **Backup**
+- In TrintzERP → **Backup**
 
 ### 5.2 Enter Your Folder ID
 - Find: **Google Drive Folder ID**
@@ -142,8 +142,8 @@ http://localhost:5001
 
 ### 6.3 Verify in Google Drive
 - Open: https://drive.google.com/drive/u/1/folders/1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E
-- Look for file: `trintzpos_backup_YYYYMMDD_HHMMSS.sql.gz`
-- Example: `trintzpos_backup_20260605_143022.sql.gz`
+- Look for file: `trintzerp_backup_YYYYMMDD_HHMMSS.sql.gz`
+- Example: `trintzerp_backup_20260605_143022.sql.gz`
 
 ### 6.4 If File Appears ✅
 **SUCCESS!** Backups are now uploading to your Google Drive!
@@ -196,7 +196,7 @@ http://localhost:5001
 
 ### Problem: Backup doesn't run automatically at scheduled time
 **Solution:**
-- Is app still running? Check if TrintzPOS is running
+- Is app still running? Check if TrintzERP is running
 - Check app logs for errors
 - Try manually clicking "Backup Now" to test
 
@@ -218,11 +218,11 @@ You'll know it's working when:
 
 ```
 Your Google Drive Folder:
-├─ 2026-06-05 → trintzpos_backup_20260605_020000.sql.gz (250 MB)
-├─ 2026-06-06 → trintzpos_backup_20260606_020000.sql.gz (250 MB)
-├─ 2026-06-07 → trintzpos_backup_20260607_020000.sql.gz (250 MB)
+├─ 2026-06-05 → trintzerp_backup_20260605_020000.sql.gz (250 MB)
+├─ 2026-06-06 → trintzerp_backup_20260606_020000.sql.gz (250 MB)
+├─ 2026-06-07 → trintzerp_backup_20260607_020000.sql.gz (250 MB)
 ├─ ... (more daily backups)
-└─ 2026-07-05 → trintzpos_backup_20260705_020000.sql.gz (250 MB)
+└─ 2026-07-05 → trintzerp_backup_20260705_020000.sql.gz (250 MB)
 
 Total: 30 days of backups = ~7.5 GB
 (Auto-cleanup: older than 30 days deleted)
@@ -237,7 +237,7 @@ SETUP (First Time):
 Step 1: Create OAuth credentials (5 min)
 Step 2: Configure .env (2 min)
 Step 3: Database migration (1 min)
-Step 4: Authorize in TrintzPOS (5 min)
+Step 4: Authorize in TrintzERP (5 min)
 Step 5: Configure backup settings (2 min)
 Step 6: Test backup (2 min)
 Total: ~17 minutes ⏱️

@@ -5,8 +5,8 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrintzPOS - Service</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>TrintzERP - Service</title>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         /* ── Layout ── */
@@ -187,7 +187,7 @@
                     </svg>
                 </button>
                 <div>
-                    <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Service</p>
+                    <p class="hd-title"><span class="brand-word">Trintz<span class="brand-erp">ERP</span></span> <span style="color:#6366f1;font-weight:300;">|</span> Service</p>
                     <p class="hd-sub" id="live-datetime">Loading…</p>
                 </div>
             </div>
@@ -628,7 +628,7 @@
         if (!file) return;
         openConfirm(
             'Restore from File?',
-            `Restore the database from "${file.name}"?\n\nThis applies the SQL dump and overwrites existing data for restored rows. Make sure the file is a trusted TrintzPOS backup. Proceed?`,
+            `Restore the database from "${file.name}"?\n\nThis applies the SQL dump and overwrites existing data for restored rows. Make sure the file is a trusted TrintzERP backup. Proceed?`,
             'Restore',
             async () => {
                 closeConfirm();

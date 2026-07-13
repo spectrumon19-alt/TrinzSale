@@ -54,7 +54,7 @@ def totp_setup(payload):
         cur.execute("UPDATE users SET totp_secret = %s WHERE user_id = %s", (secret, user_id))
         conn.commit()
 
-        uri = pyotp.TOTP(secret).provisioning_uri(name=row['username'], issuer_name='TrintzPOS')
+        uri = pyotp.TOTP(secret).provisioning_uri(name=row['username'], issuer_name='TrintzERP')
         img = qrcode.make(uri)
         buf = io.BytesIO()
         img.save(buf, format='PNG')

@@ -1,5 +1,5 @@
 ╔════════════════════════════════════════════════════════════════════════════╗
-║                   TRINTZPOS RENDER DEPLOYMENT - QUICK START                ║
+║                   TRINTZERP RENDER DEPLOYMENT - QUICK START                ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 STEP-BY-STEP DEPLOYMENT (5 minutes)
@@ -8,7 +8,7 @@ STEP-BY-STEP DEPLOYMENT (5 minutes)
 1. COMMIT & PUSH
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ $ git add -A                                                            │
-   │ $ git commit -m "Deploy TrintzPOS to Render with P&L reports"          │
+   │ $ git commit -m "Deploy TrintzERP to Render with P&L reports"          │
    │ $ git push origin main                                                  │
    └─────────────────────────────────────────────────────────────────────────┘
 
@@ -16,7 +16,7 @@ STEP-BY-STEP DEPLOYMENT (5 minutes)
    → Go to https://render.com/dashboard
    → Click "New +" → "Web Service"
    → Connect GitHub repo
-   → Name: trintzpos
+   → Name: trintzerp
    → Environment: Python 3
    → Build Command: pip install -r requirements.txt
    → Start Command: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --preload wsgi:application

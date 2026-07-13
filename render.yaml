@@ -28,7 +28,7 @@ services:
   - key: BREVO_SENDER_EMAIL
     sync: false
   - key: BREVO_SENDER_NAME
-    value: "TrintzPOS Support"
+    value: "TrintzERP Support"
   - key: BREVO_SMTP_USER
     sync: false
   - key: BREVO_SMTP_PASSWORD

@@ -1,7 +1,7 @@
 # iOS License Considerations
 
 ## Current Status
-The TrintzPOS license system is **platform-agnostic** and works on all platforms including iOS:
+The TrintzERP license system is **platform-agnostic** and works on all platforms including iOS:
 - ✅ Web-based license activation (works in Safari on iOS)
 - ✅ License key validation (same RSA logic on all platforms)
 - ✅ Hardware fingerprinting (adaptive - works on iOS)
@@ -156,7 +156,7 @@ def get_hardware_fingerprint() -> str:
 
 **iOS Support: FULL ✅**
 
-The TrintzPOS license system works fully on iOS. Users may need to:
+The TrintzERP license system works fully on iOS. Users may need to:
 1. Restart app if network issues occur
 2. Re-activate if hardware fingerprint changes
 3. Use "Add to Home Screen" for best persistence

@@ -1,5 +1,5 @@
 /* ============================================================
-   TrintzPOS — Design System
+   TrintzERP — Design System
    Uses CSS custom properties so dark mode is a single variable
    flip — no long override lists needed.
    ============================================================ */
@@ -946,6 +946,51 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: #3a5470; }
 }
 
 /* ============================================================
+   GLOBAL MOBILE OVERFLOW GUARD  (all pages)
+   Many pages render data tables wider than a phone screen. The
+   base rule `table { min-width: 32rem }` forces that width, which
+   used to push the whole page sideways (horizontal scroll on the
+   body). This block contains the overflow INSIDE the content area
+   so the page itself never scrolls horizontally — the wide table
+   scrolls within its own region instead.
+   ============================================================ */
+@media (max-width: 860px) {
+    /* Never let the document scroll sideways. */
+    html, body { max-width: 100%; overflow-x: hidden; }
+
+    /* The content column (varies by page) must be allowed to shrink
+       and must clip its own horizontal overflow. */
+    .main-col, .flex-1, main, .main-layout {
+        min-width: 0;
+        max-width: 100%;
+    }
+    main { overflow-x: hidden; }
+
+    /* Any table that isn't already inside a scroll wrapper becomes
+       horizontally scrollable in place (block + auto overflow), so
+       its min-width no longer stretches the page. */
+    main table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Tables that ARE inside a dedicated scroll wrapper keep normal
+       table layout (the wrapper handles scrolling). */
+    .table-wrap table, .tbl-scroll table, .invoice-items table,
+    .table-responsive table, [data-table-scroll] table {
+        display: table;
+    }
+    .table-wrap, .tbl-scroll, .table-responsive, [data-table-scroll] {
+        width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+
+    /* Long unbroken strings (codes, URLs, GST numbers) must wrap. */
+    main p, main li, main h1, main h2, main h3, .hd-title { overflow-wrap: anywhere; }
+}
+
+/* ============================================================
    SHARED LAYOUT  (all pages — do NOT repeat in per-page <style>)
    ============================================================ */
 #overlay {
@@ -973,6 +1018,84 @@ main { flex: 1; }
     /* Smooth slide in/out on mobile */
     transition: transform .2s ease;
 }
+
+/* ── Branded sidebar header (logo mark + product wordmark) ──────────────────
+   Replaces the small white logo pill with a professional icon+wordmark lockup
+   that reads clearly on the dark sidebar and adapts to rail-collapse mode. */
+.snav-brand {
+    display: flex; align-items: center; gap: 11px;
+    padding: 18px 16px 14px; margin-bottom: 4px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.snav-brand .snav-brand-mark {
+    width: 40px; height: 40px; flex: 0 0 auto; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.97);
+    box-shadow: 0 4px 12px -4px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.6);
+}
+.snav-brand .snav-brand-mark img { width: 30px; height: 30px; object-fit: contain; display: block; }
+.snav-brand .snav-brand-text { display: flex; flex-direction: column; line-height: 1; overflow: hidden; }
+.snav-brand .snav-brand-name {
+    font-size: 1.12rem; font-weight: 800; letter-spacing: -.4px; color: #ffffff; white-space: nowrap;
+}
+/* "ERP" in the brand's magenta→purple gradient. The sidebar surface stays dark
+   in both themes, so this always uses the bright (dark-surface) gradient. */
+.snav-brand .snav-brand-name .accent {
+    color: #c084fc; /* fallback if background-clip:text unsupported */
+    background: linear-gradient(90deg, #e560c4 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.snav-brand .snav-brand-sub {
+    font-size: .58rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(199,210,254,.72); margin-top: 4px; white-space: nowrap;
+}
+
+/* ── Brand mark: red dot on the "i" in Trintz ────────────────────────────────
+   Wrap the letter as <span class="i-dot">i</span>. We shrink the glyph's own
+   line-height to visually recede its natural dot, then paint a crisp red
+   circle in its place via ::after — sized in `em` so it scales with whatever
+   font-size the wordmark is rendered at (sidebar, header, login badge, …). */
+.i-dot { position: relative; display: inline-block; }
+.i-dot::after {
+    content: ""; position: absolute; left: 50%; top: 0.02em;
+    width: 0.17em; height: 0.17em; border-radius: 50%;
+    background: #e11d48;
+    box-shadow: 0 0 0.05em rgba(225,29,72,.5);
+    transform: translateX(-50%);
+}
+
+/* ── TrintzERP wordmark — theme-aware (for headers, login, light surfaces) ──
+   Light mode: ink "Trintz" + deep magenta→purple gradient "ERP".
+   Dark mode:  white "Trintz" + brighter gradient (matches the brand lockup). */
+.brand-word {
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: #1f2937;
+}
+html.dark .brand-word,
+[data-theme="dark"] .brand-word { color: #ffffff; }
+
+.brand-erp {
+    color: #a01b88; /* fallback */
+    background: linear-gradient(90deg, #c026a6 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+html.dark .brand-erp,
+[data-theme="dark"] .brand-erp {
+    color: #c084fc; /* fallback */
+    background: linear-gradient(90deg, #e560c4 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+/* In rail (icon-only) mode, center the mark and hide the wordmark. */
+html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand .snav-brand-text { opacity: 0; width: 0; }
 
 /* On mobile (< 768px) sidebar slides off-canvas by default.
    Tailwind's -translate-x-full class does this; we add z-index

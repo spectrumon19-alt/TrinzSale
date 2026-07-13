@@ -425,7 +425,7 @@ def export_complete(payload):
         return Response(
             output.getvalue(),
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename=trintzpos_complete_backup_{datetime.now().strftime('%Y%m%d')}.xlsx"}
+            headers={"Content-Disposition": f"attachment; filename=trintzerp_complete_backup_{datetime.now().strftime('%Y%m%d')}.xlsx"}
         )
 
     except Exception as e:

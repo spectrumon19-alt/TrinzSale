@@ -18,10 +18,10 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Credit Management - TrintzPOS POS</title>
+    <title>Credit Management - TrintzERP POS</title>
     <!-- Load Tailwind CSS for modern styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="assets/vendor/tailwind.js"></script>
+    <link href="assets/vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
     <style>
         /* ════════════════════════════════════════════════════════════════
@@ -922,22 +922,28 @@
         }
 
         // Handle customer registration
+        // Guard against double-submit creating duplicate customers
+        let _custRegistering = false;
+
         async function handleCustomerRegistration(e) {
             e.preventDefault();
-            
+
+            // Re-entrancy guard: ignore repeat submits while a request is in flight
+            if (_custRegistering) return;
+
             const name = document.getElementById('customer-name').value.trim();
             const mobile = document.getElementById('customer-mobile').value.trim();
             const email = document.getElementById('customer-email').value.trim();
             const address = document.getElementById('customer-address').value.trim();
             const initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
             // Removed invoiceNo field
-            
+
             // Validation
             if (!name || !mobile) {
                 alert('Please fill in all required fields (Name and Mobile).');
                 return;
             }
-            
+
             // Create customer data object
             const customerData = {
                 name: name,
@@ -947,7 +953,13 @@
                 // Removed invoice_no field
                 initial_balance: initialBalance
             };
-            
+
+            // Lock submission and disable the submit button until done
+            _custRegistering = true;
+            const regBtn = e.target && e.target.querySelector
+                ? e.target.querySelector('button[type="submit"]') : null;
+            if (regBtn) { regBtn.disabled = true; regBtn.style.opacity = '0.6'; regBtn.style.cursor = 'not-allowed'; }
+
             try {
                 // Send request to API
                 const response = await fetch(`${API_BASE}/customers`, {
@@ -982,6 +994,10 @@
             } catch (error) {
                 console.error('Error registering customer:', error);
                 alert(`Error registering customer: ${error.message}`);
+            } finally {
+                // Release the submit guard and re-enable the button
+                _custRegistering = false;
+                if (regBtn) { regBtn.disabled = false; regBtn.style.opacity = ''; regBtn.style.cursor = ''; }
             }
         }
 
@@ -1322,26 +1338,38 @@
             transactionModal.classList.add('hidden');
         }
 
+        // Guard against double/triple-submit creating duplicate transactions
+        let _txnSubmitting = false;
+
         // Handle transaction
         async function handleTransaction(e) {
             e.preventDefault();
-            
+
+            // Re-entrancy guard: ignore repeat submits while a request is in flight
+            if (_txnSubmitting) return;
+
             const customerId = document.getElementById('customer-id-modal').value;
             const transactionType = document.getElementById('transaction-type').value;
             const amount = parseFloat(document.getElementById('transaction-amount').value);
             // Removed invoiceNo field
             const note = document.getElementById('transaction-note').value.trim();
-            
+
             // Validation
             if (!transactionType) {
                 alert('Please select a transaction type.');
                 return;
             }
-            
+
             if (!amount || amount <= 0) {
                 alert('Please enter a valid amount.');
                 return;
             }
+
+            // Lock submission and disable the submit button until we're done
+            _txnSubmitting = true;
+            const submitBtn = e.target && e.target.querySelector
+                ? e.target.querySelector('button[type="submit"]') : null;
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6'; submitBtn.style.cursor = 'not-allowed'; }
             
             try {
                 // Show loading indicator
@@ -1387,6 +1415,9 @@
             } finally {
                 // Hide loading indicator
                 hideLoading();
+                // Release the submit guard and re-enable the button
+                _txnSubmitting = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = ''; submitBtn.style.cursor = ''; }
             }
         }
 

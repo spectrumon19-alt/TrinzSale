@@ -1,5 +1,5 @@
 """
-TrintzPOS License Manager — v2 (RSA asymmetric verification)
+TrintzERP License Manager — v2 (RSA asymmetric verification)
 
 Design:
   - License keys are signed with Trintz's RSA-2048 private key (never ships to clients).

@@ -27,6 +27,14 @@ def _ensure_token_usage_table(conn):
                 total_tokens    INTEGER      NOT NULL DEFAULT 0
             )
         """)
+        # Additive migration: prompt-cache usage columns (see routes/ai_settings.py
+        # call_provider). IF NOT EXISTS makes this a no-op once applied — safe to
+        # run on every request.
+        c.execute("""
+            ALTER TABLE ai_token_usage
+                ADD COLUMN IF NOT EXISTS cache_read_tokens     INTEGER NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS cache_creation_tokens INTEGER NOT NULL DEFAULT 0
+        """)
     conn.commit()
 
 
@@ -44,15 +52,35 @@ def token_usage_summary(payload):
         # ── KPIs ──────────────────────────────────────────────────────────────
         cur.execute("""
             SELECT
-                COALESCE(SUM(total_tokens), 0)  AS total_tokens,
-                COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
-                COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                COALESCE(SUM(total_tokens), 0)          AS total_tokens,
+                COALESCE(SUM(prompt_tokens), 0)         AS prompt_tokens,
+                COALESCE(SUM(output_tokens), 0)         AS output_tokens,
+                COALESCE(SUM(cache_read_tokens), 0)     AS cache_read_tokens,
+                COALESCE(SUM(cache_creation_tokens), 0) AS cache_creation_tokens,
                 COUNT(*)                         AS ai_calls,
                 COUNT(DISTINCT user_id)          AS active_users
             FROM ai_token_usage
             WHERE called_at >= NOW() - INTERVAL '%s days'
         """, (days,))
         kpis = dict(cur.fetchone())
+
+        # Prompt-cache economics: reads cost ~0.1x, writes ~1.25x of normal
+        # input price (see routes/ai_settings.py call_provider). Express the
+        # saving as "normal-price-equivalent tokens avoided" so it's readable
+        # without needing the reader to know the pricing formula.
+        #
+        # IMPORTANT: prompt_tokens (Anthropic's usage.input_tokens) is the
+        # UNCACHED REMAINDER only — it does NOT include cache_read/cache_creation
+        # tokens. True total input = prompt_tokens + cache_read + cache_creation.
+        # Hit rate must be computed against that true total, not against
+        # prompt_tokens alone (which would over-report and can exceed 100%).
+        cache_read = kpis['cache_read_tokens']
+        cache_write = kpis['cache_creation_tokens']
+        true_total_input = kpis['prompt_tokens'] + cache_read + cache_write
+        kpis['cache_savings_equivalent_tokens'] = round(cache_read * 0.9)
+        kpis['cache_hit_rate_pct'] = (
+            round((cache_read / true_total_input) * 100, 1) if true_total_input else 0.0
+        )
 
         # ── Daily consumption ─────────────────────────────────────────────────
         cur.execute("""

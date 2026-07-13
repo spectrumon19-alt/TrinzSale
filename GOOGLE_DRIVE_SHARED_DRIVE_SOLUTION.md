@@ -39,7 +39,7 @@ Check: https://admin.google.com (if you can access, you have Google Workspace)
 
 2. **Create Shared Drive:**
    - Click **"New"** → **"Shared drive"**
-   - Name: `TrintzPOS Backups`
+   - Name: `TrintzERP Backups`
    - Create
 
 3. **Get Shared Drive ID:**
@@ -62,9 +62,9 @@ Check: https://admin.google.com (if you can access, you have Google Workspace)
 
 ---
 
-## 📋 Step 3: Update TrintzPOS Settings
+## 📋 Step 3: Update TrintzERP Settings
 
-1. **Go to TrintzPOS → Backup Settings**
+1. **Go to TrintzERP → Backup Settings**
 2. **Update Folder ID** to: (your Shared Drive ID)
 3. **Click Save**
 4. **Click "Test Google Drive Connection"** → Should pass ✅
@@ -119,7 +119,7 @@ Check: https://admin.google.com (if you can access, you have Google Workspace)
 4. Share with service account
 5. Takes 5 minutes
 
-### **Step 3: Update TrintzPOS**
+### **Step 3: Update TrintzERP**
 1. Update Folder ID to Shared Drive ID
 2. Test and run backup
 3. Takes 2 minutes
@@ -149,7 +149,7 @@ If you decide to get Google Workspace:
 4. **Create Shared Drive** in Google Drive
 5. **Copy Shared Drive ID**
 6. **Share with service account**
-7. **Update TrintzPOS Folder ID**
+7. **Update TrintzERP Folder ID**
 8. **Run backup** ✅
 
 ---
@@ -186,7 +186,7 @@ Do you have Google Workspace?
 Once you have Google Workspace:
 1. ✅ Create Shared Drive
 2. ✅ Share with service account
-3. ✅ Configure TrintzPOS
+3. ✅ Configure TrintzERP
 4. ✅ Test and verify backup
 
 Just let me know when you have the Shared Drive ID ready!

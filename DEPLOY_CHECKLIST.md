@@ -1,4 +1,4 @@
-# TrintzPOS Render Deployment Checklist
+# TrintzERP Render Deployment Checklist
 
 ## Pre-Deployment (Local)
 - [ ] All code changes committed and pushed to GitHub
@@ -33,7 +33,7 @@
 ### Email (Brevo)
 - [ ] `BREVO_API_KEY` = xkeysib-...
 - [ ] `BREVO_SENDER_EMAIL` = spectrumon19@gmail.com
-- [ ] `BREVO_SENDER_NAME` = TrintzPOS Support
+- [ ] `BREVO_SENDER_NAME` = TrintzERP Support
 - [ ] `BREVO_SMTP_USER` = aaa6fb001@smtp-brevo.com
 - [ ] `BREVO_SMTP_PASSWORD` = xsmtpsib-...
 

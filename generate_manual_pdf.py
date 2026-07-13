@@ -1,5 +1,5 @@
 """
-generate_manual_pdf.py  —  TrintzPOS User Manual PDF generator
+generate_manual_pdf.py  —  TrintzERP User Manual PDF generator
 Uses reportlab. Run: python generate_manual_pdf.py
 """
 
@@ -84,7 +84,7 @@ def draw_cover(canvas, doc):
     # App name
     canvas.setFont('Helvetica-Bold', 36)
     canvas.setFillColor(WHITE)
-    canvas.drawCentredString(W/2, H*0.73, 'TrintzPOS')
+    canvas.drawCentredString(W/2, H*0.73, 'TrintzERP')
 
     canvas.setFont('Helvetica', 13)
     canvas.setFillColor(colors.HexColor('#b8d0f8'))
@@ -150,7 +150,7 @@ def draw_page(canvas, doc):
     canvas.rect(0, H - 13*mm, W, 13*mm, fill=1, stroke=0)
     canvas.setFont('Helvetica-Bold', 8)
     canvas.setFillColor(WHITE)
-    canvas.drawString(MARGIN, H - 8.5*mm, 'TrintzPOS — User & System Manual')
+    canvas.drawString(MARGIN, H - 8.5*mm, 'TrintzERP — User & System Manual')
     canvas.setFont('Helvetica', 8)
     canvas.setFillColor(colors.HexColor('#90aad4'))
     canvas.drawRightString(W - MARGIN, H - 8.5*mm, 'by Trintz Data Labs')
@@ -166,7 +166,7 @@ def draw_page(canvas, doc):
     canvas.drawCentredString(W/2, 3.5*mm, f'Page {pg}')
     canvas.setFont('Helvetica', 8)
     canvas.setFillColor(colors.HexColor('#6090c0'))
-    canvas.drawRightString(W - MARGIN, 3.5*mm, 'trintzpos.com')
+    canvas.drawRightString(W - MARGIN, 3.5*mm, 'trintzerp.com')
 
     canvas.restoreState()
 
@@ -187,9 +187,9 @@ def build_doc(filename):
         filename,
         pagesize=A4,
         pageTemplates=[cover_tpl, inner_tpl],
-        title='TrintzPOS — Complete User & System Manual',
+        title='TrintzERP — Complete User & System Manual',
         author='Trintz Data Labs',
-        subject='TrintzPOS User Manual',
+        subject='TrintzERP User Manual',
     )
     return doc
 
@@ -389,7 +389,7 @@ def parse_manual(filepath):
             pending_table = []
 
         # Skip separator lines and initial title
-        if EQ_RE.match(stripped) or (stripped.startswith('TRINTZPOS — COMPLETE USER') and i < 10):
+        if EQ_RE.match(stripped) or (stripped.startswith('TRINTZERP — COMPLETE USER') and i < 10):
             i += 1
             continue
 
@@ -485,8 +485,8 @@ def parse_manual(filepath):
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     base = os.path.dirname(os.path.abspath(__file__))
-    src  = os.path.join(base, 'trintzpos_manual.txt')
-    dst  = os.path.join(base, 'trintzpos_manual.pdf')
+    src  = os.path.join(base, 'trintzerp_manual.txt')
+    dst  = os.path.join(base, 'trintzerp_manual.pdf')
 
     print(f'Source : {src}')
     print(f'Output : {dst}')

@@ -5,77 +5,33 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Activity - TrintzPOS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Login Activity - TrintzERP</title>
+    <script src="assets/vendor/tailwind.js"></script>
+    <link href="assets/vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
     <style>
         .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
     </style>
 </head>
 <body class="bg-gray-100">
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <nav id="sidebar" class="bg-gray-800 text-white w-64 space-y-2 py-4 px-2 fixed h-full overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200 z-50">
-            <div class="flex justify-center mb-4"><div class="bg-white rounded-lg p-1"><img src="assets/logo.png" alt="Trintz Data Labs" style="height:40px;width:auto;object-fit:contain;display:block;"></div></div>
-            
-            <a href="dashboard.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🏠 Dashboard
+    <div id="overlay"></div>
+    <div class="main-layout flex min-h-screen">
+        <!-- Sidebar (links injected by renderSidebarLinks) -->
+        <nav id="sidebar" data-testid="sidebar"
+             class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50"
+             style="width:220px;">
+            <a href="dashboard.html" class="snav-brand">
+                <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+                <span class="snav-brand-text">
+                    <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
+                    <span class="snav-brand-sub">Retail &amp; Billing</span>
+                </span>
             </a>
-            <a href="index.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🛒 Sales
-            </a>
-            <a href="returns.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🔄 Returns
-            </a>
-            <a href="purchase.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📥 Purchase
-            </a>
-            <a href="inventory.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📦 Inventory
-            </a>
-            <a href="reports.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📊 Reports
-            </a>
-            <a href="admin.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                ⚙️ Admin
-            </a>
-            <a href="service.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🔧 Service
-            </a>
-            <a href="creditManagement.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                💳 Credit Management
-            </a>
-            <a href="SupplierCreditManagement.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🏢 Supplier Credit
-            </a>
-            <a href="Data Upload.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📤 Data Upload
-            </a>
-            <a href="qry2db.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📝 Query to DB
-            </a>
-            <a href="Supplier Management.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                🚚 Supplier Management
-            </a>
-            <a href="Product Management.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📦 Product Management
-            </a>
-            <a href="User Management.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                👥 User Management
-            </a>
-            <a href="Invoice Viewer.html" class="block py-2 px-3 rounded transition duration-200 hover:bg-gray-700 text-sm">
-                📄 Invoice Viewer
-            </a>
-            <a href="login-activity.html" class="block py-2 px-3 rounded bg-blue-600 text-sm">
-                🔐 Login Activity
-            </a>
-
-            <div class="px-4 mt-auto pt-4 sidebar-pin-area"></div>
+            <div class="px-4 mt-auto sidebar-pin-area"></div>
         </nav>
 
         <!-- Main Content -->
-        <div class="flex-1 md:ml-64">
+        <div class="flex-1 main-col">
             <!-- Header -->
             <header class="bg-white shadow-md p-4 flex justify-between items-center">
                 <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-200">
@@ -85,8 +41,12 @@
                     <i class="fas fa-sign-in-alt text-blue-500 mr-2"></i>
                     Login Activity Monitor
                 </h1>
-                <button id="nav-logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                <button id="nav-logout-btn" data-testid="logout-btn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Logout
                 </button>
             </header>
 
@@ -226,9 +186,10 @@
 
         // Menu toggle
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderSidebarLinks === 'function') renderSidebarLinks();
             initializeSidebarPin();
             window.sidebarInitialized = true;
-            
+
             const menuToggle = document.getElementById('menu-toggle');
             if (menuToggle) {
                 menuToggle.addEventListener('click', toggleMenu);

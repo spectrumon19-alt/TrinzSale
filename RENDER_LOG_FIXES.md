@@ -63,7 +63,7 @@ async function loadLicenseStatus() {
 ```html
 <footer style="...">
     <p style="...">
-        &copy; 2026 TrintzPOS. All rights reserved. |
+        &copy; 2026 TrintzERP. All rights reserved. |
         <a href="#">Privacy Policy</a> |
         <a href="#">Terms of Service</a>
     </p>

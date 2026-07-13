@@ -77,7 +77,7 @@ def _sign(private_key, payload_b64: str) -> str:
 
 def main():
     print("=" * 60)
-    print("  TrintzPOS License Key Generator  —  Trintz Data Labs")
+    print("  TrintzERP License Key Generator  —  Trintz Data Labs")
     print("=" * 60)
     print()
 

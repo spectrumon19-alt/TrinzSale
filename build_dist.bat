@@ -1,12 +1,12 @@
 @echo off
 REM ─────────────────────────────────────────────────────────────────────────────
-REM  TrintzPOS  —  One-click build script
-REM  Output: dist\TrintzPOS\TrintzPOS.exe
+REM  TrintzERP  —  One-click build script
+REM  Output: dist\TrintzERP\TrintzERP.exe
 REM ─────────────────────────────────────────────────────────────────────────────
 
 echo.
 echo  ===================================================
-echo   TrintzPOS Build Script
+echo   TrintzERP Build Script
 echo  ===================================================
 echo.
 
@@ -35,7 +35,7 @@ IF NOT EXIST "master.key" (
 
 REM ── 4. Clean previous build ───────────────────────────────────────────────────
 echo [STEP 3/5] Cleaning previous build...
-IF EXIST "dist\TrintzPOS" rmdir /S /Q "dist\TrintzPOS"
+IF EXIST "dist\TrintzERP" rmdir /S /Q "dist\TrintzERP"
 IF EXIST "build"           rmdir /S /Q "build"
 
 REM ── 5. Build with PyInstaller ─────────────────────────────────────────────────
@@ -45,23 +45,23 @@ IF ERRORLEVEL 1 ( echo [ERROR] PyInstaller failed. & pause & exit /b 1 )
 
 REM ── 6. Post-build: copy master.key into dist ─────────────────────────────────
 echo [STEP 5/5] Finalising distribution folder...
-copy /Y "master.key" "dist\TrintzPOS\master.key" >nul
+copy /Y "master.key" "dist\TrintzERP\master.key" >nul
 
 REM Copy .env if present (DB connection string, etc.)
 IF EXIST ".env" (
-    copy /Y ".env" "dist\TrintzPOS\.env" >nul
+    copy /Y ".env" "dist\TrintzERP\.env" >nul
     echo  Copied .env
 )
 
 echo.
 echo  ===================================================
 echo   Build complete!
-echo   Output: dist\TrintzPOS\TrintzPOS.exe
+echo   Output: dist\TrintzERP\TrintzERP.exe
 echo.
 echo   To distribute:
-echo     1. Zip the entire dist\TrintzPOS\ folder.
+echo     1. Zip the entire dist\TrintzERP\ folder.
 echo     2. Send the zip to your client.
-echo     3. Client runs TrintzPOS.exe and enters their license key.
+echo     3. Client runs TrintzERP.exe and enters their license key.
 echo.
 echo   NEVER share master.key with clients.
 echo  ===================================================

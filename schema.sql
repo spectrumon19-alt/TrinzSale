@@ -1,5 +1,5 @@
 -- ============================================================
--- TrintzPOS — COMPLETE DATABASE INITIALISATION SCRIPT
+-- TrintzERP — COMPLETE DATABASE INITIALISATION SCRIPT
 -- ============================================================
 -- Idempotent: safe to run on a fresh database or re-run on an
 -- existing one (uses CREATE TABLE IF NOT EXISTS everywhere).
@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS sales_invoice_items (
     sgst                 DECIMAL(10,2) NOT NULL,
     cgst                 DECIMAL(10,2) NOT NULL,
     total_line_amount    DECIMAL(10,2) NOT NULL,
-    discount_percentage  DECIMAL(5,2)  DEFAULT 0.00
+    discount_percentage  DECIMAL(5,2)  DEFAULT 0.00,
+    rebate_amount        DECIMAL(10,2) DEFAULT 0.00
 );
 
 -- Atomic invoice number sequence (prevents race-condition duplicates)

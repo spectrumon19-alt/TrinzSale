@@ -554,7 +554,7 @@ def verify_registration():
         token = generate_token(new_user['user_id'], new_user['role'], new_user['username'])
         logger.info("New user registered: %s (%s)", new_user['username'], email)
         resp = jsonify({
-            'message': 'Registration complete! Welcome to TrintzPOS.',
+            'message': 'Registration complete! Welcome to TrintzERP.',
             'token': token,
             'user': {
                 'user_id': new_user['user_id'],

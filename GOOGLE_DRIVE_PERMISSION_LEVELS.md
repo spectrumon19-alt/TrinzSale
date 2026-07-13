@@ -69,7 +69,7 @@ Editor  ← ✅ Fixed!
 
 After changing permission:
 1. **Wait 30 seconds** - Google Drive needs time to propagate the change
-2. Go back to TrintzPOS
+2. Go back to TrintzERP
 3. Click **"Test Google Drive Connection"** again
 4. Should still show: ✅ Connected
 5. Click **"Backup Now"**
@@ -131,7 +131,7 @@ trintzserviceaccount@trintzsqlbkppostgresql.iam.gserviceaccount.com
 Editor ✅
 ```
 
-### **Check 2: TrintzPOS Test**
+### **Check 2: TrintzERP Test**
 1. Go to Backup Settings
 2. Click "Test Google Drive Connection"
 3. Should show: ✅ Connected successfully
@@ -146,7 +146,7 @@ Editor ✅
 
 ### **Check 4: Verify in Google Drive**
 1. Go to your Google Drive backup folder
-2. Should see file: `trintzpos_backup_YYYYMMDD_HHMMSS.sql.gz` ✅
+2. Should see file: `trintzerp_backup_YYYYMMDD_HHMMSS.sql.gz` ✅
 
 ---
 
@@ -161,7 +161,7 @@ Editor ✅
 ### **Problem: Still get 404 error after changing to Editor**
 **Solution:**
 1. Wait another 30 seconds for Google Drive to sync
-2. Refresh TrintzPOS page
+2. Refresh TrintzERP page
 3. Click "Test Google Drive Connection" again
 4. Run backup again
 

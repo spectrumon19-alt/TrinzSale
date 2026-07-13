@@ -1,6 +1,6 @@
 """
 backup_oauth.py — OAuth flow for Google Drive backups
-Allows users to authorize TrintzPOS to access their Google Drive
+Allows users to authorize TrintzERP to access their Google Drive
 and upload backups using their account (not a service account)
 """
 
@@ -141,7 +141,7 @@ def oauth_callback():
         <body style="font-family: Arial; padding: 40px; text-align: center;">
             <h1>✅ Authorization Successful!</h1>
             <p>Google Drive access authorized for: {user_info.get('email')}</p>
-            <p>You can now close this window and return to TrintzPOS.</p>
+            <p>You can now close this window and return to TrintzERP.</p>
             <p>Your backups will upload to the Google Drive folder you specify.</p>
             <script>
                 window.opener.location.reload();

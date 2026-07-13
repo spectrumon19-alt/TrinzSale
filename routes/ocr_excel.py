@@ -519,7 +519,7 @@ def _make_professional_excel(headers, rows, cfg):
 
     # ── Workbook metadata ─────────────────────────────────────────────────────
     wb.properties.title   = title or 'Export'
-    wb.properties.creator = author or 'TrintzPOS'
+    wb.properties.creator = author or 'TrintzERP'
     wb.properties.created = datetime.now()
 
     return wb

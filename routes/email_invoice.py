@@ -32,7 +32,7 @@ def _send_email(to_email, to_name, subject, html_body, attachments=None):
     """
     api_key      = os.environ.get('BREVO_API_KEY', '')
     sender_email = os.environ.get('BREVO_SENDER_EMAIL', '')
-    sender_name  = os.environ.get('BREVO_SENDER_NAME', 'TrintzPOS')
+    sender_name  = os.environ.get('BREVO_SENDER_NAME', 'TrintzERP')
 
     if not api_key or not sender_email:
         logger.warning('Email not configured (BREVO_API_KEY / BREVO_SENDER_EMAIL missing)')
@@ -255,7 +255,7 @@ def _build_html(invoice, items, store):
           <td colspan="2" style="padding-top:12px;">
             <div style="font-size:10px;font-weight:700;margin-bottom:4px;font-family:'Segoe UI',sans-serif;">Invoice Reference Number (IRN)</div>
             <div style="font-size:8px;font-family:'Courier New',monospace;word-break:break-all;line-height:1.5;border:1px solid #ccc;padding:5px 7px;background:#f9f9f9;">{irn}</div>
-            <div style="font-size:9px;color:#666;margin-top:3px;font-family:'Segoe UI',sans-serif;">QR code attached &bull; E-Invoice verified &bull; Powered by TrintzPOS</div>
+            <div style="font-size:9px;color:#666;margin-top:3px;font-family:'Segoe UI',sans-serif;">QR code attached &bull; E-Invoice verified &bull; Powered by TrintzERP</div>
           </td>
         </tr>"""
 
@@ -395,7 +395,7 @@ def _build_html(invoice, items, store):
       <!-- ══ POWERED BY ═════════════════════════════════════════════════════ -->
       <div style="margin-top:18px;padding-top:10px;border-top:1px dashed #e5e7eb;
                   text-align:center;font-size:10px;color:#bbb;font-family:'Segoe UI',sans-serif;">
-        Powered by &nbsp;<strong style="color:#999;">TrintzPOS</strong>
+        Powered by &nbsp;<strong style="color:#999;">TrintzERP</strong>
         &nbsp;&mdash;&nbsp; Smart Billing for Agri Retail
       </div>
 
@@ -535,7 +535,7 @@ def _build_pdf_html(invoice: dict, items: list, store: dict, qr_bytes: bytes | N
             f'<p style="font-size:9px;font-weight:bold;margin:10px 0 3px;">Invoice Reference Number (IRN)</p>'
             f'<p style="font-size:8px;font-family:Courier,monospace;word-break:break-all;'
             f'border:1px solid #ccc;padding:4px;background:#f9f9f9;margin:0;">{irn}</p>'
-            f'<p style="font-size:8px;color:#555;margin:2px 0 0;">E-Invoice verified &bull; Powered by TrintzPOS</p>'
+            f'<p style="font-size:8px;color:#555;margin:2px 0 0;">E-Invoice verified &bull; Powered by TrintzERP</p>'
         )
 
     qr_block = ''
@@ -606,7 +606,7 @@ def _build_pdf_html(invoice: dict, items: list, store: dict, qr_bytes: bytes | N
                 f'<p style="font-size:8.5px;font-weight:700;margin:0 0 3px;color:#333;">Invoice Reference No. (IRN)</p>'
                 f'<p style="font-size:7.5px;font-family:Courier,monospace;word-break:break-all;'
                 f'border:1px solid #ddd;padding:4px 5px;background:#f9f9f9;margin:0;color:#444;">{irn}</p>'
-                f'<p style="font-size:7.5px;color:#888;margin:3px 0 0;">E-Invoice verified &bull; Powered by TrintzPOS</p>'
+                f'<p style="font-size:7.5px;color:#888;margin:3px 0 0;">E-Invoice verified &bull; Powered by TrintzERP</p>'
                 f'</td>'
             )
         elif qr_bytes:
@@ -777,7 +777,7 @@ def _build_pdf_html(invoice: dict, items: list, store: dict, qr_bytes: bytes | N
                 border-top:1px solid #555;width:130px;">Authorised Signatory</p>
     </td>
     <td style="border-top:1px solid #ddd;padding-top:6px;width:50%;vertical-align:top;text-align:right;">
-      <p style="font-size:8px;color:#bbb;margin:0;">Powered by <strong style="color:#999;">TrintzPOS</strong></p>
+      <p style="font-size:8px;color:#bbb;margin:0;">Powered by <strong style="color:#999;">TrintzERP</strong></p>
       <p style="font-size:7.5px;color:#ccc;margin:2px 0 0;">Smart Billing for Agri Retail</p>
     </td>
   </tr>
@@ -873,7 +873,7 @@ def _build_email_body(inv_number: str, cust_name: str, inv_date: str) -> str:
   <tr>
     <td style="padding:12px 28px;border-top:1px dashed #e5e7eb;text-align:center;
                font-size:10px;color:#bbb;">
-      Powered by <strong style="color:#999;">TrintzPOS</strong>
+      Powered by <strong style="color:#999;">TrintzERP</strong>
       &nbsp;&mdash;&nbsp; Smart Billing for Agri Retail
     </td>
   </tr>

@@ -2,7 +2,7 @@
 set -e
 
 echo "============================================================"
-echo "TrintzPOS — Render build script"
+echo "TrintzERP — Render build script"
 echo "============================================================"
 
 echo "Python version: $(python --version)"
@@ -29,7 +29,7 @@ try:
     from io import BytesIO
     from xhtml2pdf import pisa
     buf = BytesIO()
-    result = pisa.CreatePDF('<p>TrintzPOS OK</p>', dest=buf)
+    result = pisa.CreatePDF('<p>TrintzERP OK</p>', dest=buf)
     assert not result.err and len(buf.getvalue()) > 100
     print("[PASS] xhtml2pdf rendered a test PDF successfully.")
 except Exception as e:

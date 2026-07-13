@@ -400,7 +400,7 @@ function attachEventListeners() {
                                 gst_rate: productToAdd.gst_rate,
                                 selling_rate: productToAdd.selling_rate,
                                 quantity: quantity,
-                                discount: 0
+                                rebate: 0
                             };
                             invoiceItems.push(item);
                         }
@@ -543,7 +543,7 @@ function attachEventListeners() {
                         product_id: item.product_id,
                         quantity: item.quantity,
                         selling_rate: item.selling_rate,
-                        discount: item.discount || 0
+                        rebate: item.rebate || 0
                     }))
                 };
                 
@@ -584,10 +584,10 @@ function attachEventListeners() {
                     }
 
                     // ── Online path ──────────────────────────────────────────
-                    // For credit sales, update the customer's balance
-                    if (modeOfPaymentSelect && modeOfPaymentSelect.value === 'Credit' && selectedCreditCustomer) {
-                        updateCreditCustomerBalance(invoice);
-                    }
+                    // NOTE: Credit sales are posted to the customer's ledger by the
+                    // BACKEND automatically (routes/sales.py → 'Auto-posted from credit
+                    // sale'). Do NOT post again from here — doing so double-charged the
+                    // customer (two debits per invoice) and inflated receivables.
 
                     // Show email modal (handles print + clear inside)
                     showEmailReceiptModal(invoice);
@@ -872,20 +872,23 @@ function renderInvoiceItems() {
         const quantity = typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity;
         const sellingRate = typeof item.selling_rate === 'string' ? parseFloat(item.selling_rate) : item.selling_rate;
         const gstRate = typeof item.gst_rate === 'string' ? parseFloat(item.gst_rate) : item.gst_rate;
-        const discount = typeof item.discount === 'string' ? parseFloat(item.discount) : item.discount || 0;
-        
-        // Calculate item amounts
+        // Per-line flat rebate (₹ off the line total), clamped to [0, line total]
         const lineAmount = quantity * sellingRate;
-        const discountedAmount = lineAmount * (1 - discount / 100);
+        let rebate = typeof item.rebate === 'string' ? parseFloat(item.rebate) : item.rebate || 0;
+        if (rebate < 0) rebate = 0;
+        if (rebate > lineAmount) rebate = lineAmount;
+
+        // Calculate item amounts (GST split out AFTER the flat rebate)
+        const discountedAmount = lineAmount - rebate;
         const taxableValue = discountedAmount / (1 + (gstRate / 100));
         const itemGst = discountedAmount - taxableValue;
         const sgst = itemGst / 2;
         const cgst = itemGst / 2;
-        
+
         // Update totals
         totalTaxableAmount += taxableValue;
         totalGst += itemGst;
-        totalDiscount += (lineAmount - discountedAmount);
+        totalDiscount += rebate;
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -896,11 +899,11 @@ function renderInvoiceItems() {
             <td class="align-center">${quantity}</td>
             <td class="align-right"><input type="number" class="item-rate" data-index="${index}" value="${sellingRate.toFixed(2)}" min="0" step="0.01" style="width: 80px;"></td>
             <td class="align-right">₹${taxableValue.toFixed(2)}</td>
-            <td class="align-right">₹${sgst.toFixed(2)}</td>
-            <td class="align-right">₹${cgst.toFixed(2)}</td>
             <td class="align-right">₹${discountedAmount.toFixed(2)}</td>
             <td class="align-center">
-                <input type="number" class="item-discount" data-index="${index}" value="${discount}" min="0" max="100" step="0.1" style="width: 60px; margin-right: 5px;">
+                <input type="number" class="item-rebate" data-index="${index}" value="${rebate}" min="0" step="0.01" style="width: 70px;" title="Rebate (₹ off this line)">
+            </td>
+            <td class="align-center">
                 <button class="btn-warning edit-item-btn" data-index="${index}" title="Edit Item">
                     <svg fill="currentColor" viewBox="0 0 16 16">
                         <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
@@ -917,9 +920,17 @@ function renderInvoiceItems() {
         invoiceItemsBody.appendChild(row);
     });
     
-    // Update totals
-    const discountAmount = totalTaxableAmount * (discountPercentage / 100);
-    const finalTotal = (totalTaxableAmount - discountAmount) + totalGst;
+    // ── Bill-level discount (whole-invoice %) ──────────────────────────────
+    // Applied after per-line rebates, on the summed taxable value. GST is scaled
+    // by the same (1 - disc%) factor so the split stays correct across mixed GST
+    // rates and matches the backend calculation exactly.
+    let billDisc = parseFloat(discountPercentage) || 0;
+    if (billDisc < 0) billDisc = 0;
+    if (billDisc > 100) billDisc = 100;
+    const keep = 1 - (billDisc / 100);
+    const netTaxable = totalTaxableAmount * keep;
+    const netGst = totalGst * keep;
+    const finalTotal = netTaxable + netGst;
 
     // Cart item count badge
     const countEl = document.getElementById('cart-item-count');
@@ -928,9 +939,9 @@ function renderInvoiceItems() {
         countEl.textContent = total + (total === 1 ? ' item' : ' items');
     }
 
-    // Display the totals
-    if (totalAmountSpan) totalAmountSpan.textContent = `₹${totalTaxableAmount.toFixed(2)}`;
-    if (totalGstSpan) totalGstSpan.textContent = `₹${totalGst.toFixed(2)}`;
+    // Display the totals (net of the bill discount so screen == saved invoice)
+    if (totalAmountSpan) totalAmountSpan.textContent = `₹${netTaxable.toFixed(2)}`;
+    if (totalGstSpan) totalGstSpan.textContent = `₹${netGst.toFixed(2)}`;
     if (grandTotalSpan) grandTotalSpan.textContent = `₹${finalTotal.toFixed(2)}`;
     refreshUpiQr(finalTotal);
     
@@ -950,15 +961,17 @@ function renderInvoiceItems() {
         });
     });
     
-    // Add event listeners to discount inputs
-    document.querySelectorAll('.item-discount').forEach(input => {
+    // Add event listeners to rebate inputs (flat ₹ off the line total)
+    document.querySelectorAll('.item-rebate').forEach(input => {
         input.addEventListener('change', function() {
             const index = parseInt(this.getAttribute('data-index'));
-            const discount = parseFloat(this.value) || 0;
-            if (discount < 0) discount = 0;
-            if (discount > 100) discount = 100;
-            this.value = discount;
-            updateItemDiscount(index, discount);
+            const item = invoiceItems[index];
+            const lineTotal = item ? (item.quantity * item.selling_rate) : 0;
+            let rebate = parseFloat(this.value) || 0;
+            if (rebate < 0) rebate = 0;
+            if (rebate > lineTotal) rebate = lineTotal;
+            this.value = rebate;
+            updateItemRebate(index, rebate);
         });
     });
     
@@ -983,36 +996,50 @@ function editInvoiceItem(index) {
     const item = invoiceItems[index];
     if (!item) return;
     
-    // Create a modal for editing multiple fields
+    // Create a modal for editing multiple fields (theme-aware — light & dark)
+    const inputStyle = "width:100%;padding:0.55rem 0.7rem;margin-top:0.3rem;box-sizing:border-box;" +
+        "background:var(--surface-alt);color:var(--text-base);border:1px solid var(--surface-border);" +
+        "border-radius:8px;font-size:0.9rem;font-family:inherit;outline:none;";
+    const labelStyle = "display:block;font-size:0.72rem;font-weight:600;text-transform:uppercase;" +
+        "letter-spacing:0.04em;color:var(--text-muted);";
     const modalHtml = `
-        <div id="edit-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; justify-content: center; align-items: center;">
-            <div style="background: white; padding: 20px; border-radius: 5px; width: 300px;">
-                <h3>Edit Item</h3>
-                <div>
-                    <label>Product: ${item.name}</label>
+        <div id="edit-modal" style="position:fixed;inset:0;background:rgba(2,6,23,0.62);backdrop-filter:blur(2px);z-index:1000;display:flex;justify-content:center;align-items:center;padding:1rem;">
+            <div role="dialog" aria-modal="true" aria-labelledby="edit-modal-title"
+                 style="background:var(--surface);color:var(--text-base);width:340px;max-width:100%;border-radius:14px;
+                        border:1px solid var(--surface-border);box-shadow:0 20px 55px -12px rgba(0,0,0,0.55);overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:0.55rem;padding:1rem 1.25rem;border-bottom:1px solid var(--surface-border);">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:rgba(99,102,241,0.14);color:#818cf8;">
+                        <i class="fas fa-pen" style="font-size:0.78rem;"></i>
+                    </span>
+                    <h3 id="edit-modal-title" style="margin:0;font-size:1rem;font-weight:700;color:var(--text-base);">Edit Item</h3>
                 </div>
-                <div>
-                    <label for="edit-quantity">Quantity:</label>
-                    <input type="number" id="edit-quantity" value="${item.quantity}" min="1" style="width: 100%; padding: 5px; margin: 5px 0;">
+                <div style="padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:0.85rem;">
+                    <div style="font-size:0.82rem;color:var(--text-muted);">
+                        Product: <span style="color:var(--text-base);font-weight:600;">${item.name}</span>
+                    </div>
+                    <div>
+                        <label for="edit-quantity" style="${labelStyle}">Quantity</label>
+                        <input type="number" id="edit-quantity" value="${item.quantity}" min="1" style="${inputStyle}">
+                    </div>
+                    <div>
+                        <label for="edit-rate" style="${labelStyle}">Rate (₹)</label>
+                        <input type="number" id="edit-rate" value="${item.selling_rate.toFixed(2)}" min="0" step="0.01" style="${inputStyle}">
+                    </div>
+                    <div>
+                        <label for="edit-rebate" style="${labelStyle}">Rebate (₹)</label>
+                        <input type="number" id="edit-rebate" value="${item.rebate || 0}" min="0" step="0.01" style="${inputStyle}">
+                    </div>
                 </div>
-                <div>
-                    <label for="edit-rate">Rate:</label>
-                    <input type="number" id="edit-rate" value="${item.selling_rate.toFixed(2)}" min="0" step="0.01" style="width: 100%; padding: 5px; margin: 5px 0;">
-                </div>
-                <div>
-                    <label for="edit-discount">Discount (%):</label>
-                    <input type="number" id="edit-discount" value="${item.discount || 0}" min="0" max="100" step="0.1" style="width: 100%; padding: 5px; margin: 5px 0;">
-                </div>
-                <div style="margin-top: 10px; display: flex; gap: 10px;">
-                    <button id="save-edit" class="btn-success" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px;">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                <div style="display:flex;gap:0.65rem;padding:0 1.25rem 1.25rem;">
+                    <button id="save-edit" class="btn-success" style="flex:1;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.6rem;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
                             <path d="M10.97 4.97a.75.75 0 0 1 1.071 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.235.235 0 0 1 .02-.022z"/>
                         </svg>
                         Save
                     </button>
-                    <button id="cancel-edit" class="btn-secondary" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px;">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 5px;">
+                    <button id="cancel-edit" class="btn-secondary" style="flex:1;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.6rem;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                             <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
                         </svg>
@@ -1030,19 +1057,21 @@ function editInvoiceItem(index) {
     document.getElementById('save-edit').addEventListener('click', function() {
         const newQuantity = parseInt(document.getElementById('edit-quantity').value);
         const newRate = parseFloat(document.getElementById('edit-rate').value) || 0;
-        const newDiscount = parseFloat(document.getElementById('edit-discount').value) || 0;
-        
+        let newRebate = parseFloat(document.getElementById('edit-rebate').value) || 0;
+
         if (!isNaN(newQuantity) && newQuantity > 0) {
             item.quantity = newQuantity;
         }
-        
+
         if (!isNaN(newRate) && newRate >= 0) {
             item.selling_rate = newRate;
         }
-        
-        if (!isNaN(newDiscount) && newDiscount >= 0 && newDiscount <= 100) {
-            item.discount = newDiscount;
-        }
+
+        // Clamp rebate to the (possibly updated) line total
+        const lineTotal = item.quantity * item.selling_rate;
+        if (newRebate < 0) newRebate = 0;
+        if (newRebate > lineTotal) newRebate = lineTotal;
+        item.rebate = newRebate;
         
         // Remove modal and refresh invoice
         document.getElementById('edit-modal').remove();
@@ -1062,9 +1091,9 @@ function editInvoiceItem(index) {
     });
 }
 
-function updateItemDiscount(index, discount) {
+function updateItemRebate(index, rebate) {
     if (invoiceItems[index]) {
-        invoiceItems[index].discount = discount;
+        invoiceItems[index].rebate = rebate;
         renderInvoiceItems();
     }
 }
@@ -1822,7 +1851,7 @@ function addScannedProductToCart(product) {
             gst_rate:     product.gst_rate,
             selling_rate: product.selling_rate,
             quantity:     1,
-            discount:     0
+            rebate:       0
         });
         showScanFeedback('success', 'Added: ' + product.name);
     }

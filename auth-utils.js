@@ -162,6 +162,10 @@ const SIDEBAR_NAV_LINKS = [
     // OCR → Excel and License were removed from the sidebar to reduce clutter.
     // They remain fully reachable as tiles inside the Admin Panel (admin.html).
     // The Admin Panel is the single entry point for all administrative tools.
+
+    { group: 'Help' },
+    // `always: true` → shown to every user regardless of role/permission.
+    { href: 'help.html', icon: '❓', fa: 'fa-circle-question', label: 'Help & Guide', always: true },
 ];
 
 // Inject sidebar nav styles once (CSS-variable-aware, dark-mode safe)
@@ -362,9 +366,11 @@ function ensureSidebarShell() {
     nav.className = 'w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50';
     nav.style.width = '220px';
     nav.innerHTML = `
-        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
+        <a href="dashboard.html" class="snav-brand">
+            <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+            <span class="snav-brand-text">
+                <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
+                <span class="snav-brand-sub">Retail &amp; Billing</span>
             </span>
         </a>
         <div class="px-4 mt-auto sidebar-pin-area"></div>`;
@@ -413,7 +419,8 @@ function renderSidebarLinks() {
         // Admin/Manager with no permissions configured → full access by role default
         const isRoleDefault = user && (user.role === 'Admin' || user.role === 'Manager') &&
             (!perms || Object.keys(perms).length === 0);
-        const hasAccess = isAdminTier || isRoleDefault ||
+        // `always: true` links (e.g. Help) are visible to every signed-in user.
+        const hasAccess = item.always === true || isAdminTier || isRoleDefault ||
             (perms && (perms._admin === true || perms[item.permission] === true));
         if (!hasAccess) return;
 
@@ -654,7 +661,7 @@ function filterSidebarByPermissions() {
         const href = link.getAttribute('href');
         const screenId = SIDEBAR_HREF_TO_PERMISSION[href];
         
-        // If no mapping exists, always show (e.g., TrintzPOS logo link)
+        // If no mapping exists, always show (e.g., TrintzERP logo link)
         if (!screenId) return;
         
         // Check permission - if in perms object, use value; if NOT in perms, deny by default
@@ -986,7 +993,7 @@ function _syncThemeBtn() {
 function _injectThemeToggle() {
     var sidebar = document.getElementById('sidebar');
     if (sidebar && !document.getElementById('dark-mode-toggle-btn')) {
-        // Inject sun/moon icon button inside the sidebar header (next to TrintzPOS logo)
+        // Inject sun/moon icon button inside the sidebar header (next to TrintzERP logo)
         var logoLink = sidebar.querySelector('a');
         if (logoLink) {
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';

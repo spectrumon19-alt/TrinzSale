@@ -381,18 +381,53 @@ def add_supplier_transaction(payload, supplier_id):
         else:
             # Debit means we paid the supplier
             new_balance = previous_balance - amount
-        
+
+        # Effective values that WILL be stored — reuse them in the guard so the
+        # duplicate check compares against exactly what gets inserted.
+        eff_po   = data.get('purchase_order_number')
+        eff_note = data.get('note', 'Purchase transaction')
+
+        # ── Idempotency guard ──────────────────────────────────────────────────
+        # Reject an identical transaction submitted within a short window (same
+        # supplier, type, amount, PO number, note). Stops a double-click / retry
+        # from inserting duplicate rows and compounding the payable balance.
+        cur.execute("""
+            SELECT transaction_id
+            FROM supplier_transactions
+            WHERE supplier_id = %s
+              AND transaction_type = %s
+              AND amount = %s
+              AND COALESCE(purchase_order_number, '') = COALESCE(%s, '')
+              AND COALESCE(note, '')                  = COALESCE(%s, '')
+              AND created_at >= NOW() - INTERVAL '10 seconds'
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (
+            supplier_id, data.get('transaction_type'), amount,
+            eff_po, eff_note
+        ))
+        dup = cur.fetchone()
+        if dup:
+            # Balance already reflects the first insert; don't apply amount again.
+            conn.rollback()
+            return jsonify({
+                'message': 'Transaction added successfully',
+                'transaction_id': dup['transaction_id'],
+                'new_balance': previous_balance,
+                'duplicate_ignored': True
+            }), 200
+
         # Update supplier's balance
         cur.execute("""
             UPDATE suppliers
             SET current_balance = %s
             WHERE supplier_id = %s
         """, (new_balance, supplier_id))
-        
+
         # Insert transaction record
         cur.execute("""
             INSERT INTO supplier_transactions (
-                supplier_id, transaction_type, amount, previous_balance, 
+                supplier_id, transaction_type, amount, previous_balance,
                 new_balance, purchase_order_number, note
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING transaction_id
@@ -402,8 +437,8 @@ def add_supplier_transaction(payload, supplier_id):
             amount,
             previous_balance,
             new_balance,
-            data.get('purchase_order_number'),
-            data.get('note', 'Purchase transaction')
+            eff_po,
+            eff_note
         ))
         
         transaction = cur.fetchone()

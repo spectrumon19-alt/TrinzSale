@@ -1,4 +1,4 @@
-/* TrintzPOS AI Chat Widget — self-contained IIFE, no external deps */
+/* TrintzERP AI Chat Widget — self-contained IIFE, no external deps */
 (function () {
   'use strict';
 

@@ -1,5 +1,5 @@
 """
-License API Blueprint for TrintzPOS.
+License API Blueprint for TrintzERP.
 Endpoints: /api/license/status, /api/license/activate, /api/license/fingerprint
 
 When LICENSE_GUARD_ENABLED=false (Render/cloud deployments) these endpoints

@@ -340,7 +340,8 @@ def export_sales_report_excel(payload):
                 sii.sgst,
                 sii.cgst,
                 sii.total_line_amount,
-                sii.discount_percentage as item_discount_percentage
+                sii.discount_percentage as item_discount_percentage,
+                COALESCE(sii.rebate_amount, 0) as item_rebate_amount
             FROM sales_invoice_items sii
             JOIN sales_invoices si ON sii.invoice_id = si.invoice_id
             JOIN products p ON sii.product_id = p.product_id
@@ -371,7 +372,7 @@ def export_sales_report_excel(payload):
         
         # Add column headers for itemized sales
         item_headers = ['Invoice Number', 'Date', 'Product Name', 'Pack Size', 'Quantity', 
-                       'Rate (₹)', 'GST Rate (%)', 'Taxable Value (₹)', 'SGST (₹)', 'CGST (₹)', 'Total Amount (₹)', 'Discount (%)']
+                       'Rate (₹)', 'GST Rate (%)', 'Taxable Value (₹)', 'SGST (₹)', 'CGST (₹)', 'Total Amount (₹)', 'Discount (%)', 'Rebate (₹)']
         if ws is not None:
             ws.append(item_headers)
             row_num += 1
@@ -399,7 +400,8 @@ def export_sales_report_excel(payload):
                     float(row_data['sgst']) if row_data['sgst'] else 0.0,
                     float(row_data['cgst']) if row_data['cgst'] else 0.0,
                     float(row_data['total_line_amount']) if row_data['total_line_amount'] else 0.0,
-                    float(row_data['item_discount_percentage']) if row_data['item_discount_percentage'] else 0.0
+                    float(row_data['item_discount_percentage']) if row_data['item_discount_percentage'] else 0.0,
+                    float(row_data['item_rebate_amount']) if row_data['item_rebate_amount'] else 0.0
                 ])
                 row_num += 1
         

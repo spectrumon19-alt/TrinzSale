@@ -5,11 +5,11 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token Usage Analytics - TrintzPOS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Token Usage Analytics - TrintzERP</title>
+    <script src="assets/vendor/tailwind.js"></script>
+    <link href="assets/vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="assets/vendor/chart.umd.min.js"></script>
     <style>
         /* ── Page layout ──────────────────────────────────────────────────── */
         .tu-wrap { padding: 1.5rem 1.75rem; }
@@ -191,11 +191,13 @@
 <div class="main-layout flex min-h-screen">
     <!-- Sidebar shell — links populated by renderSidebarLinks() in auth-utils.js -->
     <nav id="sidebar" class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50" style="width:220px;">
-        <a href="javascript:void(0)" class="flex items-center px-3 pt-4 pb-2 mb-1">
-            <span class="flex items-center justify-center bg-white rounded-xl px-2 py-1.5 shadow-sm" style="min-width:100px;">
-                <img src="assets/logo.png" alt="TrintzPOS" style="height:34px;width:auto;object-fit:contain;display:block;">
-            </span>
-        </a>
+        <a href="dashboard.html" class="snav-brand">
+                <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+                <span class="snav-brand-text">
+                    <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
+                    <span class="snav-brand-sub">Retail &amp; Billing</span>
+                </span>
+            </a>
         <div class="px-4 mt-auto sidebar-pin-area"></div>
     </nav>
 
@@ -254,6 +256,7 @@
                     <div class="kpi-card"><div class="kpi-icon green"><i class="fas fa-arrow-right-from-bracket"></i></div><div class="kpi-body"><div class="kpi-val" id="kpi-output">—</div><div class="kpi-lbl">Output Tokens</div></div></div>
                     <div class="kpi-card"><div class="kpi-icon amber"><i class="fas fa-bolt"></i></div><div class="kpi-body"><div class="kpi-val" id="kpi-calls">—</div><div class="kpi-lbl">AI Calls</div></div></div>
                     <div class="kpi-card"><div class="kpi-icon rose"><i class="fas fa-users"></i></div><div class="kpi-body"><div class="kpi-val" id="kpi-users">—</div><div class="kpi-lbl">Active Users</div></div></div>
+                    <div class="kpi-card" title="Share of AI input tokens served from Anthropic's prompt cache at ~10% of normal cost, instead of being reprocessed at full price."><div class="kpi-icon green"><i class="fas fa-database"></i></div><div class="kpi-body"><div class="kpi-val" id="kpi-cache-hit">—</div><div class="kpi-lbl">Prompt Cache Hit Rate</div></div></div>
                 </div>
 
                 <!-- Daily chart -->
@@ -466,6 +469,17 @@ function renderKPIs(k) {
     document.getElementById('kpi-output').textContent = fmt(k.output_tokens);
     document.getElementById('kpi-calls').textContent  = fmt(k.ai_calls);
     document.getElementById('kpi-users').textContent  = fmt(k.active_users);
+
+    const hitRateEl = document.getElementById('kpi-cache-hit');
+    if (hitRateEl) {
+        const rate = k.cache_hit_rate_pct || 0;
+        hitRateEl.textContent = rate + '%';
+        const savedEl = document.getElementById('kpi-cache-hit')
+            .closest('.kpi-card').querySelector('.kpi-lbl');
+        if (savedEl && k.cache_savings_equivalent_tokens) {
+            savedEl.textContent = 'Prompt Cache Hit Rate · ~' + fmt(k.cache_savings_equivalent_tokens) + ' tokens saved';
+        }
+    }
 }
 
 /* ── Daily chart ────────────────────────────────────────────────────────── */

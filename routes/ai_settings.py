@@ -291,22 +291,42 @@ def _validate_key(provider: str, key: str):
 
 
 # ── Helper: call any provider ─────────────────────────────────────────────────
+def _ensure_cache_columns(conn, cur) -> None:
+    """Additive, idempotent migration: cache-usage columns on ai_token_usage.
+    Safe to call on every insert — ALTER ... IF NOT EXISTS is a no-op once applied."""
+    cur.execute("""
+        ALTER TABLE ai_token_usage
+            ADD COLUMN IF NOT EXISTS cache_read_tokens    INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS cache_creation_tokens INTEGER NOT NULL DEFAULT 0
+    """)
+
+
 def _log_token_usage(provider: str, model: str, feature: str,
                       prompt_tokens: int, output_tokens: int,
-                      user_id=None, username: str = '') -> None:
-    """Fire-and-forget insert into ai_token_usage. Errors are suppressed."""
+                      user_id=None, username: str = '',
+                      cache_read_tokens: int = 0, cache_creation_tokens: int = 0) -> None:
+    """Fire-and-forget insert into ai_token_usage. Errors are suppressed.
+
+    cache_read_tokens / cache_creation_tokens come from Anthropic's prompt-cache
+    usage fields (see call_provider). They are informational only — prompt_tokens
+    already reflects the SDK's own input-token accounting; the cache columns exist
+    so the Token Usage dashboard can show cache-hit rate and estimated savings.
+    """
     try:
         from db import get_db_connection, release_db_connection
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
+                _ensure_cache_columns(conn, cur)
                 cur.execute("""
                     INSERT INTO ai_token_usage
                         (user_id, username, provider, model, feature,
-                         prompt_tokens, output_tokens, total_tokens)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                         prompt_tokens, output_tokens, total_tokens,
+                         cache_read_tokens, cache_creation_tokens)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (user_id, username or '', provider, model, feature,
-                      prompt_tokens, output_tokens, prompt_tokens + output_tokens))
+                      prompt_tokens, output_tokens, prompt_tokens + output_tokens,
+                      cache_read_tokens, cache_creation_tokens))
             conn.commit()
         finally:
             release_db_connection(conn)
@@ -315,8 +335,18 @@ def _log_token_usage(provider: str, model: str, feature: str,
 
 
 def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 1024,
-                  feature: str = 'chat', user_id=None, username: str = '') -> str:
-    """Call the configured LLM provider and log token usage to ai_token_usage."""
+                  feature: str = 'chat', user_id=None, username: str = '',
+                  cacheable: bool = False) -> str:
+    """Call the configured LLM provider and log token usage to ai_token_usage.
+
+    cacheable: set True when `system` is a large, byte-identical-across-calls
+    prompt (e.g. a fixed schema/instructions block) that benefits from Anthropic
+    prompt caching. Only the 'anthropic' branch acts on this flag — other
+    providers ignore it and behave exactly as before. Caching is a prefix match:
+    do NOT set this for a `system` string that varies per call (per-user text,
+    timestamps, etc.) — a changing prefix never hits the cache and just pays the
+    write premium every time.
+    """
     provider = config.get('provider', '')
     # Decrypt at the single point of use. Transparently handles both encrypted
     # (enc:v1:…) values from the DB and plaintext keys passed in for inline tests.
@@ -338,10 +368,22 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
         if not model:
             raise RuntimeError('No Claude model selected. Pick a model (e.g. claude-sonnet-4-6).')
         client = anthropic.Anthropic(api_key=key)
+
+        # When cacheable, mark the system prompt as a cache breakpoint so a
+        # byte-identical prefix is read from Anthropic's cache (~10% of normal
+        # input price) instead of being recomputed on every call. Harmless if
+        # the prompt is below the model's minimum cacheable size — the marker
+        # is simply a no-op (usage.cache_*_tokens come back as 0) rather than
+        # an error, so this is always safe to send.
+        system_param = (
+            [{'type': 'text', 'text': system, 'cache_control': {'type': 'ephemeral'}}]
+            if cacheable else system
+        )
+
         try:
             msg = client.messages.create(
                 model=model, max_tokens=max_tokens,
-                system=system,
+                system=system_param,
                 messages=[{'role': 'user', 'content': user_msg}],
             )
         except anthropic.AuthenticationError:
@@ -356,7 +398,10 @@ def call_provider(config: dict, system: str, user_msg: str, max_tokens: int = 10
             raise RuntimeError(f'Could not reach Anthropic (network/SSL/proxy). {e}')
         pt = getattr(msg.usage, 'input_tokens', 0)
         ot = getattr(msg.usage, 'output_tokens', 0)
-        _log_token_usage(provider, model, feature, pt, ot, user_id, username)
+        cache_read     = getattr(msg.usage, 'cache_read_input_tokens', 0) or 0
+        cache_creation = getattr(msg.usage, 'cache_creation_input_tokens', 0) or 0
+        _log_token_usage(provider, model, feature, pt, ot, user_id, username,
+                         cache_read_tokens=cache_read, cache_creation_tokens=cache_creation)
         return msg.content[0].text.strip()
 
     elif provider == 'mimo':

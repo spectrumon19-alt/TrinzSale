@@ -1,7 +1,7 @@
 """
 create_customer_dist.py — Build the customer distribution package.
 
-Creates: C:\\Users\\abhis\\OneDrive\\Desktop\\t\\pos\\customer_dist_trintzPos\\
+Creates: C:\\Users\\abhis\\OneDrive\\Desktop\\t\\pos\\customer_dist_trintzERP\\
 
 Protection strategy:
   - All Python source (.py) is compiled to bytecode (.pyc) and packed into
@@ -26,7 +26,7 @@ from datetime import date
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
 SRC  = Path(__file__).parent.resolve()
-DIST = Path(r"C:\Users\abhis\OneDrive\Desktop\t\pos\customer_dist_trintzPos")
+DIST = Path(r"C:\Users\abhis\OneDrive\Desktop\t\pos\customer_dist_trintzERP")
 
 PY_VER = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
@@ -46,10 +46,10 @@ HARD_EXCLUDE_FILES = {
     "generate_license_key.py", "gen_keypair.py",
     "build_dist.py", "create_customer_dist.py",
     "predeploy.py", "generate_manual_pdf.py",
-    "trintzpos.spec", "keygen.py", "license_server.py",
+    "trintzerp.spec", "keygen.py", "license_server.py",
     "create_superadmin.py", "create_bug_report.py", "serve.py",
     ".env", "issued_licenses.log", "license_serial.txt",
-    "trintzpos_manual.pdf",
+    "trintzerp_manual.pdf",
 }
 
 HARD_EXCLUDE_DIRS = {
@@ -160,7 +160,7 @@ def write_launcher() -> None:
     step("Writing customer launcher")
     launcher = textwrap.dedent(f"""\
         \"\"\"
-        TrintzPOS — Customer Launcher
+        TrintzERP — Customer Launcher
         Compiled build {date.today().isoformat()} · Python {sys.version.split()[0]}
         © 2025 Trintz Data Labs. Proprietary and confidential.
         \"\"\"
@@ -203,9 +203,9 @@ def write_start_bat() -> None:
     step("Writing Windows startup scripts")
     bat = textwrap.dedent(r"""
         @echo off
-        title TrintzPOS
+        title TrintzERP
         echo.
-        echo   Starting TrintzPOS...
+        echo   Starting TrintzERP...
         echo   Open your browser at http://localhost:5001
         echo   Close this window to stop the server.
         echo.
@@ -287,7 +287,7 @@ def copy_data_files() -> None:
 
     # .env.example with customer-friendly defaults
     env_example = textwrap.dedent(f"""\
-        # TrintzPOS Configuration — rename this file to  .env  before starting
+        # TrintzERP Configuration — rename this file to  .env  before starting
         # Generated {date.today().isoformat()} · Trintz Data Labs
 
         # Strong random secret key for JWT tokens
@@ -310,7 +310,7 @@ def copy_data_files() -> None:
         # Brevo email (optional — for invoice emails)
         # BREVO_API_KEY=your-brevo-api-key
         # BREVO_SENDER_EMAIL=noreply@yourdomain.com
-        # BREVO_SENDER_NAME=TrintzPOS
+        # BREVO_SENDER_NAME=TrintzERP
     """)
     (DIST / ".env.example").write_text(env_example, encoding="utf-8")
     ok(".env.example")
@@ -321,7 +321,7 @@ def copy_data_files() -> None:
 def write_install_txt() -> None:
     step("Writing INSTALL.txt")
     txt = textwrap.dedent(f"""\
-        TrintzPOS — Installation Guide
+        TrintzERP — Installation Guide
         ================================
         Build date : {date.today().isoformat()}
         Provided by: Trintz Data Labs  |  support@trintzlabs.com
@@ -355,7 +355,7 @@ def write_install_txt() -> None:
         4. Initialise the database schema:
            Open http://localhost:5001/configureDB.html after starting the app
 
-        5. Start TrintzPOS:
+        5. Start TrintzERP:
            -> Double-click  start.bat
            -> OR run:  python launcher.py
            -> Open browser at:  http://localhost:5001
@@ -451,7 +451,7 @@ def summary() -> None:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("\n  TrintzPOS - Customer Distribution Builder")
+    print("\n  TrintzERP - Customer Distribution Builder")
     print("  " + "=" * 50)
 
     preflight()

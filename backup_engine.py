@@ -51,7 +51,7 @@ def run_backup(backup_type='manual', enable_oauth=True):
     _ensure_backup_dir()
 
     ts       = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f'trintzpos_backup_{ts}.sql.gz'
+    filename = f'trintzerp_backup_{ts}.sql.gz'
     filepath = os.path.join(BACKUP_DIR, filename)
 
     from db import get_db_connection, release_db_connection
@@ -60,7 +60,7 @@ def run_backup(backup_type='manual', enable_oauth=True):
 
     try:
         with gzip.open(filepath, 'wt', encoding='utf-8') as f:
-            f.write(f'-- TrintzPOS Database Backup\n')
+            f.write(f'-- TrintzERP Database Backup\n')
             f.write(f'-- Generated : {datetime.now().isoformat()}\n')
             f.write(f'-- Type      : {backup_type}\n\n')
             f.write('SET client_encoding = \'UTF8\';\n')

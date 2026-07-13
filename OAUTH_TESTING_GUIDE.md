@@ -13,8 +13,8 @@ Before testing, you need:
 1. ✅ OAuth credentials created (see OAUTH_SETUP_GUIDE.md)
 2. ✅ Environment variables configured (.env)
 3. ✅ Database migration applied
-4. ✅ TrintzPOS running locally or on Render
-5. ✅ Admin access to TrintzPOS
+4. ✅ TrintzERP running locally or on Render
+5. ✅ Admin access to TrintzERP
 6. ✅ A Google Drive folder to test with
 
 ---
@@ -25,15 +25,15 @@ Before testing, you need:
 
 ### **Steps:**
 
-1. **Start TrintzPOS**
+1. **Start TrintzERP**
    ```bash
    python app.py
    ```
-   Should see: `TrintzPOS starting... open http://localhost:5001`
+   Should see: `TrintzERP starting... open http://localhost:5001`
 
 2. **Open Browser**
    - Go to: `http://localhost:5001`
-   - Login with your TrintzPOS credentials
+   - Login with your TrintzERP credentials
 
 3. **Navigate to Backup Settings**
    - Click: **Backup** or **Settings** → **Backup**
@@ -65,14 +65,14 @@ Before testing, you need:
 ### **Objective:** Test OAuth authorization endpoint directly
 
 ### **Prerequisites:**
-- Get your admin token from TrintzPOS
+- Get your admin token from TrintzERP
 - You'll need: `Authorization: Bearer YOUR_TOKEN`
 
 ### **Steps:**
 
 1. **Get Your Token**
    ```bash
-   # Login to TrintzPOS
+   # Login to TrintzERP
    # Open browser console (F12)
    # Type: localStorage.getItem('pos_token')
    # Copy the token value
@@ -123,7 +123,7 @@ Before testing, you need:
    - Click "Sign in to your Google Account"
    - Enter your Google email
    - Enter password
-   - Grant permission: "TrintzPOS wants to access your Google Drive"
+   - Grant permission: "TrintzERP wants to access your Google Drive"
    - Click **Allow**
 
 3. **Callback Should Happen**
@@ -149,7 +149,7 @@ Before testing, you need:
 
 **Problem: Window doesn't close**
 - **Solution:** Manual close is fine
-- Return to TrintzPOS and check status (Test 4)
+- Return to TrintzERP and check status (Test 4)
 
 ---
 
@@ -207,7 +207,7 @@ Before testing, you need:
 
 ### **Steps:**
 
-1. **Go to Backup Settings** (TrintzPOS UI)
+1. **Go to Backup Settings** (TrintzERP UI)
    - Navigate to: **Backup** section
 
 2. **Set Folder ID**
@@ -267,7 +267,7 @@ Before testing, you need:
 ```json
 {
   "success": true,
-  "filename": "trintzpos_backup_20260605_143022.sql.gz",
+  "filename": "trintzerp_backup_20260605_143022.sql.gz",
   "size_bytes": 262144000,
   "destination": "oauth",
   "gdrive_id": "1ABC2DEF3GHI4JKL5MNO6PQR7STU8VWX",
@@ -313,8 +313,8 @@ Before testing, you need:
    - Go to: `https://drive.google.com/drive/u/1/folders/1zjnwYo3OXgnpDDru6wOUXCnZ_XY8YG7E`
 
 3. **Look for Backup File**
-   - Should see file named: `trintzpos_backup_YYYYMMDD_HHMMSS.sql.gz`
-   - Example: `trintzpos_backup_20260605_143022.sql.gz`
+   - Should see file named: `trintzerp_backup_YYYYMMDD_HHMMSS.sql.gz`
+   - Example: `trintzerp_backup_20260605_143022.sql.gz`
 
 4. **Check File Details**
    - File size: Should be 200+ MB
@@ -337,7 +337,7 @@ Before testing, you need:
 **Problem: Old file still there, new one missing**
 - **Solution:** Backup may have failed
 - Check: Test 6 (backup response)
-- Check: Backup logs in TrintzPOS
+- Check: Backup logs in TrintzERP
 
 ---
 
@@ -360,7 +360,7 @@ Before testing, you need:
 
 3. **Run Another Backup** (before expiry)
    ```bash
-   # Click "Backup Now" again in TrintzPOS
+   # Click "Backup Now" again in TrintzERP
    # Or manually call backup endpoint
    ```
 
@@ -416,7 +416,7 @@ Before testing, you need:
    - New file should appear in folder
    - Timestamp should match scheduled time
 
-5. **Check Backup Logs** (in TrintzPOS UI)
+5. **Check Backup Logs** (in TrintzERP UI)
    - Go to: Backup → History
    - Should see new backup with `destination: oauth`
 
@@ -556,7 +556,7 @@ SELECT * FROM backup_settings;
 Test Date: 2026-06-05
 Tester: [Your Name]
 Environment: Local / Render
-TrintzPOS Version: [Version]
+TrintzERP Version: [Version]
 
 Test Results:
 [ ] Test 1: Authorization Flow - PASS / FAIL

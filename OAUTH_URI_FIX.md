@@ -69,7 +69,7 @@ https://git-6ryt.onrender.com
 
 ### **Custom Domain:**
 ```
-✅ https://trintzpos.mycompany.com
+✅ https://trintzerp.mycompany.com
 ✅ https://backup.example.org
 ```
 
@@ -93,20 +93,20 @@ Google will redirect to the FULL path:
 https://git-6ryt.onrender.com/api/backup/oauth/callback?code=...&state=...
 ```
 
-TrintzPOS receives it at the `/api/backup/oauth/callback` endpoint and processes it. ✅
+TrintzERP receives it at the `/api/backup/oauth/callback` endpoint and processes it. ✅
 
 ---
 
 ## 📝 Update Your .env File
 
-Your `.env` file can still have the full path (TrintzPOS uses it internally):
+Your `.env` file can still have the full path (TrintzERP uses it internally):
 
 ```env
 # Google Cloud Console URIs (NO path)
 GOOGLE_OAUTH_CLIENT_ID=123456789.apps.googleusercontent.com
 GOOGLE_OAUTH_CLIENT_SECRET=GOCSPX-xxxxx
 
-# TrintzPOS uses the full path internally (but Google only needs the base)
+# TrintzERP uses the full path internally (but Google only needs the base)
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001/api/backup/oauth/callback
 ```
 
@@ -182,7 +182,7 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001/api/backup/oauth/callback
 ### **How It Works:**
 1. You click "Authorize with Google"
 2. Google redirects to: `http://localhost:5001/api/backup/oauth/callback?code=...`
-3. TrintzPOS endpoint receives it
+3. TrintzERP endpoint receives it
 4. Token stored ✅
 5. Backups upload to Google Drive ✅
 
@@ -202,7 +202,7 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001/api/backup/oauth/callback
   https://git-6ryt.onrender.com
   ```
 
-**Your .env can still have the full path** - TrintzPOS handles it internally
+**Your .env can still have the full path** - TrintzERP handles it internally
 
 ---
 

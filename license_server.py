@@ -1,5 +1,5 @@
 """
-TrintzPOS License Server
+TrintzERP License Server
 Deploy this on any VPS/cloud (Render, Railway, Heroku, etc.) as a separate app.
 It manages license issuance, activation tracking, and online validation.
 
@@ -234,7 +234,7 @@ def health():
 if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5050))
-    print(f"[START] TrintzPOS License Server on port {port}")
+    print(f"[START] TrintzERP License Server on port {port}")
     if ADMIN_KEY == "change-me-in-production":
         print("[WARN] Set ADMIN_API_KEY env variable before deploying!")
     app.run(host="0.0.0.0", port=port, debug=False)

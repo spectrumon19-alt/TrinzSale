@@ -32,7 +32,7 @@ The issue is in the backup flow:
 2. **Create Service Account:**
    - Go to Service Accounts
    - Click **Create Service Account**
-   - Name: `trintzpos-backup`
+   - Name: `trintzerp-backup`
    - Click **Create and Continue**
 
 3. **Create Key:**
@@ -43,7 +43,7 @@ The issue is in the backup flow:
    - Download the JSON file
 
 4. **Share Google Drive Folder:**
-   - In Google Drive, create a folder (e.g., "TrintzPOS Backups")
+   - In Google Drive, create a folder (e.g., "TrintzERP Backups")
    - Right-click → **Share**
    - Copy the service account email from the JSON file (looks like: `xxx@xxx.iam.gserviceaccount.com`)
    - Paste in Share dialog
@@ -52,10 +52,10 @@ The issue is in the backup flow:
 
 ---
 
-### **Step 2: Configure in TrintzPOS**
+### **Step 2: Configure in TrintzERP**
 
 1. **Go to Backup Settings Page**
-   - Navigate to **TrintzPOS | Backup**
+   - Navigate to **TrintzERP | Backup**
    - Look for **Google Drive Upload** section
 
 2. **Enable Google Drive:**
@@ -89,7 +89,7 @@ The issue is in the backup flow:
 
 ### **Test 2: Verify in Google Drive**
 1. Open your Google Drive folder
-2. You should see files like: `trintzpos_backup_20260605_143022.sql.gz`
+2. You should see files like: `trintzerp_backup_20260605_143022.sql.gz`
 3. Download and verify it's a valid SQL backup file
 
 ### **Test 3: Scheduled Backup**
@@ -198,7 +198,7 @@ Every backup includes:
 - [ ] **Google Drive Folder Created**
 - [ ] **Service Account Email Shared with Folder**
 - [ ] **Folder ID Copied**
-- [ ] **JSON Uploaded to TrintzPOS**
+- [ ] **JSON Uploaded to TrintzERP**
 - [ ] **Google Drive Connection Test Passed**
 - [ ] **Settings Saved**
 - [ ] **Manual Backup Run Successfully**
@@ -230,7 +230,7 @@ Once configured, backups will run automatically:
 
 1. ✅ Create Google service account & JSON key
 2. ✅ Share Google Drive folder with service account
-3. ✅ Upload JSON to TrintzPOS backup settings
+3. ✅ Upload JSON to TrintzERP backup settings
 4. ✅ Test connection
 5. ✅ Run manual backup to verify
 6. ✅ Enable automatic daily backups

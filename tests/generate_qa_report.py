@@ -1,5 +1,5 @@
 """
-Production-grade QA report generator for TrintzPOS.
+Production-grade QA report generator for TrintzERP.
 
 Builds a single Excel workbook documenting:
   - Summary        : headline metrics + pass-rate + bug counts by severity
@@ -10,7 +10,7 @@ Builds a single Excel workbook documenting:
   - QA Sign-off    : production-readiness checklist
 
 Run:    python tests/generate_qa_report.py
-Output: tests/reports/TrintzPOS_QA_Report.xlsx
+Output: tests/reports/TrintzERP_QA_Report.xlsx
 
 This is DOCUMENTATION ONLY — it does not modify application code.
 """
@@ -336,7 +336,7 @@ def build():
     # ── Sheet: Bug List ───────────────────────────────────────────────────────
     ws = wb.active
     ws.title = "Bug List"
-    ws["A1"] = "TrintzPOS — Defect Log"
+    ws["A1"] = "TrintzERP — Defect Log"
     ws["A1"].font = title_font
     ws.merge_cells("A1:H1")
     ws["A2"] = f"QA cycle {date.today().isoformat()} · documentation only (no fixes applied)"
@@ -355,7 +355,7 @@ def build():
 
     # ── Sheet: Test Cases ─────────────────────────────────────────────────────
     ws2 = wb.create_sheet("Test Cases")
-    ws2["A1"] = "TrintzPOS — Test Case Inventory"
+    ws2["A1"] = "TrintzERP — Test Case Inventory"
     ws2["A1"].font = title_font
     ws2.merge_cells("A1:G1")
     tc_cols = ["Test ID", "Suite", "Module", "Group", "Scenario", "Intent", "Node ID"]
@@ -372,7 +372,7 @@ def build():
 
     # ── Sheet: Test Results ───────────────────────────────────────────────────
     ws3 = wb.create_sheet("Test Results")
-    ws3["A1"] = "TrintzPOS — Latest Test Run Results"
+    ws3["A1"] = "TrintzERP — Latest Test Run Results"
     ws3["A1"].font = title_font
     ws3.merge_cells("A1:D1")
     if summary:
@@ -396,7 +396,7 @@ def build():
 
     # ── Sheet: Summary ────────────────────────────────────────────────────────
     ws0 = wb.create_sheet("Summary")
-    ws0["A1"] = "TrintzPOS — QA Summary"
+    ws0["A1"] = "TrintzERP — QA Summary"
     ws0["A1"].font = title_font
     ws0.merge_cells("A1:D1")
     ws0["A2"] = f"Generated {date.today().isoformat()} · production-readiness assessment"
@@ -445,12 +445,12 @@ def build():
     wb.move_sheet("Summary", -(len(wb.sheetnames) - 1))
 
     os.makedirs(REPORTS, exist_ok=True)
-    out = os.path.join(REPORTS, "TrintzPOS_QA_Report.xlsx")
+    out = os.path.join(REPORTS, "TrintzERP_QA_Report.xlsx")
     try:
         wb.save(out)
     except PermissionError:
         # File is open in Excel — write a fresh timestamped copy instead.
-        out = os.path.join(REPORTS, f"TrintzPOS_QA_Report_{date.today().strftime('%Y%m%d')}.xlsx")
+        out = os.path.join(REPORTS, f"TrintzERP_QA_Report_{date.today().strftime('%Y%m%d')}.xlsx")
         wb.save(out)
     return out, len(BUGS), len(test_cases), (summary or {})
 

@@ -5,8 +5,8 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrintzPOS - Customer Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>TrintzERP - Customer Management</title>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         /* ── KPI cards ── */
@@ -237,7 +237,7 @@
                     </svg>
                 </button>
                 <div>
-                    <p class="hd-title">TrintzPOS <span style="color:#6366f1;font-weight:300;">|</span> Customer Management</p>
+                    <p class="hd-title"><span class="brand-word">Trintz<span class="brand-erp">ERP</span></span> <span style="color:#6366f1;font-weight:300;">|</span> Customer Management</p>
                     <p class="hd-sub" id="live-datetime">Loading…</p>
                 </div>
             </div>
@@ -633,7 +633,7 @@
                 ).join('');
                 html += `
                 <tr onclick="toggleItems('items-${idx}')" style="cursor:pointer;">
-                    <td><span class="inv-link" onclick="event.stopPropagation();openInvoice('${esc(inv.invoice_number)}')">${esc(inv.invoice_number)}</span></td>
+                    <td><span class="inv-link" onclick="event.stopPropagation();openInvoice('${inv.invoice_id}')">${esc(inv.invoice_number)}</span></td>
                     <td>${fmtDate(inv.invoice_date)}</td>
                     <td class="amt" ${cancelled?'style="text-decoration:line-through;color:var(--text-muted);"':''}>₹${fmt(inv.total_amount)}</td>
                     <td>${inv.payment_mode || '—'}</td>
@@ -676,8 +676,25 @@
         if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
     }
 
-    function openInvoice(invNum) {
-        window.open(`invoice.html?invoice=${encodeURIComponent(invNum)}`, '_blank');
+    async function openInvoice(invoiceId) {
+        if (!invoiceId || invoiceId === 'undefined' || invoiceId === 'null') {
+            showToast('Invoice reference not available for this record.', 'error');
+            return;
+        }
+        try {
+            const res = await fetch(`${API}/sales/${encodeURIComponent(invoiceId)}`, { headers: authHeaders() });
+            if (!res.ok) {
+                showToast('Could not load invoice (' + res.status + ').', 'error');
+                return;
+            }
+            const invoiceData = await res.json();
+            // invoice.html reads the invoice payload from localStorage
+            localStorage.setItem('invoiceData', JSON.stringify(invoiceData));
+            window.open('invoice.html', '_blank');
+        } catch (e) {
+            console.error('openInvoice failed:', e);
+            showToast('Failed to open invoice.', 'error');
+        }
     }
 
     /* ═══════════════════════════════════════

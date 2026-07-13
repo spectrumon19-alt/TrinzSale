@@ -534,7 +534,7 @@ def export_credit(payload):
     ws.set_column('A:A', 32); ws.set_column('B:B', 18)
     today = date.today().strftime('%d-%b-%Y')
     ws.write('A1', f'Credit Overview — as on {today}', title)
-    ws.write('A2', 'TrintzPOS — auto-generated')
+    ws.write('A2', 'TrintzERP — auto-generated')
     r = 4
     rows = [
         ('Receivables — outstanding (owed to you)', c_sum['total_outstanding']),

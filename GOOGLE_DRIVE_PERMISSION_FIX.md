@@ -29,15 +29,15 @@ When Google Drive says "File not found" for a service account upload, it actuall
    ```json
    {
      "type": "service_account",
-     "project_id": "trintzpos-backup-123",
+     "project_id": "trintzerp-backup-123",
      "private_key_id": "...",
      "private_key": "...",
-     "client_email": "trintzpos-backup@trintzpos-backup-123.iam.gserviceaccount.com",  ← THIS ONE
+     "client_email": "trintzerp-backup@trintzerp-backup-123.iam.gserviceaccount.com",  ← THIS ONE
      ...
    }
    ```
 3. **Copy the `client_email` value**
-   - Example: `trintzpos-backup@trintzpos-backup-123.iam.gserviceaccount.com`
+   - Example: `trintzerp-backup@trintzerp-backup-123.iam.gserviceaccount.com`
 
 ---
 
@@ -53,7 +53,7 @@ When Google Drive says "File not found" for a service account upload, it actuall
 
 3. **Add Service Account Email**
    - In the "Share" dialog, paste the service account email
-   - Example: `trintzpos-backup@trintzpos-backup-123.iam.gserviceaccount.com`
+   - Example: `trintzerp-backup@trintzerp-backup-123.iam.gserviceaccount.com`
    - Press Enter/Tab to add
 
 4. **Set Permission Level**
@@ -74,14 +74,14 @@ When Google Drive says "File not found" for a service account upload, it actuall
 2. Click the **Share** button
 3. You should see:
    ```
-   trintzpos-backup@trintzpos-backup-123.iam.gserviceaccount.com
+   trintzerp-backup@trintzerp-backup-123.iam.gserviceaccount.com
    Editor access
    ```
 
 If you don't see this, go back to **Step 2** and add it again.
 
-### **Check 2: Test Connection in TrintzPOS**
-1. Go to **TrintzPOS Backup Settings**
+### **Check 2: Test Connection in TrintzERP**
+1. Go to **TrintzERP Backup Settings**
 2. Click **"Test Google Drive Connection"** button
 3. Should see: ✅ Connected successfully
 4. If it fails, re-check sharing and refresh
@@ -107,7 +107,7 @@ If you don't see this, go back to **Step 2** and add it again.
    - Change permission to **Editor**
    - Click Share
 
-4. **Test in TrintzPOS**
+4. **Test in TrintzERP**
    - Go to Backup Settings
    - Click "Test Google Drive Connection"
    - Should pass ✅
@@ -124,7 +124,7 @@ If you don't see this, go back to **Step 2** and add it again.
 
 **Solutions:**
 1. **Wait 30 seconds** - Google Drive takes time to sync permissions
-2. **Refresh page** - Reload TrintzPOS in browser
+2. **Refresh page** - Reload TrintzERP in browser
 3. **Test again** - Click "Test Google Drive Connection" button
 4. **Verify sharing:**
    - Go to Google Drive folder
@@ -152,7 +152,7 @@ If you don't see this, go back to **Step 2** and add it again.
 4. If not found, the folder might have been deleted
    - Create a new folder
    - Get its ID from URL
-   - Update in TrintzPOS Backup Settings
+   - Update in TrintzERP Backup Settings
 
 ---
 
@@ -166,7 +166,7 @@ Before running backup, verify:
 - [ ] Service account email is shared with folder (Right-click → Share)
 - [ ] Permission is set to **"Editor"** (not "Viewer" or "Commenter")
 - [ ] "Test Google Drive Connection" passes ✅
-- [ ] Backup folder ID matches in TrintzPOS settings
+- [ ] Backup folder ID matches in TrintzERP settings
 
 ---
 
@@ -185,7 +185,7 @@ Before running backup, verify:
 - **Fix:** Wait 30 seconds, then test again
 
 ❌ **Mistake 5:** Wrong folder shared
-- **Fix:** Verify folder ID matches in TrintzPOS settings
+- **Fix:** Verify folder ID matches in TrintzERP settings
 
 ---
 
@@ -195,7 +195,7 @@ Before running backup, verify:
 
 1. **Extract** service account email from JSON file
 2. **Share** Google Drive folder with that email (Editor access)
-3. **Test** connection in TrintzPOS → Should work ✅
+3. **Test** connection in TrintzERP → Should work ✅
 
 **Most Common Cause:** Forgot to share folder with service account email!
 
@@ -213,7 +213,7 @@ If you've followed all steps and still get 404 error:
 If error persists, you might need to:
 - Create a new Google Drive folder
 - Generate a new service account in Google Cloud Console
-- Re-upload the new JSON to TrintzPOS
+- Re-upload the new JSON to TrintzERP
 - Test connection and run backup
 
 ---

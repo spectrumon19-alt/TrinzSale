@@ -8,7 +8,7 @@ human-readable scenario + expected result per test, and writes:
     Steps, Expected Result, Type, Priority, Auth Role
 
 Run:  python tests/generate_test_case_sheet.py
-Output: tests/reports/TrintzPOS_Test_Cases.xlsx
+Output: tests/reports/TrintzERP_Test_Cases.xlsx
 """
 
 import ast
@@ -198,7 +198,7 @@ def build_workbook(rows):
     for module, _ in FILES:
         modules.append(module)
         ws = wb.create_sheet(title=module[:31])
-        ws["A1"] = f"TrintzPOS — Test Cases: {module}"
+        ws["A1"] = f"TrintzERP — Test Cases: {module}"
         ws["A1"].font = title_font
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(COLUMNS))
 
@@ -230,7 +230,7 @@ def build_workbook(rows):
     # ── Summary sheet (first) ────────────────────────────────────────────────
     summary = wb["Sheet"]
     summary.title = "Summary"
-    summary["A1"] = "TrintzPOS — Test Case Summary"
+    summary["A1"] = "TrintzERP — Test Case Summary"
     summary["A1"].font = title_font
     summary.merge_cells("A1:D1")
 
@@ -279,7 +279,7 @@ def build_workbook(rows):
 
     out_dir = os.path.join(ROOT, "tests", "reports")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "TrintzPOS_Test_Cases.xlsx")
+    out_path = os.path.join(out_dir, "TrintzERP_Test_Cases.xlsx")
     wb.save(out_path)
     return out_path, grand
 

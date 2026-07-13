@@ -1,6 +1,6 @@
 ﻿"""
 Generates tests/reports/bug_report.xlsx â€” a complete bug & fix registry
-for the TrintzPOS POS system.
+for the TrintzERP POS system.
 
 Usage:
     python create_bug_report.py
@@ -452,7 +452,7 @@ def build_workbook() -> Workbook:
 
     ws.merge_cells("A2:H2")
     sub = ws["A2"]
-    sub.value = f"TrintzPOS  Â·  Generated: {TODAY}  Â·  Total Bugs: {len(BUGS)}"
+    sub.value = f"TrintzERP  Â·  Generated: {TODAY}  Â·  Total Bugs: {len(BUGS)}"
     sub.font = Font(italic=True, size=10, color=DARK)
     sub.alignment = Alignment(horizontal="center")
     ws.row_dimensions[2].height = 18

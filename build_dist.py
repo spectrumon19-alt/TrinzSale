@@ -1,5 +1,5 @@
 """
-build_dist.py — End-to-end client distribution builder for TrintzPOS.
+build_dist.py — End-to-end client distribution builder for TrintzERP.
 
 Run from the project root:
     python build_dist.py
@@ -8,16 +8,16 @@ What it does:
   1. Verifies public.pem exists (key pair must be generated first)
   2. Verifies private.pem is NOT present (safety check — must not ship)
   3. Minifies JavaScript files (requires jsmin: pip install jsmin)
-  4. Runs PyInstaller to compile the app into dist/TrintzPOS.exe
-  5. Creates a client delivery ZIP: dist/TrintzPOS_vX.X.X_YYYY-MM-DD.zip
-       containing only: TrintzPOS.exe + INSTALL.txt
+  4. Runs PyInstaller to compile the app into dist/TrintzERP.exe
+  5. Creates a client delivery ZIP: dist/TrintzERP_vX.X.X_YYYY-MM-DD.zip
+       containing only: TrintzERP.exe + INSTALL.txt
 
 Usage:
   pip install pyinstaller jsmin
   python build_dist.py
 
 The resulting ZIP is what you send to the client.
-They double-click TrintzPOS.exe, enter their license key, done.
+They double-click TrintzERP.exe, enter their license key, done.
 """
 
 import os
@@ -32,9 +32,9 @@ VERSION = "1.0.0"  # Update per release
 
 BUILD_DIR    = Path("build")
 DIST_DIR     = Path("dist")
-SPEC_FILE    = Path("trintzpos.spec")
-EXE_NAME     = "TrintzPOS.exe"
-OUTPUT_ZIP   = DIST_DIR / f"TrintzPOS_v{VERSION}_{date.today().isoformat()}.zip"
+SPEC_FILE    = Path("trintzerp.spec")
+EXE_NAME     = "TrintzERP.exe"
+OUTPUT_ZIP   = DIST_DIR / f"TrintzERP_v{VERSION}_{date.today().isoformat()}.zip"
 
 NEVER_SHIP = [
     "private.pem",
@@ -47,7 +47,7 @@ NEVER_SHIP = [
 ]
 
 INSTALL_TXT = f"""\
-TrintzPOS v{VERSION} — Installation Guide
+TrintzERP v{VERSION} — Installation Guide
 ==========================================
 Provided by Trintz Data Labs  |  support@trintzlabs.com
 
@@ -59,7 +59,7 @@ REQUIREMENTS
 
 SETUP
 -----
-1. Copy TrintzPOS.exe to any folder (e.g. C:\\TrintzPOS\\)
+1. Copy TrintzERP.exe to any folder (e.g. C:\\TrintzERP\\)
 2. In the same folder, create a file named  .env  with your database
    and configuration settings (see .env.example for reference):
 
@@ -71,7 +71,7 @@ SETUP
      DB_PORT=5432
      ALLOWED_ORIGIN=http://localhost:5001
 
-3. Run  TrintzPOS.exe
+3. Run  TrintzERP.exe
 4. On first launch, paste the license key provided by Trintz Data Labs.
 5. The POS will open in your default browser at http://localhost:5001
 
@@ -199,7 +199,7 @@ def create_delivery_zip():
 
 def main():
     print("=" * 60)
-    print(f"  TrintzPOS Distribution Builder  v{VERSION}")
+    print(f"  TrintzERP Distribution Builder  v{VERSION}")
     print("=" * 60)
 
     check_prerequisites()

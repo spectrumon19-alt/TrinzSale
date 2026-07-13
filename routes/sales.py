@@ -9,8 +9,13 @@ logger = logging.getLogger(__name__)
 
 sales_bp = Blueprint('sales', __name__)
 
-def calculate_invoice_item(quantity, selling_rate, gst_rate, discount_percentage=0):
-    """Calculate invoice item details based on quantity, rate, GST and discount"""
+def calculate_invoice_item(quantity, selling_rate, gst_rate, rebate_amount=0):
+    """Calculate invoice item details based on quantity, rate, GST and a flat rebate.
+
+    rebate_amount is a flat ₹ amount subtracted from the line total (qty × rate),
+    BEFORE GST is split out (GST-inclusive line total is reduced, then taxable and
+    GST are recomputed on the reduced figure). It is clamped to [0, line total].
+    """
     try:
         # Validate inputs
         if quantity <= 0:
@@ -19,16 +24,17 @@ def calculate_invoice_item(quantity, selling_rate, gst_rate, discount_percentage
             raise ValueError("Selling rate cannot be negative")
         if gst_rate < 0 or gst_rate > 100:
             raise ValueError("GST rate must be between 0 and 100")
-        if discount_percentage < 0 or discount_percentage > 100:
-            raise ValueError("Discount percentage must be between 0 and 100")
-        
+        if rebate_amount < 0:
+            raise ValueError("Rebate amount cannot be negative")
+
         # S.Amount (Total Line Amount) = Quantity * Selling Rate
         total_line_amount = quantity * selling_rate
-        
-        # Apply discount if any
-        if discount_percentage > 0:
-            total_line_amount = total_line_amount * (1 - discount_percentage / 100)
-        
+
+        # Apply flat rebate if any (clamp so a rebate can't drive the line negative)
+        if rebate_amount > 0:
+            rebate_amount = min(rebate_amount, total_line_amount)
+            total_line_amount = total_line_amount - rebate_amount
+
         # S.Exclusive GST (Taxable Value) = S.Amount / (1 + (GST Rate / 100))
         exclusive_gst_amount = total_line_amount / (1 + (gst_rate / 100))
         
@@ -53,7 +59,7 @@ def calculate_invoice_item(quantity, selling_rate, gst_rate, discount_percentage
 
 def generate_invoice_number(conn, cur):
     """
-    Generate invoice number in format D{DD}P{DDD}_{YYMMDD}.
+    Generate invoice number in format D{DD}P{DDD}{YYMMDD}.
     BUG-011 fixed: uses nextval('invoice_seq') — atomic DB sequence,
     no race condition under concurrent requests.
     D counter = ((seq-1) // 100) + 1, P counter = ((seq-1) % 100) + 1
@@ -63,7 +69,7 @@ def generate_invoice_number(conn, cur):
     seq = cur.fetchone()['nextval']
     d_val = ((seq - 1) // 100) + 1
     p_val = ((seq - 1) % 100) + 1
-    return f"D{d_val:02d}P{p_val:03d}_{date_str}"
+    return f"D{d_val:02d}P{p_val:03d}{date_str}"
 
 def generate_receipt_number(conn, cur):
     """Generate receipt number in format RYYYYMMDDseq with daily reset (e.g. R20260617005)"""
@@ -201,13 +207,26 @@ def create_sale(payload):
             total_invoice_amount = 0
             total_invoice_gst = 0
             total_discount_amount = 0
-            
+
+            # ── Bill-level discount factor (whole-invoice %) ───────────────────
+            # Applied per item BEFORE insert so that the item rows (which GSTR-1,
+            # returns, and itemized reports read) always reconcile with the
+            # invoice-level totals. Scaling every line's taxable/GST by the same
+            # (1 - disc%) factor is GST-correct across mixed rates because each
+            # slab's taxable and GST scale together.
+            try:
+                bill_disc_pct = float(discount_percentage or 0)
+            except (TypeError, ValueError):
+                bill_disc_pct = 0.0
+            bill_disc_pct = max(0.0, min(bill_disc_pct, 100.0))
+            bill_keep = 1 - (bill_disc_pct / 100.0)
+            total_bill_discount_value = 0.0
+
             # Check stock availability for all items first
             for i, item in enumerate(items):
                 product_id = item.get('product_id')
                 quantity = item.get('quantity')
-                item_discount = item.get('discount', 0)
-                
+
                 if not product_id or not quantity:
                     raise Exception(f"Item {i+1} is missing required fields (product_id or quantity)")
                 
@@ -233,46 +252,59 @@ def create_sale(payload):
             for i, item in enumerate(items):
                 product_id = item.get('product_id')
                 quantity = item.get('quantity')
-                item_discount = item.get('discount', 0)
-                
+                # Per-line flat rebate (₹). Accept legacy 'discount' key as 0-safe fallback.
+                item_rebate = float(item.get('rebate', 0) or 0)
+
                 # Get product details
                 cur.execute("""
                     SELECT selling_rate, gst_rate FROM products WHERE product_id = %s
                 """, (product_id,))
-                
+
                 product = cur.fetchone()
                 if not product:
                     raise Exception(f"Product with ID {product_id} not found")
-                
+
                 # Use selling_rate from request if provided (edited rate), otherwise use database value
                 selling_rate = float(item.get('selling_rate', product['selling_rate']))
                 gst_rate = float(product['gst_rate'])
-                
-                # Calculate item details with discount
-                calc = calculate_invoice_item(quantity, selling_rate, gst_rate, item_discount)
-                
+
+                # Clamp the rebate so it can't exceed this line's gross total
+                item_rebate = max(0.0, min(item_rebate, quantity * selling_rate))
+
+                # Calculate item details with the flat rebate applied
+                calc = calculate_invoice_item(quantity, selling_rate, gst_rate, item_rebate)
+
+                # Apply the whole-bill discount to THIS line so stored item rows
+                # reconcile with invoice totals (GSTR-1 / returns / reports read
+                # these rows). Track the ₹ taken off for discount_amount reporting.
+                line_taxable = round(calc['exclusive_gst_amount'] * bill_keep, 2)
+                line_gst     = round(calc['total_gst'] * bill_keep, 2)
+                line_sgst    = round(line_gst / 2, 2)
+                line_cgst    = round(line_gst - line_sgst, 2)
+                line_total   = round(line_taxable + line_gst, 2)
+                total_bill_discount_value += round(
+                    (calc['exclusive_gst_amount'] + calc['total_gst']) * (1 - bill_keep), 2)
+
                 # Insert invoice item
                 cur.execute("""
                     INSERT INTO sales_invoice_items (
-                        invoice_id, product_id, quantity, rate_at_sale, 
-                        gst_rate_at_sale, exclusive_gst_amount, sgst, cgst, total_line_amount, discount_percentage
+                        invoice_id, product_id, quantity, rate_at_sale,
+                        gst_rate_at_sale, exclusive_gst_amount, sgst, cgst, total_line_amount, rebate_amount
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     invoice_id, product_id, quantity, selling_rate,
-                    gst_rate, calc['exclusive_gst_amount'], calc['sgst'], 
-                    calc['cgst'], calc['total_line_amount'], item_discount
+                    gst_rate, line_taxable, line_sgst,
+                    line_cgst, line_total, item_rebate
                 ))
-                
+
                 # BUG-006 fixed: total_amount stores ex-GST subtotal so that
                 # grand_total = total_amount + total_gst is correct (not double-counted).
-                total_invoice_amount += calc['exclusive_gst_amount']
-                total_invoice_gst += calc['total_gst']
-                
-                # Calculate discount amount for this item
-                item_total_before_discount = quantity * selling_rate
-                item_discount_amount = item_total_before_discount * (item_discount / 100)
-                total_discount_amount += item_discount_amount
-                
+                total_invoice_amount += line_taxable
+                total_invoice_gst += line_gst
+
+                # Track total per-line rebate given (for reporting / discount_amount)
+                total_discount_amount += item_rebate
+
                 # Update inventory (decrement stock)
                 cur.execute("""
                     UPDATE inventory 
@@ -314,6 +346,13 @@ def create_sale(payload):
                         if cur.rowcount == 0:
                             raise Exception(f"Failed to update inventory for product {product_id}. No inventory record found and unable to create one.")
             
+            # The whole-bill discount was already applied per line above, so the
+            # accumulated totals are net. Fold the bill-discount ₹ value into
+            # discount_amount (which now = line rebates + bill-discount value).
+            total_invoice_amount = round(total_invoice_amount, 2)
+            total_invoice_gst = round(total_invoice_gst, 2)
+            total_discount_amount = round(total_discount_amount + total_bill_discount_value, 2)
+
             # Update invoice with calculated totals
             cur.execute("""
                 UPDATE sales_invoices
@@ -419,7 +458,8 @@ def create_sale(payload):
                                 'sgst', sii.sgst,
                                 'cgst', sii.cgst,
                                 'total_line_amount', sii.total_line_amount,
-                                'discount_percentage', sii.discount_percentage
+                                'discount_percentage', sii.discount_percentage,
+                                'rebate_amount', sii.rebate_amount
                             )
                         ) FILTER (WHERE sii.item_id IS NOT NULL),
                         '[]'
@@ -673,9 +713,10 @@ def get_invoice_by_id(payload, invoice_id):
                             'sgst', sii.sgst,
                             'cgst', sii.cgst,
                             'total_line_amount', sii.total_line_amount,
-                            'discount_percentage', sii.discount_percentage
+                            'discount_percentage', sii.discount_percentage,
+                            'rebate_amount', sii.rebate_amount
                         )
-                    ) FILTER (WHERE sii.item_id IS NOT NULL), 
+                    ) FILTER (WHERE sii.item_id IS NOT NULL),
                     '[]'
                 ) as items
             FROM sales_invoices si

@@ -5,9 +5,9 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <script src="theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supplier Credit Management - TrintzPOS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Supplier Credit Management - TrintzERP</title>
+    <script src="assets/vendor/tailwind.js"></script>
+    <link href="assets/vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="styles.css" rel="stylesheet">
     <style>
         /* Overlay for Mobile Menu */
@@ -291,11 +291,11 @@
                     <p class="text-gray-600 text-sm md:text-base">
                         Welcome, <span id="nav-username" class="font-semibold text-gray-800">Guest</span>!
                     </p>
-                    <button id="nav-logout-btn" class="flex items-center space-x-2 bg-red-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg shadow-md hover:bg-red-600 transition duration-150">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="nav-logout-btn" data-testid="logout-btn">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                         </svg>
-                        <span>Logout</span>
+                        Logout
                     </button>
                 </div>
             </header>
@@ -952,34 +952,46 @@
         }
         
         // Save transaction
+        // Guard against double-submit creating duplicate supplier transactions
+        let _supplierTxnSaving = false;
+
         function saveTransaction() {
+            // Re-entrancy guard: ignore repeat clicks while a request is in flight
+            if (_supplierTxnSaving) return;
+
             const supplierId = document.getElementById('edit-supplier-id').value;
             const transactionType = document.getElementById('edit-transaction-type').value;
             const amount = document.getElementById('edit-transaction-amount').value;
             const note = document.getElementById('edit-transaction-note').value;
-            
+
             // Validate
             if (!amount || parseFloat(amount) <= 0) {
                 alert('Please enter a valid amount');
                 return;
             }
-            
+
             const token = localStorage.getItem('pos_token');
             if (!token) {
                 window.location.href = 'login.html';
                 return;
             }
-            
+
             const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? `http://localhost:5001/api/suppliers/${supplierId}/transactions`
                 : `/api/suppliers/${supplierId}/transactions`;
-            
+
             const transactionData = {
                 transaction_type: transactionType,
                 amount: parseFloat(amount),
                 note: note
             };
-            
+
+            // Lock submission and disable the save button until done
+            _supplierTxnSaving = true;
+            const saveBtn = document.querySelector('#edit-modal .btn-success')
+                || document.querySelector('button[onclick="saveTransaction()"]');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '0.6'; saveBtn.style.cursor = 'not-allowed'; }
+
             fetch(apiUrl, {
                 method: 'POST',
                 headers: {
@@ -1004,6 +1016,11 @@
             .catch(error => {
                 console.error('Error saving transaction:', error);
                 alert('Error: ' + error.message);
+            })
+            .finally(() => {
+                // Release the submit guard and re-enable the button
+                _supplierTxnSaving = false;
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = ''; saveBtn.style.cursor = ''; }
             });
         }
         
