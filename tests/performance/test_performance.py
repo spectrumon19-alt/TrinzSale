@@ -103,15 +103,21 @@ class TestSequentialThroughput:
 class TestLargeDatasetHandling:
 
     @pytest.fixture(scope="class")
-    def bulk_products(self, client, admin_headers):
-        """Insert 100 products before the class tests run, remove them afterwards."""
+    def bulk_products(self, client, setup_test_database):
+        """Insert 100 products before the class tests run, remove them afterwards.
+
+        Mints its own admin headers from the session-scoped user ids because the
+        shared admin_headers fixture is function-scoped (ScopeMismatch otherwise).
+        """
+        from tests.conftest import make_token, auth_headers
+        headers = auth_headers(make_token(setup_test_database["admin_id"], "Admin", "test_admin"))
         pids = []
         for i in range(100):
             payload = product_payload(
                 name=f"Bulk Perf Product {i:04d} {uid8()}",
                 sku=f"BULK-{i:04d}-{uid8()}",
             )
-            resp = client.post("/api/products", json=payload, headers=admin_headers)
+            resp = client.post("/api/products", json=payload, headers=headers)
             if resp.status_code == 201:
                 pids.append(parse_json(resp)["product_id"])
         yield pids

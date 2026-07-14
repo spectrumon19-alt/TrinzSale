@@ -529,16 +529,30 @@ function attachEventListeners() {
                 const invoiceDateInput = document.getElementById('invoice-date');
                 const invoiceDate = invoiceDateInput && invoiceDateInput.value ? invoiceDateInput.value : null;
                 
+                const _isCredit = modeOfPaymentSelect && modeOfPaymentSelect.value === 'Credit';
+                // Resolve the customer mobile used to match the credit ledger on the
+                // backend. For CREDIT sales this MUST be the selected credit customer's
+                // mobile — otherwise the backend can't find the customer and the
+                // receivable is never posted. Fall back to the manual mobile field / UPI.
+                const _creditMobile = (_isCredit && selectedCreditCustomer && selectedCreditCustomer.mobile)
+                    ? String(selectedCreditCustomer.mobile).trim() : '';
                 const invoiceData = {
                     customer_name: customerNameInput.value,
                     customer_contact: '',
                     invoice_date: invoiceDate,
                     mode_of_payment: modeOfPaymentSelect ? modeOfPaymentSelect.value : 'Cash',
                     upi_transaction_id: (modeOfPaymentSelect && modeOfPaymentSelect.value === 'UPI') ? upiTransactionIdInput.value : null,
-                    customer_mobile: customerMobileMainInput && customerMobileMainInput.value.trim()
+                    customer_mobile: (customerMobileMainInput && customerMobileMainInput.value.trim())
                         ? customerMobileMainInput.value.trim()
-                        : ((modeOfPaymentSelect && modeOfPaymentSelect.value === 'UPI') ? (customerMobileInput ? customerMobileInput.value : null) : null),
+                        : (_creditMobile
+                            ? _creditMobile
+                            : ((modeOfPaymentSelect && modeOfPaymentSelect.value === 'UPI') ? (customerMobileInput ? customerMobileInput.value : null) : null)),
                     discount_percentage: discountPercentage,
+                    // Explicit credit customer id — the backend prefers this over a
+                    // mobile lookup so the receivable posts reliably even if the
+                    // mobile is blank or shared between customers.
+                    credit_customer_id: (_isCredit && selectedCreditCustomer && selectedCreditCustomer.customer_id)
+                        ? selectedCreditCustomer.customer_id : null,
                     items: invoiceItems.map(item => ({
                         product_id: item.product_id,
                         quantity: item.quantity,

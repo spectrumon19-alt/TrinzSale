@@ -177,7 +177,9 @@ class TestOverview:
         assert "supplier_count" in data["payables"]
 
     def test_receivable_balance_counts_in_overview(self, client, admin_headers, seeded_customer):
-        seeded_customer.set_balance(500.00)
+        # Tally convention: a customer who OWES carries a NEGATIVE balance
+        # (credit sale posts a 'debit'); outstanding = -balance.
+        seeded_customer.set_balance(-500.00)
         data = parse_json(client.get("/api/credit/overview", headers=admin_headers))
         assert data["receivables"]["total_outstanding"] >= 500.00
         assert data["receivables"]["customer_count"] >= 1
@@ -195,9 +197,10 @@ class TestOverview:
         assert data["net_position"] == expected
 
     def test_customer_advance_reported_separately_not_netted(self, client, admin_headers, seeded_customer):
-        # A negative balance = customer in credit (advance). It must NOT reduce
-        # the receivables outstanding total; it appears in advance_total instead.
-        seeded_customer.set_balance(-300.00)
+        # A POSITIVE balance = customer in credit (advance) under the Tally
+        # convention. It must NOT reduce the receivables outstanding total; it
+        # appears in advance_total instead.
+        seeded_customer.set_balance(300.00)
         data = parse_json(client.get("/api/credit/overview", headers=admin_headers))
         assert data["receivables"]["advance_total"] >= 300.00
         assert data["receivables"]["advance_count"] >= 1
@@ -312,9 +315,13 @@ class TestReconciliation:
 
 class TestAging:
 
+    # Tally convention for customers: the CHARGE that ages is a 'debit'
+    # (credit sale), a 'credit' is a payment, and an owing customer carries a
+    # NEGATIVE stored balance (outstanding = -balance).
+
     def test_recent_charge_in_current_bucket(self, client, admin_headers, seeded_customer):
-        seeded_customer.add("credit", 500, days_ago=10)   # within 0-30
-        seeded_customer.set_balance(500.00)
+        seeded_customer.add("debit", 500, days_ago=10)   # within 0-30
+        seeded_customer.set_balance(-500.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         assert row["aging"]["current"] == 500.00
@@ -322,19 +329,19 @@ class TestAging:
         assert row["aging"]["d90_plus"] == 0.0
 
     def test_old_charge_in_90plus_bucket(self, client, admin_headers, seeded_customer):
-        seeded_customer.add("credit", 700, days_ago=120)  # 90+
-        seeded_customer.set_balance(700.00)
+        seeded_customer.add("debit", 700, days_ago=120)  # 90+
+        seeded_customer.set_balance(-700.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         assert row["aging"]["d90_plus"] == 700.00
         assert row["aging"]["current"] == 0.0
 
     def test_buckets_cover_all_ranges(self, client, admin_headers, seeded_customer):
-        seeded_customer.add("credit", 100, days_ago=10)   # current
-        seeded_customer.add("credit", 100, days_ago=45)   # 31-60
-        seeded_customer.add("credit", 100, days_ago=75)   # 61-90
-        seeded_customer.add("credit", 100, days_ago=200)  # 90+
-        seeded_customer.set_balance(400.00)
+        seeded_customer.add("debit", 100, days_ago=10)   # current
+        seeded_customer.add("debit", 100, days_ago=45)   # 31-60
+        seeded_customer.add("debit", 100, days_ago=75)   # 61-90
+        seeded_customer.add("debit", 100, days_ago=200)  # 90+
+        seeded_customer.set_balance(-400.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         assert row["aging"]["current"] == 100.00
@@ -346,28 +353,28 @@ class TestAging:
         # Old charge 300 (120d) + new charge 200 (5d); pay 300.
         # FIFO: payment knocks out the 300 old charge entirely.
         # Remaining outstanding = 200, all in the CURRENT bucket.
-        seeded_customer.add("credit", 300, days_ago=120)
-        seeded_customer.add("credit", 200, days_ago=5)
-        seeded_customer.add("debit", 300, days_ago=1)
-        seeded_customer.set_balance(200.00)
+        seeded_customer.add("debit", 300, days_ago=120)
+        seeded_customer.add("debit", 200, days_ago=5)
+        seeded_customer.add("credit", 300, days_ago=1)
+        seeded_customer.set_balance(-200.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         assert row["aging"]["d90_plus"] == 0.0
         assert row["aging"]["current"] == 200.00
 
     def test_aging_buckets_sum_to_outstanding(self, client, admin_headers, seeded_customer):
-        seeded_customer.add("credit", 250, days_ago=15)
-        seeded_customer.add("credit", 150, days_ago=80)
-        seeded_customer.set_balance(400.00)
+        seeded_customer.add("debit", 250, days_ago=15)
+        seeded_customer.add("debit", 150, days_ago=80)
+        seeded_customer.set_balance(-400.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         bucket_sum = round(sum(row["aging"].values()), 2)
         assert bucket_sum == 400.00
 
     def test_advance_balance_does_not_age(self, client, admin_headers, seeded_customer):
-        # Net negative balance (advance) has nothing outstanding to age.
-        seeded_customer.add("debit", 500, days_ago=10)
-        seeded_customer.set_balance(-500.00)
+        # Net POSITIVE balance (advance) has nothing outstanding to age.
+        seeded_customer.add("credit", 500, days_ago=10)
+        seeded_customer.set_balance(500.00)
         data = parse_json(client.get("/api/credit/customers", headers=admin_headers))
         row = _find(data["customers"], "customer_id", seeded_customer.customer_id)
         assert sum(row["aging"].values()) == 0.0

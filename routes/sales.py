@@ -279,8 +279,11 @@ def create_sale(payload):
                 # these rows). Track the ₹ taken off for discount_amount reporting.
                 line_taxable = round(calc['exclusive_gst_amount'] * bill_keep, 2)
                 line_gst     = round(calc['total_gst'] * bill_keep, 2)
+                # SGST and CGST are always EQUAL halves (system-wide convention,
+                # same as calculate_invoice_item). Their sum may differ from
+                # line_gst by ±1 paisa on odd amounts — standard GST rounding.
                 line_sgst    = round(line_gst / 2, 2)
-                line_cgst    = round(line_gst - line_sgst, 2)
+                line_cgst    = line_sgst
                 line_total   = round(line_taxable + line_gst, 2)
                 total_bill_discount_value += round(
                     (calc['exclusive_gst_amount'] + calc['total_gst']) * (1 - bill_keep), 2)
@@ -369,9 +372,20 @@ def create_sale(payload):
             if (data.get('mode_of_payment') or '').strip().lower() == 'credit':
                 grand_total = round(float(total_invoice_amount) + float(total_invoice_gst), 2)
                 cust_mobile = (data.get('customer_mobile') or data.get('customer_contact') or '').strip()
+                credit_customer_id = data.get('credit_customer_id')
                 try:
                     cc = None
-                    if cust_mobile:
+                    # Prefer an explicit credit_customer_id (reliable), then fall back
+                    # to matching by mobile. This ensures the receivable posts even when
+                    # the mobile is blank or shared between customers.
+                    if credit_customer_id:
+                        cur.execute("""
+                            SELECT customer_id, current_balance
+                            FROM credit_customers
+                            WHERE customer_id = %s
+                        """, (credit_customer_id,))
+                        cc = cur.fetchone()
+                    if not cc and cust_mobile:
                         cur.execute("""
                             SELECT customer_id, current_balance
                             FROM credit_customers

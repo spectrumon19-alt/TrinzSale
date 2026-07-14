@@ -109,7 +109,10 @@ class TestGSTCalculation:
             f"Once fixed: grand_total ({grand_total}) should equal total_amount ({total_amount})"
         )
 
-    def test_discount_reduces_total_line_amount(self, client, cashier_headers, test_product, db_conn):
+    def test_rebate_reduces_total_line_amount(self, client, cashier_headers, test_product, db_conn):
+        # Per-item discounts are now a flat ₹ REBATE off the line total (the old
+        # per-item 'discount' % was replaced); GST is recomputed on the reduced
+        # figure. ₹20 rebate on a ₹200 line → ₹180.
         cur = db_conn.cursor()
         cur.execute(
             "UPDATE products SET selling_rate=200.0, gst_rate=18.0 WHERE product_id=%s",
@@ -122,17 +125,19 @@ class TestGSTCalculation:
         db_conn.commit()
 
         resp = client.post("/api/sales", json={
-            "customer_name": "Discount Customer",
+            "customer_name": "Rebate Customer",
             "mode_of_payment": "Cash",
             "items": [{"product_id": test_product["product_id"], "quantity": 1,
-                       "selling_rate": 200.0, "gst_rate": 18.0, "discount": 10}],
+                       "selling_rate": 200.0, "gst_rate": 18.0, "rebate": 20}],
         }, headers=cashier_headers)
         assert resp.status_code == 201
         item = parse_json(resp)["items"][0]
-        # 10% discount on ₹200 → ₹180 line amount
+        # ₹20 rebate on ₹200 → ₹180 line amount
         assert abs(float(item["total_line_amount"]) - 180.0) < 0.10, (
-            f"10% discount on ₹200 should give ₹180, got {item['total_line_amount']}"
+            f"₹20 rebate on ₹200 should give ₹180, got {item['total_line_amount']}"
         )
+        # The stored rebate must round-trip
+        assert abs(float(item.get("rebate_amount", 0)) - 20.0) < 0.01
 
 
 # ── Stock Management ──────────────────────────────────────────────────────────
@@ -236,7 +241,9 @@ class TestStockManagement:
 
 class TestInvoiceNumberFormat:
 
-    INVOICE_PATTERN = re.compile(r"D\d{2}P\d{3}_\d{6}")
+    # Current format: D{DD}P{DDD}{YYMMDD} — the underscore was deliberately
+    # removed from invoice numbers (e.g. D01P012260711).
+    INVOICE_PATTERN = re.compile(r"D\d{2}P\d{3}\d{6}")
     RECEIPT_PATTERN = re.compile(r"R\d{8}\d{3}")
 
     def test_invoice_number_matches_format(self, client, cashier_headers, test_product):
@@ -285,8 +292,9 @@ class TestInvoiceNumberFormat:
 
         r1 = make_sale()
         r2 = make_sale()
-        seq1 = int(r1.split("_")[-1])
-        seq2 = int(r2.split("_")[-1])
+        # Format RYYYYMMDDNNN — the daily sequence is the trailing 3 digits.
+        seq1 = int(r1[-3:])
+        seq2 = int(r2[-3:])
         assert seq2 == seq1 + 1, f"Receipt sequences must be consecutive: {r1}, {r2}"
 
 

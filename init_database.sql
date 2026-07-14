@@ -394,6 +394,11 @@ CREATE TRIGGER update_credit_customers_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 
+-- === SEED-DATA-START ===
+-- The marker above/below lets predeploy.py strip this block out when running
+-- against an EXISTING (already-initialised) database, so demo accounts and
+-- sample products/suppliers are only ever created once, on a genuinely fresh
+-- install — never resurrected by a routine deploy migration pass.
 -- ============================================================
 -- DEFAULT SEED DATA
 -- ============================================================
@@ -471,6 +476,7 @@ WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_gst_number = '23BBBBB00
 INSERT INTO suppliers (supplier_name, supplier_gst_number, mobile, bank_name, bank_account_number, ifsc_code)
 SELECT 'PQR Traders', '24CCCCC0000C3X7', '7654321098', 'HDFC Bank', '345678901234', 'HDFC0004567'
 WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_gst_number = '24CCCCC0000C3X7');
+-- === SEED-DATA-END ===
 
 
 -- ============================================================

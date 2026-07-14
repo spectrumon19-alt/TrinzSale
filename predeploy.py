@@ -127,13 +127,20 @@ def check_and_init_db(params):
     existing = {row[0] for row in cur.fetchall()}
     missing  = [t for t in REQUIRED_TABLES if t not in existing]
 
-    if not missing:
+    if missing:
+        _info(f'{len(missing)} table(s) missing: {", ".join(missing)}')
+    else:
         _ok(f'All {len(REQUIRED_TABLES)} required tables exist.')
-        cur.close(); conn.close()
-        return True
 
-    _info(f'{len(missing)} table(s) missing: {", ".join(missing)}')
-    _info('Running init_database.sql to initialise schema ...')
+    # ALWAYS run init_database.sql on every deploy — not just when a table is
+    # missing. The script's schema/migration statements are fully idempotent
+    # (CREATE TABLE IF NOT EXISTS + ALTER TABLE ... ADD COLUMN IF NOT EXISTS),
+    # so re-running them is safe and is the mechanism that applies additive
+    # schema migrations (e.g. new columns like sales_invoice_items.rebate_amount)
+    # to an EXISTING production database. Previously this only ran when a whole
+    # table was missing, so column-level migrations never reached prod and
+    # caused runtime 500s (UndefinedColumn).
+    _info('Running init_database.sql to apply schema + idempotent migrations ...')
 
     sql_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'init_database.sql')
     if not os.path.isfile(sql_path):
@@ -144,15 +151,41 @@ def check_and_init_db(params):
     with open(sql_path, 'r', encoding='utf-8') as f:
         sql = f.read()
 
+    # On an EXISTING database (has users already), strip the DEFAULT SEED DATA
+    # block (default admin/cashier accounts + sample products/suppliers) between
+    # the SEED-DATA-START/END markers. That block must only ever run once, on a
+    # genuinely fresh install — re-running it against production would silently
+    # (re)create a known-password 'cashier'/'cashier123' account on every deploy.
+    # On a truly fresh DB the users table doesn't exist yet — that query raises
+    # UndefinedTable (harmless with autocommit=True; no transaction to poison),
+    # which just means "fresh install", so treat it as has_existing_data=False.
+    try:
+        cur.execute("SELECT EXISTS (SELECT 1 FROM users LIMIT 1)")
+        has_existing_data = cur.fetchone()[0]
+    except Exception:
+        has_existing_data = False
+    if has_existing_data:
+        start_marker = '-- === SEED-DATA-START ==='
+        end_marker    = '-- === SEED-DATA-END ==='
+        start = sql.find(start_marker)
+        end   = sql.find(end_marker)
+        if start != -1 and end != -1:
+            sql = sql[:start] + sql[end + len(end_marker):]
+            _info('Existing database detected — skipped default seed data '
+                  '(admin/cashier demo accounts, sample products/suppliers).')
+        else:
+            _warn('SEED-DATA markers not found in init_database.sql — '
+                  'running the full script unmodified.')
+
     try:
         cur.execute(sql)
-        _ok('init_database.sql executed successfully.')
+        _ok('init_database.sql executed successfully (schema + migrations applied).')
     except Exception as exc:
         _fail(f'init_database.sql failed: {exc}')
         cur.close(); conn.close()
         return False
 
-    # Re-verify
+    # Re-verify all required tables exist after running the script
     cur.execute("""
         SELECT table_name
         FROM   information_schema.tables
@@ -167,7 +200,7 @@ def check_and_init_db(params):
         _fail(f'Still missing after init: {", ".join(still_missing)}')
         return False
 
-    _ok(f'All {len(REQUIRED_TABLES)} tables verified after initialisation.')
+    _ok(f'All {len(REQUIRED_TABLES)} tables verified.')
     return True
 
 

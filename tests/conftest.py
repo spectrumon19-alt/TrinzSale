@@ -94,6 +94,11 @@ ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_by  INTEGER;
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancelled_at  TIMESTAMP;
 ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
 
+-- Per-item flat rebate (₹ off line total) — mirrors init_database.sql migration.
+-- schema.sql's CREATE TABLE IF NOT EXISTS cannot add this to a pre-existing
+-- test DB, so it must be applied here too or every sale INSERT 500s.
+ALTER TABLE sales_invoice_items ADD COLUMN IF NOT EXISTS rebate_amount DECIMAL(10,2) DEFAULT 0.00;
+
 CREATE TABLE IF NOT EXISTS login_activity (
     id              SERIAL PRIMARY KEY,
     user_id         INTEGER,
@@ -262,13 +267,27 @@ def setup_test_database():
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
-def _clear_login_lockout(setup_test_database):
+def _clear_login_lockout(setup_test_database, client):
     """
     Clear login_activity before each test so the custom 5-failures-in-15-min
     account lockout cannot bleed between tests. (The dominant cause of cross-test
     429s was Flask-Limiter, which is now disabled in tests via DISABLE_RATE_LIMIT;
     this remains as hygiene for the per-account lockout.)
+
+    ALSO clears the shared test client's cookies. /api/login sets an httpOnly
+    session cookie, and auth._extract_token() prefers that cookie over the
+    Authorization header — so a cookie left behind by test_auth.py silently
+    SHADOWS every later test's Bearer token (admin tokens act as Cashier → 403s;
+    "unauthenticated" requests authenticate via the cookie → 200 instead of 401).
     """
+    # Werkzeug test client: delete the session cookie so Bearer headers rule.
+    try:
+        client.delete_cookie('pos_session')
+    except Exception:
+        try:
+            client.cookie_jar.clear()          # older Werkzeug fallback
+        except Exception:
+            pass
     try:
         conn = psycopg2.connect(
             host=TEST_DB_HOST, dbname=TEST_DB_NAME,

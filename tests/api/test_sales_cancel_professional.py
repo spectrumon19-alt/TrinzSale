@@ -179,10 +179,12 @@ class TestCreditLinkageWarning:
             (f"CW{suffix}", f"uuid-{suffix}", f"CredLink {suffix}", "9000099999"),
         )
         cid = cur.fetchone()[0]
+        # Tally convention: a credit SALE posts a 'debit' (charge) against the
+        # customer — that is the linked entry cancel must reverse and warn about.
         cur.execute(
             """
             INSERT INTO credit_transactions (customer_id, transaction_type, amount, invoice_no, previous_balance)
-            VALUES (%s, 'credit', 100, %s, 0)
+            VALUES (%s, 'debit', 100, %s, 0)
             """,
             (cid, inv_no),
         )
