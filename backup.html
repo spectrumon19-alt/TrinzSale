@@ -76,11 +76,8 @@
 <div class="main-layout flex min-h-screen">
     <nav id="sidebar" class="w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50" style="width:220px;">
         <a href="dashboard.html" class="snav-brand">
+                <img class="snav-brand-logo" src="assets/logo-dark.png" alt="TrintzERP">
                 <span class="snav-brand-mark"><img src="assets/favicon.png" alt="TrintzERP"></span>
-                <span class="snav-brand-text">
-                    <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
-                    <span class="snav-brand-sub">Retail &amp; Billing</span>
-                </span>
             </a>
         <div class="px-4 mt-auto sidebar-pin-area"></div>
     </nav>
@@ -165,7 +162,7 @@
                 <div class="toggle-row" style="margin-bottom:.875rem;">
                     <div>
                         <p style="font-size:.8rem;font-weight:600;color:var(--text-base);">Upload backups to Google Drive</p>
-                        <p style="font-size:.7rem;color:var(--text-muted);margin-top:1px;">Requires a Google Service Account JSON key</p>
+                        <p style="font-size:.7rem;color:var(--text-muted);margin-top:1px;">Sign in once with Google — backups upload automatically</p>
                     </div>
                     <label class="bk-toggle">
                         <input type="checkbox" id="gdrive-enabled">
@@ -174,39 +171,60 @@
                 </div>
 
                 <div id="gdrive-config" style="display:none;flex-direction:column;gap:.75rem;">
-                    <div>
-                        <label class="bk-label">Google Drive Folder ID (leave blank for My Drive root)</label>
-                        <input type="text" id="gdrive-folder" class="bk-input" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
-                    </div>
-                    <div>
-                        <label class="bk-label">Service Account JSON Key</label>
-                        <div style="display:flex;gap:.5rem;">
-                            <input type="file" id="gdrive-file" accept=".json" onchange="loadJsonFile(this)" style="display:none;">
-                            <button class="bk-btn bk-btn-ghost" onclick="document.getElementById('gdrive-file').click()">
-                                <i class="fas fa-upload"></i> Upload credentials.json
-                            </button>
-                            <span id="gdrive-file-name" style="font-size:.75rem;color:var(--text-muted);align-self:center;"></span>
-                        </div>
-                        <div id="gdrive-configured-badge" style="display:none;margin-top:.4rem;">
-                            <span class="status-badge badge-success"><i class="fas fa-check"></i> Credentials saved</span>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-                        <button class="bk-btn bk-btn-ghost" onclick="testGdrive()">
-                            <i class="fas fa-plug"></i> Test Connection
+                    <!-- Simple path: sign in with Google (OAuth) -->
+                    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+                        <button class="bk-btn bk-btn-primary" id="gdrive-connect-btn" onclick="connectGdrive()">
+                            <i class="fab fa-google"></i> Connect Google Drive
                         </button>
-                        <span id="gdrive-test-result" style="font-size:.75rem;align-self:center;"></span>
+                        <button class="bk-btn bk-btn-danger" id="gdrive-disconnect-btn" onclick="disconnectGdrive()" style="display:none;">
+                            <i class="fas fa-unlink"></i> Disconnect
+                        </button>
+                        <span id="gdrive-oauth-status" style="font-size:.75rem;color:var(--text-muted);"></span>
+                    </div>
+
+                    <div>
+                        <label class="bk-label">Google Drive Folder (optional — paste the folder link or ID; blank = My Drive)</label>
+                        <input type="text" id="gdrive-folder" class="bk-input" placeholder="https://drive.google.com/drive/folders/… or folder ID">
                     </div>
 
                     <div class="gdrive-info">
-                        <strong>How to set up Google Drive backup:</strong><br>
-                        1. Go to <strong>console.cloud.google.com</strong> → Create a new project<br>
-                        2. Enable <strong>Google Drive API</strong><br>
-                        3. Create a <strong>Service Account</strong> → Create JSON key → download it<br>
-                        4. In Google Drive, create a folder → Share it with the service account email<br>
-                        5. Copy the <strong>folder ID</strong> from the Drive URL: <code>drive.google.com/drive/folders/<strong>[this part]</strong></code><br>
-                        6. Upload the JSON key file above and paste the folder ID
+                        <strong>Simple setup:</strong> click <strong>Connect Google Drive</strong>, sign in with your
+                        Google account, then <strong>Save Settings</strong>. Every backup (manual &amp; scheduled)
+                        uploads to your Drive automatically.
                     </div>
+
+                    <!-- Advanced / legacy path: service account JSON -->
+                    <details>
+                        <summary style="font-size:.75rem;color:var(--text-muted);cursor:pointer;">
+                            Advanced: use a Service Account instead (for servers without a Google login)
+                        </summary>
+                        <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem;">
+                            <div>
+                                <label class="bk-label">Service Account JSON Key</label>
+                                <div style="display:flex;gap:.5rem;">
+                                    <input type="file" id="gdrive-file" accept=".json" onchange="loadJsonFile(this)" style="display:none;">
+                                    <button class="bk-btn bk-btn-ghost" onclick="document.getElementById('gdrive-file').click()">
+                                        <i class="fas fa-upload"></i> Upload credentials.json
+                                    </button>
+                                    <span id="gdrive-file-name" style="font-size:.75rem;color:var(--text-muted);align-self:center;"></span>
+                                </div>
+                                <div id="gdrive-configured-badge" style="display:none;margin-top:.4rem;">
+                                    <span class="status-badge badge-success"><i class="fas fa-check"></i> Credentials saved</span>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                                <button class="bk-btn bk-btn-ghost" onclick="testGdrive()">
+                                    <i class="fas fa-plug"></i> Test Connection
+                                </button>
+                                <span id="gdrive-test-result" style="font-size:.75rem;align-self:center;"></span>
+                            </div>
+                            <div class="gdrive-info">
+                                1. <strong>console.cloud.google.com</strong> → create project → enable <strong>Drive API</strong><br>
+                                2. Create a <strong>Service Account</strong> → JSON key → upload it above<br>
+                                3. Share your Drive folder with the service account email
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -463,6 +481,60 @@ async function deleteBackup(id, filename) {
     else toast(d.error || 'Delete failed', 'error');
 }
 
+// ── Google Drive OAuth (simple path) ─────────────────────────────────────────
+async function loadOauthStatus() {
+    try {
+        const res = await fetch('/api/backup/oauth/status', { headers: { Authorization: 'Bearer ' + token() } });
+        if (!res.ok) return;
+        const d = await res.json();
+        const status     = document.getElementById('gdrive-oauth-status');
+        const connectBtn = document.getElementById('gdrive-connect-btn');
+        const discBtn    = document.getElementById('gdrive-disconnect-btn');
+        if (d.authorized) {
+            status.innerHTML = '<span class="status-badge badge-success"><i class="fas fa-check"></i> Connected as ' + (d.user_email || 'Google account') + '</span>';
+            connectBtn.style.display = 'none';
+            discBtn.style.display = 'inline-flex';
+        } else {
+            status.textContent = 'Not connected';
+            connectBtn.style.display = 'inline-flex';
+            discBtn.style.display = 'none';
+        }
+    } catch (_) { /* status is cosmetic — never block the page */ }
+}
+
+async function connectGdrive() {
+    const btn = document.getElementById('gdrive-connect-btn');
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/backup/oauth/authorize', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token() }
+        });
+        const d = await res.json();
+        if (!res.ok || !d.auth_url) throw new Error(d.error || 'Could not start Google sign-in');
+        // Popup — Google's page handles sign-in; callback closes it and reloads us.
+        const w = 520, h = 640;
+        const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
+        window.open(d.auth_url, 'gdrive_oauth', `width=${w},height=${h},left=${left},top=${top}`);
+        toast('Complete the Google sign-in in the popup window', 'info');
+    } catch (e) {
+        toast(e.message, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function disconnectGdrive() {
+    if (!confirm('Disconnect Google Drive? Scheduled backups will stay local-only until you reconnect.')) return;
+    const res = await fetch('/api/backup/oauth/revoke', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token() }
+    });
+    const d = await res.json();
+    if (d.success) { toast('Google Drive disconnected', 'success'); loadOauthStatus(); }
+    else toast(d.error || 'Disconnect failed', 'error');
+}
+
 // ── Google Drive helpers ──────────────────────────────────────────────────────
 let _pendingCreds = null;
 
@@ -522,6 +594,7 @@ function toast(msg, type) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadSettings();
 loadHistory();
+loadOauthStatus();
 </script>
 </body>
 </html>

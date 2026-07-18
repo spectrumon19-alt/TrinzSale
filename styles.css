@@ -1023,29 +1023,25 @@ main { flex: 1; }
    Replaces the small white logo pill with a professional icon+wordmark lockup
    that reads clearly on the dark sidebar and adapts to rail-collapse mode. */
 .snav-brand {
-    display: flex; align-items: center; gap: 11px;
-    padding: 18px 16px 14px; margin-bottom: 4px;
+    display: flex; align-items: center; justify-content: flex-start;
+    padding: 16px 14px 14px; margin-bottom: 4px;
     text-decoration: none;
     border-bottom: 1px solid rgba(255,255,255,.07);
 }
+/* ── Full logo image (the real brand lockup) ─────────────────────────────────
+   The sidebar surface is a dark purple gradient in BOTH light and dark themes,
+   so we always use the DARK variant here (bright lavender wordmark) — it reads
+   loud and clear against the nav. logo.png (dark ink) is for light surfaces. */
+.snav-brand .snav-brand-logo {
+    height: 40px; width: auto; max-width: 182px;
+    object-fit: contain; display: block;
+}
+
+/* Lotus mark — hidden by default; only shown in icon-rail (collapsed) mode. */
 .snav-brand .snav-brand-mark {
-    width: 44px; height: 44px; flex: 0 0 auto;
-    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex: 0 0 auto;
+    display: none; align-items: center; justify-content: center;
     background: transparent;
-}
-.snav-brand .snav-brand-mark img { width: 44px; height: 44px; object-fit: contain; display: block; }
-.snav-brand .snav-brand-text { display: flex; flex-direction: column; line-height: 1; overflow: hidden; }
-.snav-brand .snav-brand-name {
-    font-size: 1.12rem; font-weight: 800; letter-spacing: -.4px; color: #ffffff; white-space: nowrap;
-}
-/* "ERP" in solid red. The sidebar surface stays dark in both themes, so a
-   bright red reads clearly against it. */
-.snav-brand .snav-brand-name .accent {
-    color: #ef4444;
-}
-.snav-brand .snav-brand-sub {
-    font-size: .58rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
-    color: rgba(199,210,254,.72); margin-top: 4px; white-space: nowrap;
 }
 
 /* ── Brand mark: red dot on the "i" in Trintz ────────────────────────────────
@@ -1085,9 +1081,11 @@ html.dark .brand-erp,
     color: #ff5959; /* brighter red for the dark surface */
     -webkit-text-fill-color: currentColor;
 }
-/* In rail (icon-only) mode, center the mark and hide the wordmark. */
+/* In rail (icon-only) mode, hide the full logo and show only the lotus mark,
+   centered. On hover the sidebar expands and the full logo returns. */
 html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand { justify-content: center; padding-left: 0; padding-right: 0; }
-html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand .snav-brand-text { opacity: 0; width: 0; }
+html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand .snav-brand-logo { display: none; }
+html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand .snav-brand-mark { display: flex; }
 
 /* On mobile (< 768px) sidebar slides off-canvas by default.
    Tailwind's -translate-x-full class does this; we add z-index

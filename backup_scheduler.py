@@ -44,17 +44,36 @@ def _run_scheduled_backup():
         error_msg      = None
         status         = 'success'
 
-        # Upload to Google Drive if configured
-        if settings.get('gdrive_enabled') and settings.get('gdrive_credentials'):
-            try:
-                gdrive_file_id = upload_to_gdrive(
-                    result['filepath'],
-                    settings.get('gdrive_folder_id', ''),
-                    settings['gdrive_credentials']
-                )
-            except Exception as e:
-                error_msg = f'GDrive upload failed: {e}'
-                logger.warning(error_msg)
+        # Upload to Google Drive if configured.
+        # OAuth (user's own Google account) is preferred; service-account JSON
+        # is the legacy fallback. Mirrors the manual-run logic in routes/backup.py.
+        if settings.get('gdrive_enabled'):
+            from routes.backup_oauth import get_oauth_tokens, refresh_oauth_token_if_needed
+            from backup_engine import upload_to_gdrive_oauth
+            oauth_tokens = get_oauth_tokens()
+            if oauth_tokens:
+                try:
+                    access_token = refresh_oauth_token_if_needed()
+                    if not access_token:
+                        raise Exception('OAuth token expired and could not be refreshed')
+                    gdrive_file_id = upload_to_gdrive_oauth(
+                        result['filepath'],
+                        settings.get('gdrive_folder_id', ''),
+                        access_token
+                    )
+                except Exception as e:
+                    error_msg = f'GDrive upload failed (OAuth): {e}'
+                    logger.warning(error_msg)
+            elif settings.get('gdrive_credentials'):
+                try:
+                    gdrive_file_id = upload_to_gdrive(
+                        result['filepath'],
+                        settings.get('gdrive_folder_id', ''),
+                        settings['gdrive_credentials']
+                    )
+                except Exception as e:
+                    error_msg = f'GDrive upload failed: {e}'
+                    logger.warning(error_msg)
 
         # Log to DB
         conn = get_db_connection()

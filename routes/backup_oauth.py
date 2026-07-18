@@ -19,7 +19,8 @@ backup_oauth_bp = Blueprint('backup_oauth', __name__)
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
+# drive (upload backups) + userinfo.email (identify who connected, shown in the UI)
+GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email"
 
 
 def _get_oauth_config():
@@ -63,17 +64,19 @@ def start_oauth_flow(payload):
     state_token = _generate_state_token()
     session['oauth_state'] = state_token
 
-    # Build authorization URL
-    auth_url = (
-        f"{GOOGLE_AUTH_URL}?"
-        f"client_id={config['client_id']}&"
-        f"redirect_uri={config['redirect_uri']}&"
-        f"response_type=code&"
-        f"scope={GOOGLE_DRIVE_SCOPE}&"
-        f"access_type=offline&"
-        f"prompt=consent&"
-        f"state={state_token}"
-    )
+    # Build authorization URL (urlencode so the multi-scope space and any
+    # special characters in redirect_uri/state are properly escaped).
+    from urllib.parse import urlencode
+    params = {
+        'client_id': config['client_id'],
+        'redirect_uri': config['redirect_uri'],
+        'response_type': 'code',
+        'scope': GOOGLE_DRIVE_SCOPE,
+        'access_type': 'offline',
+        'prompt': 'consent',
+        'state': state_token,
+    }
+    auth_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
     return jsonify({
         'auth_url': auth_url,
@@ -128,9 +131,9 @@ def oauth_callback():
             return "No access token in response", 400
 
         # Get user info from token to identify who's authorizing
-        user_info = _get_google_user_info(access_token)
+        user_info, uerr = _get_google_user_info(access_token)
         if not user_info:
-            return "Failed to get user info", 400
+            return f"Failed to get user info: {uerr}", 400
 
         # Store tokens in database
         _store_oauth_tokens(access_token, refresh_token, expires_in, user_info)
@@ -158,7 +161,7 @@ def oauth_callback():
 # ── Token Management ───────────────────────────────────────────────────────────
 
 def _get_google_user_info(access_token):
-    """Get user info from Google using access token"""
+    """Get user info from Google using access token. Returns (info, error)."""
     try:
         import requests
         response = requests.get(
@@ -167,11 +170,10 @@ def _get_google_user_info(access_token):
             timeout=10
         )
         if response.status_code == 200:
-            return response.json()
-        return None
+            return response.json(), None
+        return None, f'userinfo endpoint returned {response.status_code}: {response.text[:200]}'
     except Exception as e:
-        print(f"Error getting user info: {e}")
-        return None
+        return None, str(e)
 
 
 def _store_oauth_tokens(access_token, refresh_token, expires_in, user_info):

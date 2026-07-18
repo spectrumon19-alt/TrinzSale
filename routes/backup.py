@@ -45,10 +45,13 @@ def run_backup_now(payload):
         destination   = 'local'
 
         # Try OAuth first (preferred method)
-        from routes.backup_oauth import get_oauth_tokens, refresh_oauth_token_if_needed, upload_to_gdrive_oauth
+        from routes.backup_oauth import get_oauth_tokens, refresh_oauth_token_if_needed
+        from backup_engine import upload_to_gdrive_oauth
         oauth_tokens = get_oauth_tokens()
 
-        if oauth_tokens and settings.get('gdrive_folder_id'):
+        # OAuth upload when Drive upload is enabled and an account is connected.
+        # Folder ID is optional — blank uploads to the user's My Drive root.
+        if settings.get('gdrive_enabled') and oauth_tokens:
             try:
                 # Refresh token if needed
                 access_token = refresh_oauth_token_if_needed()

@@ -371,12 +371,9 @@ function ensureSidebarShell() {
         + ' transition duration-200 ease-in-out z-50';
     nav.style.width = '220px';
     nav.innerHTML = `
-        <a href="dashboard.html" class="snav-brand">
+        <a href="dashboard.html" class="snav-brand" aria-label="TrintzERP home">
+            <img class="snav-brand-logo" src="assets/logo-dark.png" alt="TrintzERP">
             <span class="snav-brand-mark"><img src="assets/favicon.png" alt="TrintzERP"></span>
-            <span class="snav-brand-text">
-                <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
-                <span class="snav-brand-sub">Retail &amp; Billing</span>
-            </span>
         </a>
         <div class="px-4 mt-auto sidebar-pin-area"></div>`;
     layout.insertBefore(nav, layout.firstChild);
