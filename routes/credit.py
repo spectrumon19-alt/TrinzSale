@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from db import get_db_connection, release_db_connection
 from auth import token_required, admin_required
 from psycopg2.extras import RealDictCursor
+from ledger_utils import find_recent_duplicate
 import uuid
 import traceback
 import io
@@ -420,24 +421,13 @@ def add_credit_transaction(payload, customer_id):
             # (same customer, type, amount, invoice_no, note) — this stops a
             # double-click / retry from inserting duplicate ledger rows and
             # compounding the balance. Returns the existing row instead of a new
-            # insert so the client still succeeds.
-            cur.execute("""
-                SELECT transaction_id, transaction_type, amount, invoice_no, note,
-                       previous_balance, created_at
-                FROM credit_transactions
-                WHERE customer_id = %s
-                  AND transaction_type = %s
-                  AND amount = %s
-                  AND COALESCE(invoice_no, '') = COALESCE(%s, '')
-                  AND COALESCE(note, '')       = COALESCE(%s, '')
-                  AND created_at >= NOW() - INTERVAL '10 seconds'
-                ORDER BY created_at DESC
-                LIMIT 1
-            """, (
-                customer_id, data.get('transaction_type'), amount,
-                data.get('invoice_no') or None, data.get('note') or None
-            ))
-            dup = cur.fetchone()
+            # insert so the client still succeeds. Shared with routes/suppliers.py
+            # and the credit-sale auto-post in routes/sales.py via ledger_utils.
+            dup = find_recent_duplicate(
+                cur, 'credit_transactions', 'customer_id', customer_id,
+                data.get('transaction_type'), amount,
+                'invoice_no', data.get('invoice_no') or None, data.get('note') or None
+            )
             if dup:
                 dup['amount'] = float(dup['amount'])
                 # The customer's current balance already reflects the first insert;

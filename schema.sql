@@ -326,6 +326,10 @@ CREATE INDEX IF NOT EXISTS idx_products_name             ON products(name);
 
 -- Suppliers
 CREATE INDEX IF NOT EXISTS idx_suppliers_name            ON suppliers(supplier_name);
+-- Backs ledger_utils.find_recent_duplicate()'s idempotency-guard query in
+-- routes/suppliers.py — without this, that guard's SELECT is a full table
+-- scan (supplier_transactions has no other index besides its PK).
+CREATE INDEX IF NOT EXISTS idx_supplier_txn_dup_guard    ON supplier_transactions(supplier_id, transaction_type, amount, created_at);
 
 -- Sales
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_date       ON sales_invoices(invoice_date DESC);
@@ -344,6 +348,10 @@ CREATE INDEX IF NOT EXISTS idx_credit_customers_name     ON credit_customers(nam
 CREATE INDEX IF NOT EXISTS idx_credit_customers_code     ON credit_customers(customer_code);
 CREATE INDEX IF NOT EXISTS idx_credit_txn_customer       ON credit_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_credit_txn_date           ON credit_transactions(created_at);
+-- Backs ledger_utils.find_recent_duplicate()'s idempotency-guard query
+-- (customer_id + type + amount + recent created_at) so it stays an index
+-- range scan instead of a growing per-customer filtered scan.
+CREATE INDEX IF NOT EXISTS idx_credit_txn_dup_guard      ON credit_transactions(customer_id, transaction_type, amount, created_at);
 
 -- Licenses
 CREATE INDEX IF NOT EXISTS idx_licenses_id               ON licenses(license_id);
@@ -385,6 +393,12 @@ CREATE TRIGGER update_credit_customers_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 
+-- === SEED-DATA-START ===
+-- The marker above/below lets routes/service/dbconfig.py's run-schema endpoint
+-- (and predeploy.py, for init_database.sql) strip this block out when running
+-- against an EXISTING (already-initialised) database, so demo accounts and
+-- sample products/suppliers are only ever created once, on a genuinely fresh
+-- install — never resurrected by a routine schema-repair or deploy pass.
 -- ============================================================
 -- DEFAULT SEED DATA
 -- ============================================================
@@ -399,8 +413,6 @@ SELECT 'admin',
        '$pbkdf2-sha256$29000$GmOsde6dEwLgfI9R6r03xg$KKvsCErFShayM8D3gtNfNDQeSrMeFKpl1qvbQg0Zf5o',
        'Super Admin', 'System Administrator', '', '9876543210'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
-
-UPDATE users SET role = 'Super Admin' WHERE username = 'admin' AND role <> 'Super Admin';
 
 INSERT INTO users (username, password_hash, role, full_name, email, mobile)
 SELECT 'cashier',
@@ -446,6 +458,13 @@ WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_gst_number = '23BBBBB00
 INSERT INTO suppliers (supplier_name, supplier_gst_number, mobile, bank_name, bank_account_number, ifsc_code)
 SELECT 'PQR Traders', '24CCCCC0000C3X7', '7654321098', 'HDFC Bank', '345678901234', 'HDFC0004567'
 WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_gst_number = '24CCCCC0000C3X7');
+-- === SEED-DATA-END ===
+
+-- Promote an existing 'admin' row to Super Admin (for databases seeded before
+-- this change, where admin may still be a plain 'Admin'). Deliberately OUTSIDE
+-- the SEED-DATA block above so it still runs when seed data is stripped on an
+-- existing database.
+UPDATE users SET role = 'Super Admin' WHERE username = 'admin' AND role <> 'Super Admin';
 
 -- Store settings seed (UPI ID, business info)
 CREATE TABLE IF NOT EXISTS store_settings (

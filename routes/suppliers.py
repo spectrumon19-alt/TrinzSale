@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from db import get_db_connection, release_db_connection
 from auth import token_required, admin_required
 from psycopg2.extras import RealDictCursor
+from ledger_utils import find_recent_duplicate
 import re
 
 suppliers_bp = Blueprint('suppliers', __name__)
@@ -391,22 +392,12 @@ def add_supplier_transaction(payload, supplier_id):
         # Reject an identical transaction submitted within a short window (same
         # supplier, type, amount, PO number, note). Stops a double-click / retry
         # from inserting duplicate rows and compounding the payable balance.
-        cur.execute("""
-            SELECT transaction_id
-            FROM supplier_transactions
-            WHERE supplier_id = %s
-              AND transaction_type = %s
-              AND amount = %s
-              AND COALESCE(purchase_order_number, '') = COALESCE(%s, '')
-              AND COALESCE(note, '')                  = COALESCE(%s, '')
-              AND created_at >= NOW() - INTERVAL '10 seconds'
-            ORDER BY created_at DESC
-            LIMIT 1
-        """, (
-            supplier_id, data.get('transaction_type'), amount,
-            eff_po, eff_note
-        ))
-        dup = cur.fetchone()
+        # Shared with routes/credit.py's guard via ledger_utils.
+        dup = find_recent_duplicate(
+            cur, 'supplier_transactions', 'supplier_id', supplier_id,
+            data.get('transaction_type'), amount,
+            'purchase_order_number', eff_po, eff_note
+        )
         if dup:
             # Balance already reflects the first insert; don't apply amount again.
             conn.rollback()

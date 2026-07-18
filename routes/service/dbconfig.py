@@ -127,10 +127,31 @@ def run_schema(payload):
         with open(schema_path, 'r', encoding='utf-8') as f:
             schema_sql = f.read()
 
-        statements = _split_sql_statements(schema_sql)
-
         conn = get_db_connection()
         cur = conn.cursor()
+
+        # On an EXISTING database (has users already), strip the DEFAULT SEED
+        # DATA block (default admin/cashier accounts + sample products/
+        # suppliers) between the SEED-DATA-START/END markers. That block must
+        # only ever run once, on a genuinely fresh install — running this
+        # endpoint against production would otherwise silently (re)create a
+        # known-password 'cashier'/'cashier123' account every time an admin
+        # uses this "repair schema" action. Mirrors predeploy.py's protection
+        # for init_database.sql.
+        try:
+            cur.execute("SELECT EXISTS (SELECT 1 FROM users LIMIT 1)")
+            has_existing_data = cur.fetchone()[0]
+        except Exception:
+            has_existing_data = False
+        if has_existing_data:
+            start_marker = '-- === SEED-DATA-START ==='
+            end_marker = '-- === SEED-DATA-END ==='
+            start = schema_sql.find(start_marker)
+            end = schema_sql.find(end_marker)
+            if start != -1 and end != -1:
+                schema_sql = schema_sql[:start] + schema_sql[end + len(end_marker):]
+
+        statements = _split_sql_statements(schema_sql)
 
         results = []
         ok_count = 0

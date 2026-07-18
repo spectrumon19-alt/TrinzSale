@@ -335,6 +335,10 @@ CREATE INDEX IF NOT EXISTS idx_products_name             ON products(name);
 
 -- Suppliers
 CREATE INDEX IF NOT EXISTS idx_suppliers_name            ON suppliers(supplier_name);
+-- Backs ledger_utils.find_recent_duplicate()'s idempotency-guard query in
+-- routes/suppliers.py — without this, that guard's SELECT is a full table
+-- scan (supplier_transactions has no other index besides its PK).
+CREATE INDEX IF NOT EXISTS idx_supplier_txn_dup_guard    ON supplier_transactions(supplier_id, transaction_type, amount, created_at);
 
 -- Sales
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_date       ON sales_invoices(invoice_date DESC);
@@ -353,6 +357,10 @@ CREATE INDEX IF NOT EXISTS idx_credit_customers_name     ON credit_customers(nam
 CREATE INDEX IF NOT EXISTS idx_credit_customers_code     ON credit_customers(customer_code);
 CREATE INDEX IF NOT EXISTS idx_credit_txn_customer       ON credit_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_credit_txn_date           ON credit_transactions(created_at);
+-- Backs ledger_utils.find_recent_duplicate()'s idempotency-guard query
+-- (customer_id + type + amount + recent created_at) so it stays an index
+-- range scan instead of a growing per-customer filtered scan.
+CREATE INDEX IF NOT EXISTS idx_credit_txn_dup_guard      ON credit_transactions(customer_id, transaction_type, amount, created_at);
 
 -- Licenses
 CREATE INDEX IF NOT EXISTS idx_licenses_id               ON licenses(license_id);
@@ -423,10 +431,6 @@ SELECT 'admin',
        'Super Admin', 'System Administrator', '', '9876543210'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
--- Promote an existing 'admin' row to Super Admin (for databases seeded before
--- this change, where admin may still be a plain 'Admin').
-UPDATE users SET role = 'Super Admin' WHERE username = 'admin' AND role <> 'Super Admin';
-
 -- Default Cashier: cashier / cashier123
 INSERT INTO users (username, password_hash, role, full_name, email, mobile)
 SELECT 'cashier',
@@ -482,6 +486,13 @@ WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_gst_number = '24CCCCC00
 -- ============================================================
 -- SAFE MIGRATIONS (for existing databases — all idempotent)
 -- ============================================================
+
+-- Promote an existing 'admin' row to Super Admin (for databases seeded before
+-- this change, where admin may still be a plain 'Admin'). Deliberately OUTSIDE
+-- the SEED-DATA block above: this must run on every deploy against an
+-- EXISTING database, which is exactly the case predeploy.py strips seed data
+-- for — placing it inside that block would mean it never runs.
+UPDATE users SET role = 'Super Admin' WHERE username = 'admin' AND role <> 'Super Admin';
 
 -- TOTP columns added to users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret   VARCHAR;

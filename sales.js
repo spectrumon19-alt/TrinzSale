@@ -603,6 +603,14 @@ function attachEventListeners() {
                     // sale'). Do NOT post again from here — doing so double-charged the
                     // customer (two debits per invoice) and inflated receivables.
 
+                    // The sale still saved even if the backend couldn't post it to the
+                    // credit ledger (e.g. no matching credit customer found) — surface
+                    // that to the cashier instead of silently continuing, otherwise the
+                    // shop gives away goods on credit with no receivable recorded.
+                    if (invoice && invoice.warning) {
+                        alert(invoice.warning);
+                    }
+
                     // Show email modal (handles print + clear inside)
                     showEmailReceiptModal(invoice);
 
@@ -1550,96 +1558,6 @@ function hideCreditCustomerInfo() {
         creditCustomerBalance.textContent = '₹0.00';
         creditCustomerBalance.className = 'font-medium text-gray-500';
     }
-}
-
-function updateCreditCustomerBalance(invoice) {
-    // Validate inputs
-    if (!selectedCreditCustomer || !invoice) {
-        console.warn('Cannot update credit customer balance: selectedCreditCustomer or invoice is null');
-        return;
-    }
-    
-    // Validate that we have the required customer properties
-    if (!selectedCreditCustomer.customer_id) {
-        console.error('Cannot update credit customer balance: customer_id is missing');
-        alert('Error updating credit customer balance: Customer information is incomplete');
-        return;
-    }
-    
-    // Show loading indicator
-    showLoading();
-    
-    // Create transaction data
-    const transactionData = {
-        transaction_type: 'debit', // Debit because we're adding to the amount owed
-        amount: parseFloat(invoice.grand_total) || 0,
-        invoice_no: invoice.invoice_number,
-        note: 'Sale transaction'
-    };
-    
-    // Call API to add transaction
-    fetch(`/api/customers/${selectedCreditCustomer.customer_id}/transactions`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('pos_token')}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(transactionData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(errorData => {
-                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            });
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.message === 'Transaction added successfully') {
-            // Double-check that selectedCreditCustomer is still valid
-            if (!selectedCreditCustomer) {
-                console.warn('selectedCreditCustomer became null during transaction');
-                return;
-            }
-            
-            // Update the selected customer reference with new balance
-            selectedCreditCustomer.current_balance = data.new_balance;
-            
-            // Update UI
-            if (creditCustomerBalance) {
-                let balanceText = '₹0.00';
-                let balanceClass = 'font-medium text-gray-500';
-                // Ensure current_balance is a number
-                let currentBalance = typeof selectedCreditCustomer.current_balance === 'string' ? parseFloat(selectedCreditCustomer.current_balance) : (typeof selectedCreditCustomer.current_balance === 'number' ? selectedCreditCustomer.current_balance : 0);
-                // Default to 0 if currentBalance is not a valid number
-                if (isNaN(currentBalance)) currentBalance = 0;
-                
-                if (currentBalance > 0) {
-                    balanceText = `₹${currentBalance.toFixed(2)} (Debt)`;
-                    balanceClass = 'font-medium text-red-600';
-                } else if (currentBalance < 0) {
-                    balanceText = `₹${Math.abs(currentBalance).toFixed(2)} (Credit)`;
-                    balanceClass = 'font-medium text-green-600';
-                } else {
-                    balanceText = `₹${currentBalance.toFixed(2)}`;
-                }
-                creditCustomerBalance.textContent = balanceText;
-                creditCustomerBalance.className = balanceClass;
-            }
-            
-            console.log('Credit customer balance updated successfully');
-        } else {
-            throw new Error(data.message || 'Failed to update credit customer balance');
-        }
-    })
-    .catch(error => {
-        console.error('Error updating credit customer balance:', error);
-        alert('Error updating credit customer balance: ' + error.message);
-    })
-    .finally(() => {
-        // Hide loading indicator
-        hideLoading();
-    });
 }
 
 // View Invoices functions

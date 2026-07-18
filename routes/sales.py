@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from db import get_db_connection, release_db_connection
 from auth import token_required, cashier_required, admin_required
 from psycopg2.extras import RealDictCursor
+from ledger_utils import find_recent_duplicate
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -160,8 +161,18 @@ def create_sale(payload):
             return jsonify({'message': 'No data provided'}), 400
         
         user_id = payload.get('user_id')
-        discount_percentage = data.get('discount_percentage', 0)
-        
+        # Clamp once, here, so the SAME value is both stored on the invoice
+        # row and used for the per-line discount math below — previously the
+        # raw unclamped value was stored while a separately-clamped copy was
+        # used for calculations, so an out-of-range input (e.g. 500 or -10)
+        # would show a nonsensical discount_percentage on invoice views/reports
+        # that didn't match the amounts actually charged.
+        try:
+            discount_percentage = float(data.get('discount_percentage', 0) or 0)
+        except (TypeError, ValueError):
+            discount_percentage = 0.0
+        discount_percentage = max(0.0, min(discount_percentage, 100.0))
+
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -213,13 +224,10 @@ def create_sale(payload):
             # returns, and itemized reports read) always reconcile with the
             # invoice-level totals. Scaling every line's taxable/GST by the same
             # (1 - disc%) factor is GST-correct across mixed rates because each
-            # slab's taxable and GST scale together.
-            try:
-                bill_disc_pct = float(discount_percentage or 0)
-            except (TypeError, ValueError):
-                bill_disc_pct = 0.0
-            bill_disc_pct = max(0.0, min(bill_disc_pct, 100.0))
-            bill_keep = 1 - (bill_disc_pct / 100.0)
+            # slab's taxable and GST scale together. discount_percentage was
+            # already clamped to [0, 100] above (and that's the value stored on
+            # the invoice row), so it's reused as-is here — no second clamp.
+            bill_keep = 1 - (discount_percentage / 100.0)
             total_bill_discount_value = 0.0
 
             # Check stock availability for all items first
@@ -397,17 +405,30 @@ def create_sale(payload):
                     if cc and grand_total > 0:
                         prev_balance = float(cc['current_balance'] or 0)
                         new_balance = round(prev_balance - grand_total, 2)  # debit lowers balance
-                        cur.execute("""
-                            INSERT INTO credit_transactions (
-                                customer_id, transaction_type, amount, invoice_no, note, previous_balance
-                            ) VALUES (%s, 'debit', %s, %s, %s, %s)
-                        """, (cc['customer_id'], grand_total, invoice_number,
-                              'Auto-posted from credit sale', prev_balance))
-                        cur.execute("""
-                            UPDATE credit_customers
-                            SET current_balance = %s
-                            WHERE customer_id = %s
-                        """, (new_balance, cc['customer_id']))
+                        # Idempotency guard, same as the manual-entry endpoint in
+                        # routes/credit.py: guards against this exact block somehow
+                        # running twice for the same invoice (e.g. a request retried
+                        # inside the same transaction, or a future refactor bug).
+                        # Note this does NOT catch a fully re-submitted sale that
+                        # mints a new invoice_number — that risk is addressed by the
+                        # frontend's save-button disable during the save request.
+                        dup = find_recent_duplicate(
+                            cur, 'credit_transactions', 'customer_id', cc['customer_id'],
+                            'debit', grand_total, 'invoice_no', invoice_number,
+                            'Auto-posted from credit sale'
+                        )
+                        if not dup:
+                            cur.execute("""
+                                INSERT INTO credit_transactions (
+                                    customer_id, transaction_type, amount, invoice_no, note, previous_balance
+                                ) VALUES (%s, 'debit', %s, %s, %s, %s)
+                            """, (cc['customer_id'], grand_total, invoice_number,
+                                  'Auto-posted from credit sale', prev_balance))
+                            cur.execute("""
+                                UPDATE credit_customers
+                                SET current_balance = %s
+                                WHERE customer_id = %s
+                            """, (new_balance, cc['customer_id']))
                     else:
                         credit_post_warning = (
                             "Sale marked 'Credit' but no matching credit customer was found"

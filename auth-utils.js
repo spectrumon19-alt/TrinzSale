@@ -359,15 +359,20 @@ function ensureSidebarShell() {
         document.body.appendChild(layout);
     }
 
-    // Build the sidebar nav
+    // Build the sidebar nav. Apply the persisted pin state up front (default
+    // pinned) so an unpinned sidebar doesn't flash open before initializeSidebarPin runs.
+    let _pinned = true;
+    try { _pinned = localStorage.getItem('sidebarPinned') !== 'false'; } catch (e) {}
     const nav = document.createElement('nav');
     nav.id = 'sidebar';
     nav.setAttribute('data-testid', 'sidebar');
-    nav.className = 'w-56 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out z-50';
+    nav.className = 'w-56 fixed inset-y-0 left-0 transform -translate-x-full '
+        + (_pinned ? 'md:translate-x-0' : 'md:-translate-x-full')
+        + ' transition duration-200 ease-in-out z-50';
     nav.style.width = '220px';
     nav.innerHTML = `
         <a href="dashboard.html" class="snav-brand">
-            <span class="snav-brand-mark"><img src="assets/logo.png" alt="TrintzERP"></span>
+            <span class="snav-brand-mark"><img src="assets/favicon.png" alt="TrintzERP"></span>
             <span class="snav-brand-text">
                 <span class="snav-brand-name">Tr<span class="i-dot">i</span>ntz<span class="accent">ERP</span></span>
                 <span class="snav-brand-sub">Retail &amp; Billing</span>

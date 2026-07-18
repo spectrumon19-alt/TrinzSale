@@ -150,23 +150,30 @@ function initializeSidebarPin() {
     if (!sidebar) return;
     
     if (overlay) overlay.addEventListener('click', closeMenu);
-    
-    // Default to pinned (visible on desktop)
-    sidebar.classList.remove('md:-translate-x-full');
-    sidebar.classList.add('md:translate-x-0');
-    if (mainContent) mainContent.classList.add('md:ml-[220px]');
-    if (mainContent) mainContent.classList.remove('sidebar-hidden');
-    if (pinToggle) pinToggle.checked = true;
-    if (floatingToggle) floatingToggle.classList.add('hidden');
-
-    if (pinToggle) pinToggle.addEventListener('change', toggleSidebarPin);
 
     const headerPinToggle = document.getElementById('pin-sidebar-toggle-header');
-    if (headerPinToggle) {
-        headerPinToggle.addEventListener('change', toggleSidebarPin);
-        // Reflect current pinned state (sidebar defaults to pinned/visible above)
-        headerPinToggle.checked = true;
+
+    // Apply the PERSISTED pin state (default pinned when unset). Previously this
+    // always forced pinned, so unpinning never survived a reload.
+    const isPinned = localStorage.getItem('sidebarPinned') !== 'false';
+    if (isPinned) {
+        sidebar.classList.remove('md:-translate-x-full');
+        sidebar.classList.add('md:translate-x-0');
+        if (mainContent) mainContent.classList.add('md:ml-[220px]');
+        if (mainContent) mainContent.classList.remove('sidebar-hidden');
+        if (floatingToggle) floatingToggle.classList.add('hidden');
+    } else {
+        sidebar.classList.remove('md:translate-x-0');
+        sidebar.classList.add('md:-translate-x-full');
+        if (mainContent) mainContent.classList.remove('md:ml-[220px]');
+        if (mainContent) mainContent.classList.add('sidebar-hidden');
+        if (floatingToggle) floatingToggle.classList.remove('hidden');
     }
+    if (pinToggle) pinToggle.checked = isPinned;
+    if (headerPinToggle) headerPinToggle.checked = isPinned;
+
+    if (pinToggle) pinToggle.addEventListener('change', toggleSidebarPin);
+    if (headerPinToggle) headerPinToggle.addEventListener('change', toggleSidebarPin);
 }
 
 window.addEventListener('resize', function() {

@@ -174,8 +174,19 @@ def check_and_init_db(params):
             _info('Existing database detected — skipped default seed data '
                   '(admin/cashier demo accounts, sample products/suppliers).')
         else:
-            _warn('SEED-DATA markers not found in init_database.sql — '
-                  'running the full script unmodified.')
+            # Fail safe: refuse to run the full script (with seed data intact)
+            # against a database we know already has real data, rather than
+            # silently recreating the known-password admin/cashier accounts.
+            # This should only happen if init_database.sql's marker comments
+            # are ever edited without checking this file — treat it as a bug
+            # to fix, not something to run through.
+            _fail('SEED-DATA markers not found in init_database.sql, but this '
+                  'database already has users. Refusing to run the script — '
+                  'it would re-seed default admin/cashier accounts into an '
+                  'existing database. Check the SEED-DATA-START/END markers '
+                  'in init_database.sql are intact.')
+            cur.close(); conn.close()
+            return False
 
     try:
         cur.execute(sql)

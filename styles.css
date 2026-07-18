@@ -1029,24 +1029,19 @@ main { flex: 1; }
     border-bottom: 1px solid rgba(255,255,255,.07);
 }
 .snav-brand .snav-brand-mark {
-    width: 40px; height: 40px; flex: 0 0 auto; border-radius: 11px;
+    width: 44px; height: 44px; flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,.97);
-    box-shadow: 0 4px 12px -4px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.6);
+    background: transparent;
 }
-.snav-brand .snav-brand-mark img { width: 30px; height: 30px; object-fit: contain; display: block; }
+.snav-brand .snav-brand-mark img { width: 44px; height: 44px; object-fit: contain; display: block; }
 .snav-brand .snav-brand-text { display: flex; flex-direction: column; line-height: 1; overflow: hidden; }
 .snav-brand .snav-brand-name {
     font-size: 1.12rem; font-weight: 800; letter-spacing: -.4px; color: #ffffff; white-space: nowrap;
 }
-/* "ERP" in the brand's magenta→purple gradient. The sidebar surface stays dark
-   in both themes, so this always uses the bright (dark-surface) gradient. */
+/* "ERP" in solid red. The sidebar surface stays dark in both themes, so a
+   bright red reads clearly against it. */
 .snav-brand .snav-brand-name .accent {
-    color: #c084fc; /* fallback if background-clip:text unsupported */
-    background: linear-gradient(90deg, #e560c4 0%, #a78bfa 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ef4444;
 }
 .snav-brand .snav-brand-sub {
     font-size: .58rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
@@ -1079,19 +1074,16 @@ html.dark .brand-word,
 [data-theme="dark"] .brand-word { color: #ffffff; }
 
 .brand-erp {
-    color: #a01b88; /* fallback */
-    background: linear-gradient(90deg, #c026a6 0%, #7c3aed 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #dc2020;
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    -webkit-text-fill-color: currentColor;
 }
 html.dark .brand-erp,
 [data-theme="dark"] .brand-erp {
-    color: #c084fc; /* fallback */
-    background: linear-gradient(90deg, #e560c4 0%, #a78bfa 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ff5959; /* brighter red for the dark surface */
+    -webkit-text-fill-color: currentColor;
 }
 /* In rail (icon-only) mode, center the mark and hide the wordmark. */
 html.sidebar-rail-mode #sidebar:not(:hover) .snav-brand { justify-content: center; padding-left: 0; padding-right: 0; }
