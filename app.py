@@ -46,6 +46,23 @@ def create_app():
     if not app.config['SECRET_KEY']:
         raise RuntimeError("SECRET_KEY environment variable is not set.")
 
+    # Render (and most PaaS hosts) terminate TLS at a proxy in front of gunicorn,
+    # so Flask sees plain HTTP unless told to trust X-Forwarded-Proto/Host. Without
+    # this, request.is_secure is wrong, which breaks the Secure session cookie used
+    # by the Google OAuth state check (routes/backup_oauth.py) — the cookie set on
+    # /authorize doesn't come back on Google's /callback redirect ("state mismatch").
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+    # Session cookie: SameSite=Lax so it still rides along on the top-level GET
+    # redirect Google sends back to /api/backup/oauth/callback, and Secure when
+    # served over HTTPS (Render, or any TLS deployment) so browsers don't
+    # reject/drop it. On plain-HTTP local dev, Secure must stay off or the
+    # cookie never gets set at all — gated on GOOGLE_OAUTH_REDIRECT_URI's scheme
+    # since that's already configured per-environment (see .env.example).
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', '').startswith('https://')
+
     # License enforcement — blocks all /api/* routes when license is invalid
     from license_guard import LicenseGuard
     LicenseGuard(app)
